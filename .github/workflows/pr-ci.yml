@@ -1,0 +1,44 @@
+name: PR CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies (npm ci)
+        if: ${{ hashFiles('package-lock.json') != '' }}
+        run: npm ci
+
+      - name: Install dependencies (npm install)
+        if: ${{ hashFiles('package-lock.json') == '' }}
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (Vite + Electron Forge)
+        env:
+          # Electron may require a display variable for some build steps; often not needed for package/make
+          CI: "true"
+        run: |
+          npm run package
+
+      - name: Run unit tests (if present)
+        run: npm test --if-present --silent
