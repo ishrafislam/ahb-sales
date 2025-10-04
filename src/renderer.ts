@@ -26,8 +26,10 @@
  * ```
  */
 
-import './index.css';
+import "./index.css";
+import { createApp } from "vue";
+import App from "./App.vue";
 
-console.log(
-  '👋 This message is being logged by "renderer.ts", included via Vite',
-);
+const mount = document.createElement("div");
+document.body.appendChild(mount);
+createApp(App).mount(mount);
