@@ -1,18 +1,24 @@
 import { describe, it, expect, beforeAll } from "vitest";
 
-// Ensure a deterministic key for tests
+// TEST-ONLY: Set a deterministic encryption key for unit tests.
+// DO NOT use this key in production builds.
 beforeAll(() => {
   process.env.AHB_KEY_HEX =
     "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 });
 
 // Import after setting env so module picks it up
-import {
-  createEmptyDocument,
-  encryptJSON,
-  decryptJSON,
-  type AhbDocument,
-} from "../src/main/crypto";
+let createEmptyDocument: (typeof import("../src/main/crypto"))["createEmptyDocument"];
+let encryptJSON: (typeof import("../src/main/crypto"))["encryptJSON"];
+let decryptJSON: (typeof import("../src/main/crypto"))["decryptJSON"];
+type AhbDocument = import("../src/main/crypto").AhbDocument;
+
+beforeAll(async () => {
+  const mod = await import("../src/main/crypto");
+  createEmptyDocument = mod.createEmptyDocument;
+  encryptJSON = mod.encryptJSON;
+  decryptJSON = mod.decryptJSON;
+});
 
 describe("crypto (AES-256-GCM container)", () => {
   it("encrypts and decrypts a document roundtrip", () => {

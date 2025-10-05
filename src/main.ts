@@ -89,11 +89,22 @@ async function handleOpenFile() {
   });
   if (res.canceled || res.filePaths.length === 0) return;
   const filePath = res.filePaths[0];
-  const buf = fs.readFileSync(filePath);
-  const parsed = decryptJSON(buf) as AhbDocument;
-  currentDoc = parsed;
-  currentFilePath = filePath;
-  notifyAll("app:document-changed");
+  try {
+    const buf = fs.readFileSync(filePath);
+    const parsed = decryptJSON(buf) as AhbDocument;
+    currentDoc = parsed;
+    currentFilePath = filePath;
+    notifyAll("app:document-changed");
+  } catch (err) {
+    console.error("Failed to open/decrypt file:", err);
+    await dialog.showMessageBox({
+      type: "error",
+      title: "Cannot open file",
+      message:
+        "This file could not be opened. It may be corrupted, not an AHB Sales file, or encrypted with a different key.",
+      detail: `${(err as Error).message}`,
+    });
+  }
 }
 
 function writeCurrentTo(pathToWrite: string) {

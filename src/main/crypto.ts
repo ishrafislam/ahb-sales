@@ -1,13 +1,25 @@
 import crypto from "node:crypto";
 
-// NOTE: For v1, the key is embedded at build time as per requirements.
-// In production, consider secure key management.
-// AES-256-GCM requires 32-byte key, 12-byte IV, and produces auth tag.
+// AES-256-GCM requires a 32-byte key (64 hex chars), 12-byte IV, and produces an auth tag.
+// SECURITY: AHB_KEY_HEX must be provided via environment at build/runtime.
+// In tests, we set this env var explicitly. In non-test envs, missing/invalid keys will throw.
+const KEY_HEX = process.env.AHB_KEY_HEX ?? "";
 
-const KEY_HEX =
-  process.env.AHB_KEY_HEX ||
-  "0000000000000000000000000000000000000000000000000000000000000000";
-const KEY = Buffer.from(KEY_HEX, "hex");
+function isValidHexKey(hex: string): boolean {
+  return /^[0-9a-fA-F]{64}$/.test(hex);
+}
+
+if (!isValidHexKey(KEY_HEX)) {
+  // Allow tests to proceed (they set env before importing this module)
+  const isTest = process.env.NODE_ENV === "test" || process.env.VITEST;
+  if (!isTest) {
+    throw new Error(
+      "AHB_KEY_HEX is required and must be a 64-hex-character string for AES-256-GCM."
+    );
+  }
+}
+
+const KEY = Buffer.from(isValidHexKey(KEY_HEX) ? KEY_HEX : "", "hex");
 
 export function encryptJSON(obj: unknown): Buffer {
   const iv = crypto.randomBytes(12);

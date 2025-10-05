@@ -26,8 +26,9 @@ function saveSettings(s: Settings) {
   try {
     fs.mkdirSync(path.dirname(settingsPath()), { recursive: true });
     fs.writeFileSync(settingsPath(), JSON.stringify(s, null, 2), "utf8");
-  } catch {
-    // ignore write failures
+  } catch (err) {
+    // Log failure instead of failing silently; could be enhanced to notify renderer via IPC.
+    console.error("Failed to save settings:", err);
   }
 }
 
