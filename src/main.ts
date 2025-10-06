@@ -1,4 +1,14 @@
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
+// Load environment variables from .env (dev convenience)
+import * as dotenv from "dotenv";
+try {
+  dotenv.config();
+} catch (e) {
+  // Non-fatal in production packaging where dotenv may be absent
+  if (process.env.NODE_ENV !== "production") {
+    console.debug("dotenv load skipped or failed:", (e as Error)?.message);
+  }
+}
 import path from "node:path";
 import fs from "node:fs";
 import started from "electron-squirrel-startup";
@@ -9,6 +19,16 @@ import {
   type AhbDocument,
 } from "./main/crypto";
 import { getLanguage, setLanguage } from "./main/i18n";
+import {
+  initData,
+  addProduct,
+  updateProduct,
+  listProducts,
+  addCustomer,
+  updateCustomer,
+  listCustomers,
+  type AhbDataV1,
+} from "./main/data";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -69,6 +89,10 @@ app.on("activate", () => {
 
 let currentFilePath: string | null = null;
 let currentDoc: AhbDocument = createEmptyDocument();
+// Ensure data container exists
+if (!currentDoc.data || typeof currentDoc.data !== "object") {
+  (currentDoc as AhbDocument).data = initData();
+}
 
 function notifyAll(channel: string, ...args: unknown[]) {
   BrowserWindow.getAllWindows().forEach((w) =>
@@ -93,6 +117,10 @@ async function handleOpenFile() {
     const buf = fs.readFileSync(filePath);
     const parsed = decryptJSON(buf) as AhbDocument;
     currentDoc = parsed;
+    // backfill data container if missing
+    if (!currentDoc.data || typeof currentDoc.data !== "object") {
+      (currentDoc as AhbDocument).data = initData();
+    }
     currentFilePath = filePath;
     notifyAll("app:document-changed");
   } catch (err) {
@@ -144,3 +172,50 @@ ipcMain.handle("app:set-language", async (_e, lang: "bn" | "en") => {
   setLanguage(lang);
   notifyAll("app:language-changed", lang);
 });
+
+// Phase 1: IPC for products/customers
+ipcMain.handle("data:list-products", async (_e, activeOnly?: boolean) => {
+  const data = currentDoc.data as AhbDataV1;
+  return listProducts(data, { activeOnly });
+});
+ipcMain.handle(
+  "data:add-product",
+  async (_e, p: Parameters<typeof addProduct>[1]) => {
+    const data = currentDoc.data as AhbDataV1;
+    const prod = addProduct(data, p);
+    notifyAll("data:changed", { kind: "product", action: "add", id: prod.id });
+    return prod;
+  }
+);
+ipcMain.handle(
+  "data:update-product",
+  async (_e, id: number, patch: Parameters<typeof updateProduct>[2]) => {
+    const data = currentDoc.data as AhbDataV1;
+    const prod = updateProduct(data, id, patch);
+    notifyAll("data:changed", { kind: "product", action: "update", id });
+    return prod;
+  }
+);
+
+ipcMain.handle("data:list-customers", async (_e, activeOnly?: boolean) => {
+  const data = currentDoc.data as AhbDataV1;
+  return listCustomers(data, { activeOnly });
+});
+ipcMain.handle(
+  "data:add-customer",
+  async (_e, c: Parameters<typeof addCustomer>[1]) => {
+    const data = currentDoc.data as AhbDataV1;
+    const cust = addCustomer(data, c);
+    notifyAll("data:changed", { kind: "customer", action: "add", id: cust.id });
+    return cust;
+  }
+);
+ipcMain.handle(
+  "data:update-customer",
+  async (_e, id: number, patch: Parameters<typeof updateCustomer>[2]) => {
+    const data = currentDoc.data as AhbDataV1;
+    const cust = updateCustomer(data, id, patch);
+    notifyAll("data:changed", { kind: "customer", action: "update", id });
+    return cust;
+  }
+);

@@ -3,27 +3,29 @@ import crypto from "node:crypto";
 // AES-256-GCM requires a 32-byte key (64 hex chars), 12-byte IV, and produces an auth tag.
 // SECURITY: AHB_KEY_HEX must be provided via environment at build/runtime.
 // In tests, we set this env var explicitly. In non-test envs, missing/invalid keys will throw.
-const KEY_HEX = process.env.AHB_KEY_HEX ?? "";
-
 function isValidHexKey(hex: string): boolean {
   return /^[0-9a-fA-F]{64}$/.test(hex);
 }
 
-if (!isValidHexKey(KEY_HEX)) {
-  // Allow tests to proceed (they set env before importing this module)
-  const isTest = process.env.NODE_ENV === "test" || process.env.VITEST;
-  if (!isTest) {
-    throw new Error(
-      "AHB_KEY_HEX is required and must be a 64-hex-character string for AES-256-GCM."
-    );
+let KEY: Buffer | null = null;
+function getKey(): Buffer {
+  if (KEY) return KEY;
+  const keyHex = process.env.AHB_KEY_HEX ?? "";
+  if (!isValidHexKey(keyHex)) {
+    const isTest = process.env.NODE_ENV === "test" || process.env.VITEST;
+    if (!isTest) {
+      throw new Error(
+        "AHB_KEY_HEX is required and must be a 64-hex-character string for AES-256-GCM."
+      );
+    }
   }
+  KEY = Buffer.from(isValidHexKey(keyHex) ? keyHex : "", "hex");
+  return KEY;
 }
-
-const KEY = Buffer.from(isValidHexKey(KEY_HEX) ? KEY_HEX : "", "hex");
 
 export function encryptJSON(obj: unknown): Buffer {
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", KEY, iv);
+  const cipher = crypto.createCipheriv("aes-256-gcm", getKey(), iv);
   const data = Buffer.from(JSON.stringify(obj), "utf8");
   const enc = Buffer.concat([cipher.update(data), cipher.final()]);
   const tag = cipher.getAuthTag();
@@ -41,7 +43,7 @@ export function decryptJSON(buf: Buffer): unknown {
   const iv = buf.subarray(5, 17);
   const tag = buf.subarray(17, 33);
   const enc = buf.subarray(33);
-  const decipher = crypto.createDecipheriv("aes-256-gcm", KEY, iv);
+  const decipher = crypto.createDecipheriv("aes-256-gcm", getKey(), iv);
   decipher.setAuthTag(tag);
   const dec = Buffer.concat([decipher.update(enc), decipher.final()]);
   return JSON.parse(dec.toString("utf8"));
@@ -50,7 +52,7 @@ export function decryptJSON(buf: Buffer): unknown {
 export type AhbDocument = {
   schemaVersion: number;
   meta: { createdAt: string; updatedAt: string; branchName?: string };
-  data: unknown; // Placeholder for future schema
+  data: unknown; // Holds domain data; see data.ts for Phase 1 shape
 };
 
 export function createEmptyDocument(): AhbDocument {
@@ -58,6 +60,6 @@ export function createEmptyDocument(): AhbDocument {
   return {
     schemaVersion: 1,
     meta: { createdAt: now, updatedAt: now },
-    data: {},
+    data: { products: [], customers: [] },
   };
 }

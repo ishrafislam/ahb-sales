@@ -130,19 +130,44 @@ AHB Sales is a desktop application built with Electron to replace the Microsoft 
 
 2. Rounding policy: “No rounding… 2 decimals (we can round to ceil).” Confirm that ceil to 2 decimals is preferred over standard half-up rounding.
 
-## Phase-wise Implementation Plan (No Code Yet)
+## Phase-wise Implementation Plan
 
-Phase 0: Foundations and architecture
+Phase 0: Foundations and architecture — DONE
 
-- Define `.ahbs` container: versioned header + encrypted payload (AES-256-GCM). Decide payload (SQLite recommended). Set up i18n with runtime switching.
-- Implement file New/Open/Save/Save As with full-file encryption.
-- Acceptance: Encrypted file read/write; language toggles without restart.
+- Implemented `.ahbs` container: versioned header + AES-256-GCM encryption. Key required via env; no insecure fallback.
+- File New/Open/Save/Save As complete, with user-friendly error messages on open/decrypt failures.
+- Runtime i18n (BN/EN) with persistence and IPC events.
+- Tests in place for crypto, i18n, and a basic renderer check; CI runs on PRs.
+- Acceptance: Achieved (encrypted read/write; runtime language toggle).
 
-Phase 1: Domain schema and core lists
+Development key (.env)
 
-- Schema for Products, Customers, Invoices, InvoiceLines, Payments with indexes.
-- Product and Customer forms: add/edit/search/list, active toggle; record navigation.
-- Acceptance: Data persists/reloads; product ID constraints enforced.
+- Run this code to create key: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+
+- For local development, you can place a 64-hex-character key in a `.env` file at the repo root:
+  - Copy `.env.example` to `.env`
+  - Replace AHB_KEY_HEX with your own secure key (32 bytes in hex)
+  - Note: Keep it secret. Files require the same key to open later.
+
+Phase 1: Domain schema and core lists — PLANNED
+
+- Scope (v1 slice): Products and Customers only (Invoices/Payments come in later phases).
+- Data model (in-memory for now, persisted as part of `.ahbs` JSON payload):
+  - Product: id (1–1000), nameBn, nameEn?, description?, unit, cost, price, stock, active, createdAt/updatedAt
+  - Customer: id (>0 int), nameBn, nameEn?, address?, outstanding, active, createdAt/updatedAt
+- Operations:
+  - Add/Update/Get/List Products and Customers; active toggle; sorted lists; basic validation.
+  - Enforce product ID constraint 1–1000 per file (assumption until clarified).
+- IPC and Preload:
+  - Expose minimal endpoints to list/add/update products/customers and notify renderer on changes.
+- UI (minimal v1):
+  - Simple Vue views for product and customer lists with add/edit forms (basic fields), wired to IPC.
+- Tests (TDD):
+  - Unit tests for data operations (duplicate id, ID range, required fields).
+  - Roundtrip persistence via encrypt/decrypt with data embedded in document.
+- Acceptance:
+  - Data persists and reloads with file save/open.
+  - Product ID constraints enforced; basic add/edit flows work via IPC.
 
 Phase 2: Sales and stock
 
