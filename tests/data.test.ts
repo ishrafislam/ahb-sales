@@ -14,9 +14,9 @@ import {
 process.env.AHB_KEY_HEX =
   "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
-let createEmptyDocument: (typeof import("../src/main/crypto"))['createEmptyDocument'];
-let encryptJSON: (typeof import("../src/main/crypto"))['encryptJSON'];
-let decryptJSON: (typeof import("../src/main/crypto"))['decryptJSON'];
+let createEmptyDocument: (typeof import("../src/main/crypto"))["createEmptyDocument"];
+let encryptJSON: (typeof import("../src/main/crypto"))["encryptJSON"];
+let decryptJSON: (typeof import("../src/main/crypto"))["decryptJSON"];
 
 beforeAll(async () => {
   const mod = await import("../src/main/crypto");
@@ -39,9 +39,27 @@ describe("Phase 1 data model", () => {
     expect(p1.active).toBe(true);
     expect(listProducts(data).map((p) => p.id)).toEqual([1]);
 
-    expect(() => addProduct(data, { id: 0, nameBn: "খারাপ", unit: "kg", cost: 1, price: 1 })).toThrow();
-    expect(() => addProduct(data, { id: 1001, nameBn: "খারাপ", unit: "kg", cost: 1, price: 1 })).toThrow();
-    expect(() => addProduct(data, { id: 1, nameBn: "ডুপ", unit: "kg", cost: 1, price: 1 })).toThrow();
+    expect(() =>
+      addProduct(data, {
+        id: 0,
+        nameBn: "খারাপ",
+        unit: "kg",
+        cost: 1,
+        price: 1,
+      })
+    ).toThrow();
+    expect(() =>
+      addProduct(data, {
+        id: 1001,
+        nameBn: "খারাপ",
+        unit: "kg",
+        cost: 1,
+        price: 1,
+      })
+    ).toThrow();
+    expect(() =>
+      addProduct(data, { id: 1, nameBn: "ডুপ", unit: "kg", cost: 1, price: 1 })
+    ).toThrow();
 
     const p1u = updateProduct(data, 1, { price: 65, active: false });
     expect(p1u.price).toBe(65);
@@ -60,13 +78,13 @@ describe("Phase 1 data model", () => {
   });
 
   it("persists data in document roundtrip", () => {
-  const doc = createEmptyDocument();
-  const data = doc.data as AhbDataV1;
+    const doc = createEmptyDocument();
+    const data = doc.data as AhbDataV1;
     addProduct(data, { id: 2, nameBn: "ডাল", unit: "kg", cost: 80, price: 95 });
     addCustomer(data, { id: 5, nameBn: "Karim" });
     const enc = encryptJSON(doc);
-  const dec = decryptJSON(enc) as typeof doc;
-  const data2 = dec.data as AhbDataV1;
+    const dec = decryptJSON(enc) as typeof doc;
+    const data2 = dec.data as AhbDataV1;
     expect(listProducts(data2).length).toBe(1);
     expect(listCustomers(data2).length).toBe(1);
   });

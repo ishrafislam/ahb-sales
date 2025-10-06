@@ -21,7 +21,9 @@ type AppAPI = {
   listCustomers: (activeOnly?: boolean) => Promise<unknown[]>;
   addCustomer: (c: unknown) => Promise<unknown>;
   updateCustomer: (id: number, patch: unknown) => Promise<unknown>;
-  onDataChanged: (cb: (payload: { kind: string; action: string; id: number }) => void) => () => void;
+  onDataChanged: (
+    cb: (payload: { kind: string; action: string; id: number }) => void
+  ) => () => void;
 };
 
 const api: AppAPI = {
@@ -41,14 +43,21 @@ const api: AppAPI = {
     ipcRenderer.on("app:document-changed", listener);
     return () => ipcRenderer.removeListener("app:document-changed", listener);
   },
-  listProducts: (activeOnly) => ipcRenderer.invoke("data:list-products", activeOnly),
+  listProducts: (activeOnly) =>
+    ipcRenderer.invoke("data:list-products", activeOnly),
   addProduct: (p) => ipcRenderer.invoke("data:add-product", p),
-  updateProduct: (id, patch) => ipcRenderer.invoke("data:update-product", id, patch),
-  listCustomers: (activeOnly) => ipcRenderer.invoke("data:list-customers", activeOnly),
+  updateProduct: (id, patch) =>
+    ipcRenderer.invoke("data:update-product", id, patch),
+  listCustomers: (activeOnly) =>
+    ipcRenderer.invoke("data:list-customers", activeOnly),
   addCustomer: (c) => ipcRenderer.invoke("data:add-customer", c),
-  updateCustomer: (id, patch) => ipcRenderer.invoke("data:update-customer", id, patch),
+  updateCustomer: (id, patch) =>
+    ipcRenderer.invoke("data:update-customer", id, patch),
   onDataChanged: (cb) => {
-    const listener = (_: unknown, payload: { kind: string; action: string; id: number }) => cb(payload);
+    const listener = (
+      _: unknown,
+      payload: { kind: string; action: string; id: number }
+    ) => cb(payload);
     ipcRenderer.on("data:changed", listener);
     return () => ipcRenderer.removeListener("data:changed", listener);
   },

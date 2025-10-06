@@ -43,7 +43,10 @@ export function assertProductId(id: number) {
   }
 }
 
-export type NewProduct = Omit<Product, "createdAt" | "updatedAt" | "active" | "stock"> & {
+export type NewProduct = Omit<
+  Product,
+  "createdAt" | "updatedAt" | "active" | "stock"
+> & {
   active?: boolean;
   stock?: number;
 };
@@ -93,20 +96,30 @@ export function getProduct(data: AhbDataV1, id: number): Product | undefined {
   return data.products.find((x) => x.id === id);
 }
 
-export function listProducts(data: AhbDataV1, opts?: { activeOnly?: boolean }): Product[] {
+export function listProducts(
+  data: AhbDataV1,
+  opts?: { activeOnly?: boolean }
+): Product[] {
   const arr = data.products.slice();
-  return (opts?.activeOnly ? arr.filter((x) => x.active) : arr).sort((a, b) => a.id - b.id);
+  return (opts?.activeOnly ? arr.filter((x) => x.active) : arr).sort(
+    (a, b) => a.id - b.id
+  );
 }
 
-export type NewCustomer = Omit<Customer, "createdAt" | "updatedAt" | "active" | "outstanding"> & {
+export type NewCustomer = Omit<
+  Customer,
+  "createdAt" | "updatedAt" | "active" | "outstanding"
+> & {
   active?: boolean;
   outstanding?: number;
 };
 
 export function addCustomer(data: AhbDataV1, c: NewCustomer): Customer {
-  if (!Number.isInteger(c.id) || c.id < 1) throw new Error("Customer ID must be a positive integer");
+  if (!Number.isInteger(c.id) || c.id < 1)
+    throw new Error("Customer ID must be a positive integer");
   if (!c.nameBn?.trim()) throw new Error("Customer Bengali name is required");
-  if (data.customers.some((x) => x.id === c.id)) throw new Error("Duplicate customer id");
+  if (data.customers.some((x) => x.id === c.id))
+    throw new Error("Duplicate customer id");
   const cust: Customer = {
     id: c.id,
     nameBn: c.nameBn.trim(),
@@ -143,5 +156,7 @@ export function listCustomers(
   opts?: { activeOnly?: boolean }
 ): Customer[] {
   const arr = data.customers.slice();
-  return (opts?.activeOnly ? arr.filter((x) => x.active) : arr).sort((a, b) => a.id - b.id);
+  return (opts?.activeOnly ? arr.filter((x) => x.active) : arr).sort(
+    (a, b) => a.id - b.id
+  );
 }
