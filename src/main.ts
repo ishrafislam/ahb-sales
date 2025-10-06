@@ -101,8 +101,20 @@ function notifyAll(channel: string, ...args: unknown[]) {
 }
 
 async function handleNewFile() {
-  currentFilePath = null;
+  const res = await dialog.showSaveDialog({
+    defaultPath: "untitled.ahbs",
+    filters: [{ name: "AHB Sales Files", extensions: ["ahbs"] }],
+  });
+  if (res.canceled || !res.filePath) return;
+  currentFilePath = res.filePath.endsWith(".ahbs")
+    ? res.filePath
+    : `${res.filePath}.ahbs`;
   currentDoc = createEmptyDocument();
+  // backfill data container if missing
+  if (!currentDoc.data || typeof currentDoc.data !== "object") {
+    (currentDoc as AhbDocument).data = initData();
+  }
+  writeCurrentTo(currentFilePath);
   notifyAll("app:document-changed");
 }
 
@@ -184,6 +196,9 @@ ipcMain.handle(
     const data = currentDoc.data as AhbDataV1;
     const prod = addProduct(data, p);
     notifyAll("data:changed", { kind: "product", action: "add", id: prod.id });
+    if (currentFilePath) {
+      writeCurrentTo(currentFilePath);
+    }
     return prod;
   }
 );
@@ -193,6 +208,9 @@ ipcMain.handle(
     const data = currentDoc.data as AhbDataV1;
     const prod = updateProduct(data, id, patch);
     notifyAll("data:changed", { kind: "product", action: "update", id });
+    if (currentFilePath) {
+      writeCurrentTo(currentFilePath);
+    }
     return prod;
   }
 );
@@ -207,6 +225,9 @@ ipcMain.handle(
     const data = currentDoc.data as AhbDataV1;
     const cust = addCustomer(data, c);
     notifyAll("data:changed", { kind: "customer", action: "add", id: cust.id });
+    if (currentFilePath) {
+      writeCurrentTo(currentFilePath);
+    }
     return cust;
   }
 );
@@ -216,6 +237,9 @@ ipcMain.handle(
     const data = currentDoc.data as AhbDataV1;
     const cust = updateCustomer(data, id, patch);
     notifyAll("data:changed", { kind: "customer", action: "update", id });
+    if (currentFilePath) {
+      writeCurrentTo(currentFilePath);
+    }
     return cust;
   }
 );
