@@ -40,24 +40,24 @@ describe("App.vue", () => {
       // Phase 1 stubs
       listProducts: async (): Promise<unknown[]> => [],
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      addProduct: async (_p: unknown): Promise<unknown> => ({} as unknown),
+      addProduct: async (_p: unknown): Promise<unknown> => ({}) as unknown,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       updateProduct: async (
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _id: number,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _patch: unknown
-      ): Promise<unknown> => ({} as unknown),
+      ): Promise<unknown> => ({}) as unknown,
       listCustomers: async (): Promise<unknown[]> => [],
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      addCustomer: async (_c: unknown): Promise<unknown> => ({} as unknown),
+      addCustomer: async (_c: unknown): Promise<unknown> => ({}) as unknown,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       updateCustomer: async (
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _id: number,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _patch: unknown
-      ): Promise<unknown> => ({} as unknown),
+      ): Promise<unknown> => ({}) as unknown,
       onDataChanged: (): (() => void) => () => undefined,
     } as unknown as Window["ahb"];
 
@@ -66,9 +66,9 @@ describe("App.vue", () => {
     await Promise.resolve();
     await nextTick();
     expect(wrapper.text()).toContain("AHB Sales");
-  // Simulate opening/creating a file so the UI shows the language select
-  docCb?.();
-  await nextTick();
+    // Simulate opening/creating a file so the UI shows the language select
+    docCb?.();
+    await nextTick();
 
     const select = wrapper.find("select");
     await select.setValue("bn");

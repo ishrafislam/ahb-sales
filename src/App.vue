@@ -19,12 +19,8 @@
         class="px-2 py-1 border rounded"
         @change="onLangChange"
       >
-        <option value="bn">
-          বাংলা
-        </option>
-        <option value="en">
-          English
-        </option>
+        <option value="bn">বাংলা</option>
+        <option value="en">English</option>
       </select>
     </div>
     <h2 class="text-2xl font-semibold">
@@ -34,15 +30,14 @@
       {{ status }}
     </p>
 
-    <div
-      v-if="loaded"
-      class="border-b mt-2"
-    >
+    <div v-if="loaded" class="border-b mt-2">
       <nav class="flex gap-2">
         <button
           :class="[
             'px-3 py-1.5 rounded-t',
-            currentTab === 'products' ? 'bg-teal-600 text-white' : 'bg-gray-200'
+            currentTab === 'products'
+              ? 'bg-teal-600 text-white'
+              : 'bg-gray-200',
           ]"
           @click="currentTab = 'products'"
         >
@@ -51,7 +46,9 @@
         <button
           :class="[
             'px-3 py-1.5 rounded-t',
-            currentTab === 'customers' ? 'bg-teal-600 text-white' : 'bg-gray-200'
+            currentTab === 'customers'
+              ? 'bg-teal-600 text-white'
+              : 'bg-gray-200',
           ]"
           @click="currentTab = 'customers'"
         >
@@ -72,10 +69,7 @@
       </nav>
     </div>
 
-    <div
-      v-if="loaded"
-      class="pt-2"
-    >
+    <div v-if="loaded" class="pt-2">
       <ProductsView v-if="currentTab === 'products'" />
       <CustomersView v-else />
     </div>
@@ -92,8 +86,8 @@ const appTitle = computed(() =>
   lang.value === "bn" ? "এএইচবি সেলস" : "AHB Sales"
 );
 const status = ref("Ready");
-const currentTab = ref<'products' | 'customers'>("products");
-const loaded = ref(false)
+const currentTab = ref<"products" | "customers">("products");
+const loaded = ref(false);
 
 // simple i18n removed from template usage; kept title only
 
@@ -126,7 +120,7 @@ onMounted(() => {
   });
   window.ahb.onDocumentChanged(() => {
     status.value = "Document loaded/changed";
-    loaded.value = true
+    loaded.value = true;
   });
 });
 
