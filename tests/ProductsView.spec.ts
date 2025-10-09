@@ -62,14 +62,15 @@ describe("ProductsView.vue", () => {
   it("adds a product via the form and refreshes list", async () => {
     const wrapper = mount(ProductsView);
     await nextTick();
-    // Fill form (order: id, nameBn, unit, price, stock)
+  // Fill form (order: id, nameBn, unit, price, cost, stock)
     const inputs = wrapper.findAll("form input");
-    expect(inputs.length).toBe(5);
+  expect(inputs.length).toBe(6);
     await inputs[0].setValue("3");
     await inputs[1].setValue("তেল");
     await inputs[2].setValue("ltr");
     await inputs[3].setValue("180");
-    await inputs[4].setValue("20");
+  await inputs[4].setValue("120");
+  await inputs[5].setValue("20");
     await wrapper.find("form").trigger("submit.prevent");
     await Promise.resolve();
     await nextTick();
