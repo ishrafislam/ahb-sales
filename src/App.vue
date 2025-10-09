@@ -3,29 +3,18 @@
     <div class="flex flex-wrap gap-2">
       <button
         class="px-3 py-1.5 bg-teal-600 text-white rounded hover:bg-teal-700"
-        @click="newFile"
-      >
-        {{ t("menu_new") }}
-      </button>
-      <button
-        class="px-3 py-1.5 bg-teal-600 text-white rounded hover:bg-teal-700"
         @click="openFile"
       >
-        {{ t("menu_open") }}
+        Open Existing file
       </button>
       <button
         class="px-3 py-1.5 bg-teal-600 text-white rounded hover:bg-teal-700"
-        @click="saveFile"
+        @click="newFile"
       >
-        {{ t("menu_save") }}
-      </button>
-      <button
-        class="px-3 py-1.5 bg-teal-600 text-white rounded hover:bg-teal-700"
-        @click="saveFileAs"
-      >
-        {{ t("menu_save_as") }}
+        New file
       </button>
       <select
+        v-if="loaded"
         v-model="lang"
         class="px-2 py-1 border rounded"
         @change="onLangChange"
@@ -40,38 +29,67 @@
     <p id="status">
       {{ status }}
     </p>
+
+    <div v-if="loaded" class="border-b mt-2">
+      <nav class="flex gap-2">
+        <button
+          :class="[
+            'px-3 py-1.5 rounded-t',
+            currentTab === 'products'
+              ? 'bg-teal-600 text-white'
+              : 'bg-gray-200',
+          ]"
+          @click="currentTab = 'products'"
+        >
+          Products
+        </button>
+        <button
+          :class="[
+            'px-3 py-1.5 rounded-t',
+            currentTab === 'customers'
+              ? 'bg-teal-600 text-white'
+              : 'bg-gray-200',
+          ]"
+          @click="currentTab = 'customers'"
+        >
+          Customers
+        </button>
+        <button
+          class="ml-auto px-3 py-1.5 bg-gray-200 rounded hover:bg-gray-300"
+          @click="saveFile"
+        >
+          Save
+        </button>
+        <button
+          class="px-3 py-1.5 bg-gray-200 rounded hover:bg-gray-300"
+          @click="saveFileAs"
+        >
+          Save As
+        </button>
+      </nav>
+    </div>
+
+    <div v-if="loaded" class="pt-2">
+      <ProductsView v-if="currentTab === 'products'" />
+      <CustomersView v-else />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
+import ProductsView from "./views/ProductsView.vue";
+import CustomersView from "./views/CustomersView.vue";
 
 const lang = ref<"bn" | "en">("bn");
 const appTitle = computed(() =>
   lang.value === "bn" ? "এএইচবি সেলস" : "AHB Sales"
 );
 const status = ref("Ready");
+const currentTab = ref<"products" | "customers">("products");
+const loaded = ref(false);
 
-function t(key: string) {
-  if (lang.value === "bn") {
-    const bn: Record<string, string> = {
-      app_title: "এএইচবি সেলস",
-      menu_new: "নতুন",
-      menu_open: "ওপেন",
-      menu_save: "সেভ",
-      menu_save_as: "সেভ অ্যাজ",
-    };
-    return bn[key] ?? key;
-  }
-  const en: Record<string, string> = {
-    app_title: "AHB Sales",
-    menu_new: "New",
-    menu_open: "Open",
-    menu_save: "Save",
-    menu_save_as: "Save As",
-  };
-  return en[key] ?? key;
-}
+// simple i18n removed from template usage; kept title only
 
 async function syncLang() {
   const l = await window.ahb.getLanguage();
@@ -102,6 +120,7 @@ onMounted(() => {
   });
   window.ahb.onDocumentChanged(() => {
     status.value = "Document loaded/changed";
+    loaded.value = true;
   });
 });
 
