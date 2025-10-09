@@ -1,6 +1,7 @@
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 import { contextBridge, ipcRenderer } from "electron";
+import type { Product, Customer } from "./main/data";
 
 type AppAPI = {
   // File operations
@@ -17,12 +18,12 @@ type AppAPI = {
   // Data operations (Phase 1)
   listProducts: (
     opts?: boolean | { activeOnly?: boolean }
-  ) => Promise<unknown[]>;
+  ) => Promise<Product[]>;
   addProduct: (p: unknown) => Promise<unknown>;
   updateProduct: (id: number, patch: unknown) => Promise<unknown>;
   listCustomers: (
     opts?: boolean | { activeOnly?: boolean }
-  ) => Promise<unknown[]>;
+  ) => Promise<Customer[]>;
   addCustomer: (c: unknown) => Promise<unknown>;
   updateCustomer: (id: number, patch: unknown) => Promise<unknown>;
   onDataChanged: (

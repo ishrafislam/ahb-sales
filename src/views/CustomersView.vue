@@ -112,8 +112,8 @@ const form = ref<{
 });
 
 async function load() {
-  const list = await window.ahb.listCustomers({ activeOnly: false } as any);
-  customers.value = (list as any[]).map((c) => ({
+  const list = await window.ahb.listCustomers({ activeOnly: false });
+  customers.value = list.map((c) => ({
     id: c.id,
     nameBn: c.nameBn,
     address: c.address,
