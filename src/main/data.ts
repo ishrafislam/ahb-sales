@@ -57,15 +57,30 @@ export function addProduct(data: AhbDataV1, p: NewProduct): Product {
   if (data.products.some((x) => x.id === p.id)) {
     throw new Error("Duplicate product id");
   }
+  const parseNumber = (val: unknown, field: string, def = 0): number => {
+    if (val === undefined || val === null) return def;
+    if (typeof val === "number") {
+      if (!Number.isFinite(val)) throw new Error(`${field} must be a number`);
+      return val;
+    }
+    if (typeof val === "string") {
+      const s = val.trim();
+      if (s === "") return def;
+      const n = Number(s);
+      if (!Number.isFinite(n)) throw new Error(`${field} must be a number`);
+      return n;
+    }
+    throw new Error(`${field} must be a number`);
+  };
   const prod: Product = {
     id: p.id,
     nameBn: p.nameBn.trim(),
     nameEn: p.nameEn?.trim() || undefined,
     description: p.description?.trim() || undefined,
     unit: p.unit || "unit",
-    cost: Number(p.cost) || 0,
-    price: Number(p.price) || 0,
-    stock: Number(p.stock ?? 0),
+    cost: parseNumber(p.cost, "cost", 0),
+    price: parseNumber(p.price, "price", 0),
+    stock: parseNumber(p.stock, "stock", 0),
     active: p.active ?? true,
     createdAt: nowIso(),
     updatedAt: nowIso(),
@@ -120,12 +135,27 @@ export function addCustomer(data: AhbDataV1, c: NewCustomer): Customer {
   if (!c.nameBn?.trim()) throw new Error("Customer Bengali name is required");
   if (data.customers.some((x) => x.id === c.id))
     throw new Error("Duplicate customer id");
+  const parseNumber = (val: unknown, field: string, def = 0): number => {
+    if (val === undefined || val === null) return def;
+    if (typeof val === "number") {
+      if (!Number.isFinite(val)) throw new Error(`${field} must be a number`);
+      return val;
+    }
+    if (typeof val === "string") {
+      const s = val.trim();
+      if (s === "") return def;
+      const n = Number(s);
+      if (!Number.isFinite(n)) throw new Error(`${field} must be a number`);
+      return n;
+    }
+    throw new Error(`${field} must be a number`);
+  };
   const cust: Customer = {
     id: c.id,
     nameBn: c.nameBn.trim(),
     nameEn: c.nameEn?.trim() || undefined,
     address: c.address?.trim() || undefined,
-    outstanding: Number(c.outstanding ?? 0),
+    outstanding: parseNumber(c.outstanding, "outstanding", 0),
     active: c.active ?? true,
     createdAt: nowIso(),
     updatedAt: nowIso(),

@@ -2,9 +2,9 @@
   <div class="space-y-4">
     <h3 class="text-xl font-semibold">Products</h3>
 
-    <form class="grid grid-cols-6 gap-2 items-end" @submit.prevent="onAdd">
-      <label class="col-span-1 text-sm"
-        >ID
+    <form class="grid grid-cols-7 gap-2 items-end" @submit.prevent="onAdd">
+      <label class="col-span-1 text-sm">
+        ID
         <input
           v-model.number="form.id"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -14,23 +14,23 @@
           required
         />
       </label>
-      <label class="col-span-2 text-sm"
-        >Name (BN)
+      <label class="col-span-2 text-sm">
+        Name (BN)
         <input
           v-model="form.nameBn"
           class="mt-1 w-full border rounded px-2 py-1"
           required
         />
       </label>
-      <label class="col-span-1 text-sm"
-        >Unit
+      <label class="col-span-1 text-sm">
+        Unit
         <input
           v-model="form.unit"
           class="mt-1 w-full border rounded px-2 py-1"
         />
       </label>
-      <label class="col-span-1 text-sm"
-        >Price
+      <label class="col-span-1 text-sm">
+        Price
         <input
           v-model.number="form.price"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -38,8 +38,17 @@
           step="0.01"
         />
       </label>
-      <label class="col-span-1 text-sm"
-        >Stock
+      <label class="col-span-1 text-sm">
+        Cost
+        <input
+          v-model.number="form.cost"
+          class="mt-1 w-full border rounded px-2 py-1"
+          type="number"
+          step="0.01"
+        />
+      </label>
+      <label class="col-span-1 text-sm">
+        Stock
         <input
           v-model.number="form.stock"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -119,17 +128,19 @@ const form = ref<{
   nameBn: string;
   unit: string;
   price: number;
+  cost: number;
   stock: number;
 }>({
   id: null,
   nameBn: "",
   unit: "unit",
   price: 0,
+  cost: 0,
   stock: 0,
 });
 
 async function load() {
-  const list = await window.ahb.listProducts(false);
+  const list = await window.ahb.listProducts({ activeOnly: false } as any);
   products.value = (list as any[]).map((p) => ({
     id: p.id,
     nameBn: p.nameBn,
@@ -148,12 +159,19 @@ async function onAdd() {
       id: form.value.id,
       nameBn: form.value.nameBn,
       unit: form.value.unit,
-      cost: 0,
+      cost: form.value.cost,
       price: form.value.price,
       stock: form.value.stock,
     });
     await load();
-    form.value = { id: null, nameBn: "", unit: "unit", price: 0, stock: 0 };
+    form.value = {
+      id: null,
+      nameBn: "",
+      unit: "unit",
+      price: 0,
+      cost: 0,
+      stock: 0,
+    };
   } catch (e) {
     error.value = (e as Error).message;
   }

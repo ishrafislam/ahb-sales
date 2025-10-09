@@ -15,10 +15,14 @@ type AppAPI = {
   // Document notification
   onDocumentChanged: (cb: () => void) => () => void;
   // Data operations (Phase 1)
-  listProducts: (activeOnly?: boolean) => Promise<unknown[]>;
+  listProducts: (
+    opts?: boolean | { activeOnly?: boolean }
+  ) => Promise<unknown[]>;
   addProduct: (p: unknown) => Promise<unknown>;
   updateProduct: (id: number, patch: unknown) => Promise<unknown>;
-  listCustomers: (activeOnly?: boolean) => Promise<unknown[]>;
+  listCustomers: (
+    opts?: boolean | { activeOnly?: boolean }
+  ) => Promise<unknown[]>;
   addCustomer: (c: unknown) => Promise<unknown>;
   updateCustomer: (id: number, patch: unknown) => Promise<unknown>;
   onDataChanged: (
@@ -43,13 +47,11 @@ const api: AppAPI = {
     ipcRenderer.on("app:document-changed", listener);
     return () => ipcRenderer.removeListener("app:document-changed", listener);
   },
-  listProducts: (activeOnly) =>
-    ipcRenderer.invoke("data:list-products", activeOnly),
+  listProducts: (opts) => ipcRenderer.invoke("data:list-products", opts),
   addProduct: (p) => ipcRenderer.invoke("data:add-product", p),
   updateProduct: (id, patch) =>
     ipcRenderer.invoke("data:update-product", id, patch),
-  listCustomers: (activeOnly) =>
-    ipcRenderer.invoke("data:list-customers", activeOnly),
+  listCustomers: (opts) => ipcRenderer.invoke("data:list-customers", opts),
   addCustomer: (c) => ipcRenderer.invoke("data:add-customer", c),
   updateCustomer: (id, patch) =>
     ipcRenderer.invoke("data:update-customer", id, patch),

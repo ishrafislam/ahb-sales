@@ -3,8 +3,8 @@
     <h3 class="text-xl font-semibold">Customers</h3>
 
     <form class="grid grid-cols-6 gap-2 items-end" @submit.prevent="onAdd">
-      <label class="col-span-1 text-sm"
-        >ID
+      <label class="col-span-1 text-sm">
+        ID
         <input
           v-model.number="form.id"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -13,23 +13,23 @@
           required
         />
       </label>
-      <label class="col-span-2 text-sm"
-        >Name (BN)
+      <label class="col-span-2 text-sm">
+        Name (BN)
         <input
           v-model="form.nameBn"
           class="mt-1 w-full border rounded px-2 py-1"
           required
         />
       </label>
-      <label class="col-span-2 text-sm"
-        >Address
+      <label class="col-span-2 text-sm">
+        Address
         <input
           v-model="form.address"
           class="mt-1 w-full border rounded px-2 py-1"
         />
       </label>
-      <label class="col-span-1 text-sm"
-        >Outstanding
+      <label class="col-span-1 text-sm">
+        Outstanding
         <input
           v-model.number="form.outstanding"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -112,7 +112,7 @@ const form = ref<{
 });
 
 async function load() {
-  const list = await window.ahb.listCustomers(false);
+  const list = await window.ahb.listCustomers({ activeOnly: false } as any);
   customers.value = (list as any[]).map((c) => ({
     id: c.id,
     nameBn: c.nameBn,

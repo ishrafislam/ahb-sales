@@ -186,10 +186,14 @@ ipcMain.handle("app:set-language", async (_e, lang: "bn" | "en") => {
 });
 
 // Phase 1: IPC for products/customers
-ipcMain.handle("data:list-products", async (_e, activeOnly?: boolean) => {
-  const data = currentDoc.data as AhbDataV1;
-  return listProducts(data, { activeOnly });
-});
+ipcMain.handle(
+  "data:list-products",
+  async (_e, opts?: boolean | { activeOnly?: boolean }) => {
+    const data = currentDoc.data as AhbDataV1;
+    const activeOnly = typeof opts === "boolean" ? opts : opts?.activeOnly;
+    return listProducts(data, { activeOnly });
+  }
+);
 ipcMain.handle(
   "data:add-product",
   async (_e, p: Parameters<typeof addProduct>[1]) => {
@@ -215,10 +219,14 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle("data:list-customers", async (_e, activeOnly?: boolean) => {
-  const data = currentDoc.data as AhbDataV1;
-  return listCustomers(data, { activeOnly });
-});
+ipcMain.handle(
+  "data:list-customers",
+  async (_e, opts?: boolean | { activeOnly?: boolean }) => {
+    const data = currentDoc.data as AhbDataV1;
+    const activeOnly = typeof opts === "boolean" ? opts : opts?.activeOnly;
+    return listCustomers(data, { activeOnly });
+  }
+);
 ipcMain.handle(
   "data:add-customer",
   async (_e, c: Parameters<typeof addCustomer>[1]) => {

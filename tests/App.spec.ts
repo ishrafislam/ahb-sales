@@ -40,24 +40,16 @@ describe("App.vue", () => {
       // Phase 1 stubs
       listProducts: async (): Promise<unknown[]> => [],
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      addProduct: async (_p: unknown): Promise<unknown> => ({}) as unknown,
+      addProduct: async (_: unknown): Promise<unknown> => ({}) as unknown,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      updateProduct: async (
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        _id: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        _patch: unknown
-      ): Promise<unknown> => ({}) as unknown,
+      updateProduct: async (_: number, __: unknown): Promise<unknown> =>
+        ({}) as unknown,
       listCustomers: async (): Promise<unknown[]> => [],
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      addCustomer: async (_c: unknown): Promise<unknown> => ({}) as unknown,
+      addCustomer: async (_: unknown): Promise<unknown> => ({}) as unknown,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      updateCustomer: async (
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        _id: number,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        _patch: unknown
-      ): Promise<unknown> => ({}) as unknown,
+      updateCustomer: async (_: number, __: unknown): Promise<unknown> =>
+        ({}) as unknown,
       onDataChanged: (): (() => void) => () => undefined,
     } as unknown as Window["ahb"];
 
