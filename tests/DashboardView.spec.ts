@@ -136,8 +136,8 @@ describe("DashboardView.vue", () => {
       }
       throw new Error("Timeout waiting for condition");
     };
-    await waitFor(
-      () => wrapper.findAll("li").some((li) => li.text().includes("চিনি"))
+    await waitFor(() =>
+      wrapper.findAll("li").some((li) => li.text().includes("চিনি"))
     );
 
     // click Add button to add first match
