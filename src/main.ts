@@ -35,6 +35,7 @@ import {
   updateCustomer,
   listCustomers,
   type AhbDataV1,
+  postInvoice,
 } from "./main/data";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -221,6 +222,26 @@ ipcMain.handle(
     notifyAll("data:changed", { kind: "product", action: "add", id: prod.id });
     isDirty = true;
     return prod;
+  }
+);
+
+// Phase 2: invoices
+ipcMain.handle(
+  "data:post-invoice",
+  async (_e, payload: Parameters<typeof postInvoice>[1]) => {
+    const data = currentDoc.data as AhbDataV1;
+    const inv = postInvoice(data, payload);
+    notifyAll("data:changed", { kind: "invoice", action: "post", id: inv.no });
+    // Notify product stock changes
+    inv.lines.forEach((ln) =>
+      notifyAll("data:changed", {
+        kind: "product",
+        action: "stock-updated",
+        id: ln.productId,
+      })
+    );
+    isDirty = true;
+    return inv;
   }
 );
 

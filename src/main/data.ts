@@ -27,14 +27,151 @@ export type Customer = {
 export type AhbDataV1 = {
   products: Product[];
   customers: Customer[];
+  // Phase 2 additions (additive; safe for older files after migration)
+  invoices?: Invoice[];
+  invoiceSeq?: number; // next invoice number to assign
 };
 
 export function initData(): AhbDataV1 {
-  return { products: [], customers: [] };
+  return { products: [], customers: [], invoices: [], invoiceSeq: 1 };
 }
 
 // Helpers
 const nowIso = () => new Date().toISOString();
+const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
+const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+// Ensure Phase 2 fields exist on data object for older files
+export type AhbDataV2 = Required<Pick<AhbDataV1, "invoices" | "invoiceSeq">> &
+  Pick<AhbDataV1, "products" | "customers">;
+
+export function ensurePhase2(data: AhbDataV1): asserts data is AhbDataV2 {
+  if (!data.invoices) {
+    (data as AhbDataV1 & { invoices: Invoice[] }).invoices = [];
+  }
+  if (typeof data.invoiceSeq !== "number") {
+    (data as AhbDataV1 & { invoiceSeq: number }).invoiceSeq = 1;
+  }
+}
+
+// -----------------------
+// Phase 2: Invoices
+// -----------------------
+export type InvoiceLine = {
+  sn: number;
+  productId: number;
+  unit: string;
+  description?: string;
+  quantity: number;
+  rate: number;
+  lineTotal: number;
+};
+
+export type Invoice = {
+  id: string;
+  no: number; // human-friendly invoice number
+  date: string; // ISO
+  customerId: number;
+  lines: InvoiceLine[];
+  discount: number;
+  notes?: string;
+  totals: { subtotal: number; net: number };
+  status: "posted"; // Phase 2: only posted receipts
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PostInvoiceInput = {
+  date?: string;
+  customerId: number;
+  lines: Array<{
+    productId: number;
+    quantity: number;
+    rate?: number;
+    description?: string;
+  }>;
+  discount?: number;
+  notes?: string;
+};
+
+export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
+  ensurePhase2(data);
+  const date = input.date ? new Date(input.date) : new Date();
+  if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
+  const customer = data.customers.find((c) => c.id === input.customerId);
+  if (!customer) throw new Error("Customer not found");
+  if (!Array.isArray(input.lines) || input.lines.length === 0)
+    throw new Error("At least one line item is required");
+
+  // Build lines with defaults and validation
+  const lines: InvoiceLine[] = input.lines.map((ln, idx) => {
+    const prod = data.products.find((p) => p.id === ln.productId);
+    if (!prod) throw new Error(`Product not found: ${ln.productId}`);
+    const qty = Number(ln.quantity);
+    if (!Number.isFinite(qty) || qty <= 0)
+      throw new Error("Quantity must be > 0");
+    const rate = Number(ln.rate ?? prod.price ?? 0);
+    if (!Number.isFinite(rate) || rate < 0)
+      throw new Error("Rate must be >= 0");
+    const lineTotal = ceil2(qty * rate);
+    return {
+      sn: idx + 1,
+      productId: prod.id,
+      unit: prod.unit,
+      description: ln.description?.trim() || undefined,
+      quantity: qty,
+      rate,
+      lineTotal,
+    };
+  });
+
+  const subtotal = ceil2(lines.reduce((s, l) => s + l.lineTotal, 0));
+  const discount = Number(input.discount ?? 0);
+  if (!Number.isFinite(discount) || discount < 0)
+    throw new Error("Discount must be a non-negative number");
+  if (discount > subtotal) throw new Error("Discount cannot exceed subtotal");
+  const net = ceil2(subtotal - discount);
+
+  // Stock check
+  for (const l of lines) {
+    const prod = data.products.find((p) => p.id === l.productId)!;
+    if (prod.stock < l.quantity) {
+      throw new Error(
+        `Insufficient stock for product ${prod.id} (${prod.nameBn}). Available: ${prod.stock}, required: ${l.quantity}`
+      );
+    }
+  }
+
+  // Assign invoice no and id
+  const invoiceNo = data.invoiceSeq++;
+  const inv: Invoice = {
+    id: genId(),
+    no: invoiceNo,
+    date: date.toISOString(),
+    customerId: customer.id,
+    lines,
+    discount,
+    notes: input.notes?.trim() || undefined,
+    totals: { subtotal, net },
+    status: "posted",
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  };
+
+  // Persist and update stock
+  data.invoices.push(inv);
+  for (const l of lines) {
+    const idx = data.products.findIndex((p) => p.id === l.productId);
+    const prod = data.products[idx];
+    data.products[idx] = {
+      ...prod,
+      stock: prod.stock - l.quantity,
+      updatedAt: nowIso(),
+    };
+  }
+
+  return inv;
+}
 
 export function assertProductId(id: number) {
   if (!Number.isInteger(id) || id < 1 || id > 1000) {
