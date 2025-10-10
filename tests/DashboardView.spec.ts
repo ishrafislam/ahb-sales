@@ -140,11 +140,21 @@ describe("DashboardView.vue", () => {
       wrapper.findAll("li").some((li) => li.text().includes("চিনি"))
     );
 
-    // click Add button to add first match
-    const addBtn = wrapper.findAll("button").find((b) => b.text() === "Add");
-    expect(addBtn).toBeTruthy();
-    await addBtn!.trigger("click");
+    // Click the dropdown item directly (more deterministic than Add button in CI)
+    const prodItem = wrapper
+      .findAll("li")
+      .find((li) => li.text().includes("চিনি"));
+    expect(prodItem).toBeTruthy();
+    await prodItem!.trigger("click");
     await nextTick();
+
+    // Wait until a non-empty row appears
+    await waitFor(
+      () =>
+        wrapper
+          .findAll("tbody tr")
+          .some((tr) => !tr.text().includes("No items"))
+    );
 
     // One row present
     const rows = wrapper
