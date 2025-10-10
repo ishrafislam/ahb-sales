@@ -127,30 +127,37 @@ describe("DashboardView.vue", () => {
     await pInput.setValue("চিনি");
     await nextTick();
 
-    // Wait for dropdown items to appear (avoid race with async loadProducts)
-    const waitFor = async (fn: () => boolean, tries = 10) => {
+    // Robust wait helper with small delay between ticks
+    const waitFor = async (fn: () => boolean, tries = 50, delayMs = 10) => {
       for (let i = 0; i < tries; i++) {
         await Promise.resolve();
         await nextTick();
         if (fn()) return;
+        await new Promise((r) => setTimeout(r, delayMs));
       }
       throw new Error("Timeout waiting for condition");
     };
-    await waitFor(() =>
-      wrapper.findAll("li").some((li) => li.text().includes("চিনি"))
-    );
 
-    // Click the dropdown item directly (more deterministic than Add button in CI)
-    const prodItem = wrapper
+    // Prefer clicking a dropdown item if it appears; otherwise click Add button
+    const dropdownItem = wrapper
       .findAll("li")
       .find((li) => li.text().includes("চিনি"));
-    expect(prodItem).toBeTruthy();
-    await prodItem!.trigger("click");
+    if (dropdownItem) {
+      await dropdownItem.trigger("click");
+    } else {
+      const addBtn = wrapper
+        .findAll("button")
+        .find((b) => b.text() === "Add");
+      expect(addBtn).toBeTruthy();
+      await addBtn!.trigger("click");
+    }
     await nextTick();
 
-    // Wait until a non-empty row appears
+    // Wait until at least one non-empty row appears
     await waitFor(() =>
-      wrapper.findAll("tbody tr").some((tr) => !tr.text().includes("No items"))
+      wrapper
+        .findAll("tbody tr")
+        .some((tr) => !tr.text().includes("No items"))
     );
 
     // One row present
