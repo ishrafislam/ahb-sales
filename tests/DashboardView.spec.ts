@@ -149,11 +149,8 @@ describe("DashboardView.vue", () => {
     await nextTick();
 
     // Wait until a non-empty row appears
-    await waitFor(
-      () =>
-        wrapper
-          .findAll("tbody tr")
-          .some((tr) => !tr.text().includes("No items"))
+    await waitFor(() =>
+      wrapper.findAll("tbody tr").some((tr) => !tr.text().includes("No items"))
     );
 
     // One row present
