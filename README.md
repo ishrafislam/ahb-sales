@@ -64,7 +64,7 @@ AHB Sales is a desktop application built with Electron to replace the Microsoft 
 
 ### 2) Product Management
 
-- Product Entry: Product ID (numeric), name (Bengali; English optional), description, production cost, unit price, stock, unit (single), active/inactive
+- Product Entry: Product ID (numeric), name (Bengali; English optional), description, unit price, stock, unit (single), active/inactive
 - Operations: add, edit, search (by ID/name), list, availability
 
 ### 3) Sales/Invoice Management
@@ -76,7 +76,7 @@ AHB Sales is a desktop application built with Electron to replace the Microsoft 
 
 ### 4) Purchase Management
 
-- Purchase entry: date, supplier info (free text v1), item-wise purchase recording, cost tracking
+- Purchase entry: date, supplier info (free text v1), item-wise purchase recording
 - Item Purchase History: date-wise, quantity, unit shown, filter by product
 
 ### 5) Product Sale History
@@ -149,25 +149,34 @@ Development key (.env)
   - Replace AHB_KEY_HEX with your own secure key (32 bytes in hex)
   - Note: Keep it secret. Files require the same key to open later.
 
-Phase 1: Domain schema and core lists — PLANNED
+Phase 1: Domain schema and core lists — DONE (core)
 
-- Scope (v1 slice): Products and Customers only (Invoices/Payments come in later phases).
-- Data model (in-memory for now, persisted as part of `.ahbs` JSON payload):
-  - Product: id (1–1000), nameBn, nameEn?, description?, unit, cost, price, stock, active, createdAt/updatedAt
+- Scope (v1 slice): Products and Customers only (Invoices/Payments later).
+- Data model (persisted inside the encrypted `.ahbs` JSON payload):
+  - Product: id (1–1000), nameBn, nameEn?, description?, unit, price, stock, active, createdAt/updatedAt
   - Customer: id (>0 int), nameBn, nameEn?, address?, outstanding, active, createdAt/updatedAt
+  - Validation: product ID range; required fields; explicit numeric parsing for price/stock/outstanding (rejects invalid, preserves legitimate zeros)
 - Operations:
-  - Add/Update/Get/List Products and Customers; active toggle; sorted lists; basic validation.
-  - Enforce product ID constraint 1–1000 per file (assumption until clarified).
+  - Add/Update/Get/List Products and Customers; active toggle; sorted lists.
 - IPC and Preload:
-  - Expose minimal endpoints to list/add/update products/customers and notify renderer on changes.
+  - Main exposes list/add/update and broadcasts `data:changed` events.
+  - Preload wraps IPC; typed return values (`Product[]` / `Customer[]`).
 - UI (minimal v1):
-  - Simple Vue views for product and customer lists with add/edit forms (basic fields), wired to IPC.
+  - Vue 3 views for product and customer lists with add forms; auto-refresh on `data:changed`.
+  - Startup shows only two buttons: Open Existing file, New file. After a file loads, tabs for Products/Customers and Save/Save As controls appear.
+  - Autosave: add/update operations write the current document immediately when a file is open.
 - Tests (TDD):
-  - Unit tests for data operations (duplicate id, ID range, required fields).
-  - Roundtrip persistence via encrypt/decrypt with data embedded in document.
+  - Data model tests for add/update/list/validation and roundtrip persistence.
+  - Component tests for Products/Customers views (empty state, list render, add flow, event-driven refresh).
+  - App shell test updated for the new startup flow.
 - Acceptance:
   - Data persists and reloads with file save/open.
-  - Product ID constraints enforced; basic add/edit flows work via IPC.
+  - Product ID constraints enforced; basic add flow available in UI and edit supported via IPC (UI edit deferred).
+
+Deferred from Phase 1 (to a minor follow-up):
+
+- Edit UI for products/customers (IPC already available; UI wiring pending)
+- Optional list filters/search (by ID/name)
 
 Phase 2: Sales and stock
 

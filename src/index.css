@@ -3,5 +3,5 @@
 @tailwind utilities;
 
 body {
-  @apply max-w-3xl mx-auto p-6 font-sans;
+  /* @apply max-w-3xl mx-auto p-6 font-sans; */
 }

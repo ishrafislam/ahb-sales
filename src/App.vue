@@ -1,18 +1,6 @@
 <template>
-  <div class="p-4 space-y-3">
-    <div class="flex flex-wrap gap-2">
-      <button
-        class="px-3 py-1.5 bg-teal-600 text-white rounded hover:bg-teal-700"
-        @click="openFile"
-      >
-        Open Existing file
-      </button>
-      <button
-        class="px-3 py-1.5 bg-teal-600 text-white rounded hover:bg-teal-700"
-        @click="newFile"
-      >
-        New file
-      </button>
+  <div class="p-4 space-y-3 min-h-screen">
+    <!-- <div class="flex flex-wrap gap-2">
       <select
         v-if="loaded"
         v-model="lang"
@@ -22,71 +10,91 @@
         <option value="bn">বাংলা</option>
         <option value="en">English</option>
       </select>
-    </div>
-    <h2 class="text-2xl font-semibold">
-      {{ appTitle }}
-    </h2>
-    <p id="status">
-      {{ status }}
-    </p>
+    </div> -->
 
-    <div v-if="loaded" class="border-b mt-2">
-      <nav class="flex gap-2">
-        <button
-          :class="[
-            'px-3 py-1.5 rounded-t',
-            currentTab === 'products'
-              ? 'bg-teal-600 text-white'
-              : 'bg-gray-200',
-          ]"
-          @click="currentTab = 'products'"
-        >
-          Products
-        </button>
-        <button
-          :class="[
-            'px-3 py-1.5 rounded-t',
-            currentTab === 'customers'
-              ? 'bg-teal-600 text-white'
-              : 'bg-gray-200',
-          ]"
-          @click="currentTab = 'customers'"
-        >
-          Customers
-        </button>
-        <button
-          class="ml-auto px-3 py-1.5 bg-gray-200 rounded hover:bg-gray-300"
-          @click="saveFile"
-        >
-          Save
-        </button>
-        <button
-          class="px-3 py-1.5 bg-gray-200 rounded hover:bg-gray-300"
-          @click="saveFileAs"
-        >
-          Save As
-        </button>
-      </nav>
+    <!-- Initial full-screen file selection (styled) -->
+    <div v-if="!loaded" class="min-h-screen grid place-items-center">
+      <div class="text-center space-y-4 px-4">
+        <h2 class="text-4xl font-bold">ABDUL HAMID & BROTHERS</h2>
+        <div class="flex flex-col gap-3 w-full max-w-xs mx-auto">
+          <button
+            class="h-10 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700"
+            @click="newFile"
+          >
+            New File
+          </button>
+          <button
+            class="h-10 rounded bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300"
+            @click="openFile"
+          >
+            Open File
+          </button>
+        </div>
+      </div>
     </div>
 
     <div v-if="loaded" class="pt-2">
-      <ProductsView v-if="currentTab === 'products'" />
-      <CustomersView v-else />
+      <Dashboard @navigate="onNavigate" />
     </div>
+
+    <!-- Modals -->
+    <BaseModal
+      v-if="showCustomers"
+      title="Customers"
+      :max-width="'4xl'"
+      @close="closeModals"
+    >
+      <CustomersModal />
+    </BaseModal>
+    <BaseModal
+      v-if="showProducts"
+      title="Products"
+      :max-width="'5xl'"
+      @close="closeModals"
+    >
+      <ProductsModal />
+    </BaseModal>
+    <BaseModal
+      v-if="showSalesHistory"
+      title="Product Sales History"
+      @close="closeModals"
+    >
+      <ProductSalesHistory @navigate="onNavigate" />
+    </BaseModal>
+    <BaseModal
+      v-if="showPurchaseHistory"
+      title="Product Purchase History"
+      @close="closeModals"
+    >
+      <ProductPurchaseHistory @navigate="onNavigate" />
+    </BaseModal>
+    <BaseModal
+      v-if="showCustomerHistory"
+      title="Customer History"
+      @close="closeModals"
+    >
+      <CustomerHistory @navigate="onNavigate" />
+    </BaseModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
-import ProductsView from "./views/ProductsView.vue";
-import CustomersView from "./views/CustomersView.vue";
+import { ref, onMounted } from "vue";
+import ProductsModal from "./views/ProductsModal.vue";
+import CustomersModal from "./views/CustomersModal.vue";
+import Dashboard from "./views/Dashboard.vue";
+import ProductSalesHistory from "./views/ProductSalesHistory.vue";
+import ProductPurchaseHistory from "./views/ProductPurchaseHistory.vue";
+import CustomerHistory from "./views/CustomerHistory.vue";
+import BaseModal from "./components/BaseModal.vue";
 
 const lang = ref<"bn" | "en">("bn");
-const appTitle = computed(() =>
-  lang.value === "bn" ? "এএইচবি সেলস" : "AHB Sales"
-);
-const status = ref("Ready");
-const currentTab = ref<"products" | "customers">("products");
+// Modal flags
+const showCustomers = ref(false);
+const showProducts = ref(false);
+const showSalesHistory = ref(false);
+const showPurchaseHistory = ref(false);
+const showCustomerHistory = ref(false);
 const loaded = ref(false);
 
 // simple i18n removed from template usage; kept title only
@@ -96,22 +104,13 @@ async function syncLang() {
   lang.value = l;
 }
 
-function onLangChange() {
-  window.ahb.setLanguage(lang.value);
-}
-
 function newFile() {
   window.ahb.newFile();
 }
 function openFile() {
   window.ahb.openFile();
 }
-function saveFile() {
-  window.ahb.saveFile();
-}
-function saveFileAs() {
-  window.ahb.saveFileAs();
-}
+// Save actions available within Dashboard itself
 
 onMounted(() => {
   syncLang();
@@ -119,10 +118,57 @@ onMounted(() => {
     lang.value = l;
   });
   window.ahb.onDocumentChanged(() => {
-    status.value = "Document loaded/changed";
     loaded.value = true;
   });
 });
+
+function closeModals() {
+  showCustomers.value = false;
+  showProducts.value = false;
+  showSalesHistory.value = false;
+  showPurchaseHistory.value = false;
+  showCustomerHistory.value = false;
+}
+
+function onNavigate(
+  page:
+    | "dashboard"
+    | "products"
+    | "customers"
+    | "product-sales-history"
+    | "product-purchase-history"
+    | "customer-history"
+    | string
+) {
+  if (page === "dashboard") {
+    closeModals();
+    return;
+  }
+  if (page === "products") {
+    closeModals();
+    showProducts.value = true;
+    return;
+  }
+  if (page === "customers") {
+    closeModals();
+    showCustomers.value = true;
+    return;
+  }
+  if (page === "product-sales-history") {
+    closeModals();
+    showSalesHistory.value = true;
+    return;
+  }
+  if (page === "product-purchase-history") {
+    closeModals();
+    showPurchaseHistory.value = true;
+    return;
+  }
+  if (page === "customer-history") {
+    closeModals();
+    showCustomerHistory.value = true;
+  }
+}
 
 // Title is derived from lang via computed
 </script>

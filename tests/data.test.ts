@@ -32,7 +32,6 @@ describe("Phase 1 data model", () => {
       id: 1,
       nameBn: "চিনি",
       unit: "kg",
-      cost: 50,
       price: 60,
     });
     expect(p1.id).toBe(1);
@@ -44,7 +43,6 @@ describe("Phase 1 data model", () => {
         id: 0,
         nameBn: "খারাপ",
         unit: "kg",
-        cost: 1,
         price: 1,
       })
     ).toThrow();
@@ -53,12 +51,11 @@ describe("Phase 1 data model", () => {
         id: 1001,
         nameBn: "খারাপ",
         unit: "kg",
-        cost: 1,
         price: 1,
       })
     ).toThrow();
     expect(() =>
-      addProduct(data, { id: 1, nameBn: "ডুপ", unit: "kg", cost: 1, price: 1 })
+      addProduct(data, { id: 1, nameBn: "ডুপ", unit: "kg", price: 1 })
     ).toThrow();
 
     const p1u = updateProduct(data, 1, { price: 65, active: false });
@@ -80,7 +77,7 @@ describe("Phase 1 data model", () => {
   it("persists data in document roundtrip", () => {
     const doc = createEmptyDocument();
     const data = doc.data as AhbDataV1;
-    addProduct(data, { id: 2, nameBn: "ডাল", unit: "kg", cost: 80, price: 95 });
+    addProduct(data, { id: 2, nameBn: "ডাল", unit: "kg", price: 95 });
     addCustomer(data, { id: 5, nameBn: "Karim" });
     const enc = encryptJSON(doc);
     const dec = decryptJSON(enc) as typeof doc;

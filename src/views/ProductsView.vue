@@ -39,15 +39,6 @@
         />
       </label>
       <label class="col-span-1 text-sm">
-        Cost
-        <input
-          v-model.number="form.cost"
-          class="mt-1 w-full border rounded px-2 py-1"
-          type="number"
-          step="0.01"
-        />
-      </label>
-      <label class="col-span-1 text-sm">
         Stock
         <input
           v-model.number="form.stock"
@@ -128,14 +119,12 @@ const form = ref<{
   nameBn: string;
   unit: string;
   price: number;
-  cost: number;
   stock: number;
 }>({
   id: null,
   nameBn: "",
   unit: "unit",
   price: 0,
-  cost: 0,
   stock: 0,
 });
 
@@ -159,7 +148,6 @@ async function onAdd() {
       id: form.value.id,
       nameBn: form.value.nameBn,
       unit: form.value.unit,
-      cost: form.value.cost,
       price: form.value.price,
       stock: form.value.stock,
     });
@@ -169,7 +157,6 @@ async function onAdd() {
       nameBn: "",
       unit: "unit",
       price: 0,
-      cost: 0,
       stock: 0,
     };
   } catch (e) {
