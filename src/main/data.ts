@@ -6,7 +6,6 @@ export type Product = {
   nameEn?: string;
   description?: string;
   unit: string; // single unit
-  cost: number; // production cost
   price: number; // unit price
   stock: number;
   active: boolean;
@@ -78,7 +77,6 @@ export function addProduct(data: AhbDataV1, p: NewProduct): Product {
     nameEn: p.nameEn?.trim() || undefined,
     description: p.description?.trim() || undefined,
     unit: p.unit || "unit",
-    cost: parseNumber(p.cost, "cost", 0),
     price: parseNumber(p.price, "price", 0),
     stock: parseNumber(p.stock, "stock", 0),
     active: p.active ?? true,

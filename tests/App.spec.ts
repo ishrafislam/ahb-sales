@@ -6,16 +6,14 @@ import App from "../src/App.vue";
 // Minimal SFC test ensuring component renders and language switch updates title
 
 describe("App.vue", () => {
-  it("renders and updates title on language change", async () => {
+  it("renders initial file selection and shows dashboard after file opens", async () => {
     // Stub preload API
     let langCb: ((l: "bn" | "en") => void) | null = null;
     let docCb: (() => void) | null = null;
     window.ahb = {
       getLanguage: async () => "en",
-      setLanguage: async (l: "bn" | "en") => {
-        if (langCb) {
-          langCb(l);
-        }
+      setLanguage: async (_l: "bn" | "en") => {
+        if (langCb) langCb(_l);
       },
       newFile: async () => {
         if (docCb) docCb();
@@ -57,16 +55,13 @@ describe("App.vue", () => {
     // Wait for onMounted async getLanguage to resolve and DOM to update
     await Promise.resolve();
     await nextTick();
-    expect(wrapper.text()).toContain("AHB Sales");
-    // Simulate opening/creating a file so the UI shows the language select
+    // Initial screen should show file selection buttons
+    expect(wrapper.text()).toContain("Open File");
+    expect(wrapper.text()).toContain("New File");
+    // Simulate opening/creating a file so the UI shows the dashboard
     docCb?.();
     await nextTick();
-
-    const select = wrapper.find("select");
-    await select.setValue("bn");
-    await select.trigger("change");
-    await nextTick();
-    await nextTick();
-    expect(wrapper.text()).toContain("এএইচবি সেলস");
+    // Dashboard header is visible
+    expect(wrapper.text()).toContain("ABDUL HAMID AND BROTHERS");
   });
 });

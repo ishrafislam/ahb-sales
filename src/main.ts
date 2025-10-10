@@ -1,4 +1,11 @@
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  type MenuItemConstructorOptions,
+} from "electron";
 // Load environment variables from .env (dev convenience)
 import * as dotenv from "dotenv";
 try {
@@ -18,7 +25,7 @@ import {
   encryptJSON,
   type AhbDocument,
 } from "./main/crypto";
-import { getLanguage, setLanguage } from "./main/i18n";
+import { getLanguage, setLanguage, dict } from "./main/i18n";
 import {
   initData,
   addProduct,
@@ -38,8 +45,11 @@ if (started) {
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    // Set a comfortable initial size and enforce a sensible minimum
+    width: 1200,
+    height: 800,
+    minWidth: 1024,
+    minHeight: 700,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
     },
@@ -61,7 +71,10 @@ const createWindow = () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on("ready", createWindow);
+app.on("ready", () => {
+  createWindow();
+  buildMenu();
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -89,6 +102,7 @@ app.on("activate", () => {
 
 let currentFilePath: string | null = null;
 let currentDoc: AhbDocument = createEmptyDocument();
+let isDirty = false;
 // Ensure data container exists
 if (!currentDoc.data || typeof currentDoc.data !== "object") {
   (currentDoc as AhbDocument).data = initData();
@@ -116,6 +130,7 @@ async function handleNewFile() {
   }
   writeCurrentTo(currentFilePath);
   notifyAll("app:document-changed");
+  isDirty = false;
 }
 
 async function handleOpenFile() {
@@ -135,6 +150,7 @@ async function handleOpenFile() {
     }
     currentFilePath = filePath;
     notifyAll("app:document-changed");
+    isDirty = false;
   } catch (err) {
     console.error("Failed to open/decrypt file:", err);
     await dialog.showMessageBox({
@@ -159,6 +175,7 @@ async function handleSaveFile() {
     return;
   }
   writeCurrentTo(currentFilePath);
+  isDirty = false;
 }
 
 async function handleSaveFileAs() {
@@ -172,17 +189,19 @@ async function handleSaveFileAs() {
     : `${res.filePath}.ahbs`;
   writeCurrentTo(currentFilePath);
   notifyAll("app:document-changed");
+  isDirty = false;
 }
 
 // IPC wiring
-ipcMain.handle("app:new-file", async () => handleNewFile());
-ipcMain.handle("app:open-file", async () => handleOpenFile());
+ipcMain.handle("app:new-file", async () => newFileFlow());
+ipcMain.handle("app:open-file", async () => openFileFlow());
 ipcMain.handle("app:save-file", async () => handleSaveFile());
 ipcMain.handle("app:save-file-as", async () => handleSaveFileAs());
 ipcMain.handle("app:get-language", async () => getLanguage());
 ipcMain.handle("app:set-language", async (_e, lang: "bn" | "en") => {
   setLanguage(lang);
   notifyAll("app:language-changed", lang);
+  buildMenu();
 });
 
 // Phase 1: IPC for products/customers
@@ -200,21 +219,184 @@ ipcMain.handle(
     const data = currentDoc.data as AhbDataV1;
     const prod = addProduct(data, p);
     notifyAll("data:changed", { kind: "product", action: "add", id: prod.id });
-    if (currentFilePath) {
-      writeCurrentTo(currentFilePath);
-    }
+    isDirty = true;
     return prod;
   }
 );
+
+// -----------------------
+// App Menu (File + Language)
+// -----------------------
+function buildMenu() {
+  const lang = getLanguage();
+  const d = dict[lang];
+  const template: MenuItemConstructorOptions[] = [
+    {
+      label: d.menu_file,
+      submenu: [
+        {
+          label: d.menu_new,
+          click: (): void => {
+            void newFileFlow();
+          },
+        },
+        {
+          label: d.menu_open,
+          click: (): void => {
+            void openFileFlow();
+          },
+        },
+        {
+          label: d.menu_save,
+          enabled: Boolean(currentFilePath),
+          click: (): void => {
+            void handleSaveFile();
+          },
+        },
+        {
+          label: d.menu_save_as,
+          enabled: Boolean(currentFilePath),
+          click: (): void => {
+            void handleSaveFileAs();
+          },
+        },
+        { type: "separator" },
+        {
+          label: d.menu_close,
+          enabled: Boolean(currentFilePath),
+          accelerator: process.platform === "darwin" ? "Cmd+W" : "Ctrl+W",
+          click: (): void => {
+            void closeFileFlow();
+          },
+        },
+        {
+          label: d.menu_quit ?? "Quit",
+          accelerator: process.platform === "darwin" ? "Cmd+Q" : "Alt+F4",
+          click: (): void => {
+            void quitAppFlow();
+          },
+        },
+      ],
+    },
+    {
+      label: d.menu_language ?? "Language",
+      submenu: [
+        {
+          label: "বাংলা",
+          type: "radio",
+          checked: lang === "bn",
+          click: (): void => {
+            setLanguage("bn");
+            notifyAll("app:language-changed", "bn");
+            buildMenu();
+          },
+        },
+        {
+          label: "English",
+          type: "radio",
+          checked: lang === "en",
+          click: (): void => {
+            setLanguage("en");
+            notifyAll("app:language-changed", "en");
+            buildMenu();
+          },
+        },
+      ],
+    },
+  ];
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
+async function askToSaveChanges(): Promise<"save" | "dont" | "cancel"> {
+  if (!isDirty) return "dont";
+  const result = await dialog.showMessageBox({
+    type: "question",
+    buttons: ["Save", "Don't Save", "Cancel"],
+    defaultId: 0,
+    cancelId: 2,
+    title: "Unsaved changes",
+    message: "You have unsaved changes. Do you want to save them?",
+  });
+  return result.response === 0
+    ? "save"
+    : result.response === 1
+      ? "dont"
+      : "cancel";
+}
+
+async function saveCurrentPossiblyAs(): Promise<boolean> {
+  if (currentFilePath) {
+    await handleSaveFile();
+    return true;
+  }
+  await handleSaveFileAs();
+  return Boolean(currentFilePath);
+}
+
+async function newFileFlow(): Promise<void> {
+  if (isDirty) {
+    const decision = await askToSaveChanges();
+    if (decision === "cancel") return;
+    if (decision === "save") {
+      const ok = await saveCurrentPossiblyAs();
+      if (!ok) return; // user canceled save-as
+    }
+  }
+  await handleNewFile();
+}
+
+async function openFileFlow(): Promise<void> {
+  if (isDirty) {
+    const decision = await askToSaveChanges();
+    if (decision === "cancel") return;
+    if (decision === "save") {
+      const ok = await saveCurrentPossiblyAs();
+      if (!ok) return;
+    }
+  }
+  await handleOpenFile();
+}
+
+async function closeFileFlow(): Promise<void> {
+  if (!currentFilePath) return; // nothing to close
+  if (isDirty) {
+    const decision = await askToSaveChanges();
+    if (decision === "cancel") return;
+    if (decision === "save") {
+      const ok = await saveCurrentPossiblyAs();
+      if (!ok) return;
+    }
+  }
+  // Reset current document and state
+  currentFilePath = null;
+  currentDoc = createEmptyDocument();
+  if (!currentDoc.data || typeof currentDoc.data !== "object") {
+    (currentDoc as AhbDocument).data = initData();
+  }
+  isDirty = false;
+  notifyAll("app:document-closed");
+  buildMenu();
+}
+
+async function quitAppFlow(): Promise<void> {
+  if (isDirty) {
+    const decision = await askToSaveChanges();
+    if (decision === "cancel") return;
+    if (decision === "save") {
+      const ok = await saveCurrentPossiblyAs();
+      if (!ok) return;
+    }
+  }
+  app.quit();
+}
 ipcMain.handle(
   "data:update-product",
   async (_e, id: number, patch: Parameters<typeof updateProduct>[2]) => {
     const data = currentDoc.data as AhbDataV1;
     const prod = updateProduct(data, id, patch);
     notifyAll("data:changed", { kind: "product", action: "update", id });
-    if (currentFilePath) {
-      writeCurrentTo(currentFilePath);
-    }
+    isDirty = true;
     return prod;
   }
 );
@@ -233,9 +415,7 @@ ipcMain.handle(
     const data = currentDoc.data as AhbDataV1;
     const cust = addCustomer(data, c);
     notifyAll("data:changed", { kind: "customer", action: "add", id: cust.id });
-    if (currentFilePath) {
-      writeCurrentTo(currentFilePath);
-    }
+    isDirty = true;
     return cust;
   }
 );
@@ -245,9 +425,7 @@ ipcMain.handle(
     const data = currentDoc.data as AhbDataV1;
     const cust = updateCustomer(data, id, patch);
     notifyAll("data:changed", { kind: "customer", action: "update", id });
-    if (currentFilePath) {
-      writeCurrentTo(currentFilePath);
-    }
+    isDirty = true;
     return cust;
   }
 );

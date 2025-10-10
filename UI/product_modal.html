@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Wholesale Sales Management - Products</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#007BFF",
+              "background-light": "#F3F4F6", // Lighter gray for light mode
+              "background-dark": "#1F2937", // Dark gray for dark mode
+              "surface-light": "#FFFFFF",
+              "surface-dark": "#374151",
+              "text-light": "#111827",
+              "text-dark": "#F9FAFB",
+              "subtext-light": "#6B7280",
+              "subtext-dark": "#9CA3AF",
+              "accent-green": "#10B981",
+              "accent-red": "#EF4444",
+            },
+            fontFamily: {
+              display: ["Roboto", "sans-serif"],
+            },
+            borderRadius: {
+              DEFAULT: "0.375rem",
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body
+    class="font-display bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark"
+  >
+    <div
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4"
+    >
+      <div
+        class="bg-surface-light dark:bg-surface-dark rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col relative"
+      >
+        <button
+          class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+        >
+          <i class="material-icons">close</i>
+        </button>
+        <div class="flex flex-1 min-h-0">
+          <div
+            class="w-[30%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
+          >
+            <div
+              class="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0"
+            >
+              <h3
+                class="text-lg font-semibold text-text-light dark:text-text-dark"
+              >
+                Products
+              </h3>
+            </div>
+            <div class="flex-grow overflow-y-auto">
+              <ul>
+                <li
+                  class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <div class="flex items-center">
+                    <div class="font-medium text-sm w-10">101</div>
+                    <div
+                      class="text-sm text-subtext-light dark:text-subtext-dark ml-4"
+                    ></div>
+                  </div>
+                </li>
+                <li
+                  class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer bg-blue-100 dark:bg-blue-900/50"
+                >
+                  <div class="flex items-center">
+                    <div
+                      class="font-medium text-sm text-primary dark:text-blue-300 w-10"
+                    >
+                      102
+                    </div>
+                    <div class="text-sm text-primary dark:text-blue-400 ml-4">
+                      Cement Bag
+                    </div>
+                  </div>
+                </li>
+                <li
+                  class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <div class="flex items-center">
+                    <div class="font-medium text-sm w-10">103</div>
+                    <div
+                      class="text-sm text-subtext-light dark:text-subtext-dark ml-4"
+                    >
+                      Steel Rod 10mm
+                    </div>
+                  </div>
+                </li>
+                <li
+                  class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <div class="flex items-center">
+                    <div class="font-medium text-sm w-10">104</div>
+                    <div
+                      class="text-sm text-subtext-light dark:text-subtext-dark ml-4"
+                    ></div>
+                  </div>
+                </li>
+                <li
+                  class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <div class="flex items-center">
+                    <div class="font-medium text-sm w-10">105</div>
+                    <div
+                      class="text-sm text-subtext-light dark:text-subtext-dark ml-4"
+                    >
+                      Aggregate 3/4"
+                    </div>
+                  </div>
+                </li>
+                <li
+                  class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <div class="flex items-center">
+                    <div class="font-medium text-sm w-10">...</div>
+                    <div
+                      class="text-sm text-subtext-light dark:text-subtext-dark ml-4"
+                    ></div>
+                  </div>
+                </li>
+                <li
+                  class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <div class="flex items-center">
+                    <div class="font-medium text-sm w-10">1000</div>
+                    <div
+                      class="text-sm text-subtext-light dark:text-subtext-dark ml-4"
+                    >
+                      Fine Sand
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="w-[70%] p-6 flex flex-col">
+            <div class="flex-grow overflow-y-auto pr-2">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+                <div class="flex flex-col space-y-4">
+                  <div>
+                    <label
+                      class="block text-sm font-medium text-subtext-light dark:text-subtext-dark"
+                      for="item-id"
+                      >Item ID</label
+                    >
+                    <input
+                      class="mt-1 block w-full bg-background-light dark:bg-background-dark border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                      id="item-id"
+                      readonly=""
+                      type="text"
+                      value="PROD-00102"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      class="block text-sm font-medium text-subtext-light dark:text-subtext-dark"
+                      for="item-name"
+                      >Item Name</label
+                    >
+                    <input
+                      class="mt-1 block w-full bg-background-light dark:bg-background-dark border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                      id="item-name"
+                      type="text"
+                      value="Cement Bag"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      class="block text-sm font-medium text-subtext-light dark:text-subtext-dark"
+                      for="description"
+                      >Description</label
+                    >
+                    <textarea
+                      class="mt-1 block w-full bg-background-light dark:bg-background-dark border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                      id="description"
+                      rows="2"
+                    >
+Standard Portland Cement, 50kg bag</textarea
+                    >
+                  </div>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        class="block text-sm font-medium text-subtext-light dark:text-subtext-dark"
+                        for="prod-cost"
+                        >Production Cost</label
+                      >
+                      <input
+                        class="mt-1 block w-full bg-background-light dark:bg-background-dark border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                        id="prod-cost"
+                        type="text"
+                        value="450.00"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="block text-sm font-medium text-subtext-light dark:text-subtext-dark"
+                        for="unit-price"
+                        >Unit Price</label
+                      >
+                      <input
+                        class="mt-1 block w-full bg-background-light dark:bg-background-dark border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                        id="unit-price"
+                        type="text"
+                        value="520.00"
+                      />
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        class="block text-sm font-medium text-subtext-light dark:text-subtext-dark"
+                        for="stock"
+                        >Stock</label
+                      >
+                      <input
+                        class="mt-1 block w-full bg-background-light dark:bg-background-dark border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                        id="stock"
+                        type="text"
+                        value="1500"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="block text-sm font-medium text-subtext-light dark:text-subtext-dark"
+                        for="unit"
+                        >Unit</label
+                      >
+                      <input
+                        class="mt-1 block w-full bg-background-light dark:bg-background-dark border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                        id="unit"
+                        type="text"
+                        value="Bag"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label
+                      class="block text-sm font-medium text-subtext-light dark:text-subtext-dark"
+                      >Status</label
+                    >
+                    <div class="mt-2 flex items-center space-x-4">
+                      <div class="flex items-center">
+                        <input
+                          checked=""
+                          class="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                          id="status-active"
+                          name="status"
+                          type="radio"
+                        />
+                        <label
+                          class="ml-2 block text-sm text-text-light dark:text-text-dark"
+                          for="status-active"
+                          >Active</label
+                        >
+                      </div>
+                      <div class="flex items-center">
+                        <input
+                          class="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                          id="status-inactive"
+                          name="status"
+                          type="radio"
+                        />
+                        <label
+                          class="ml-2 block text-sm text-text-light dark:text-text-dark"
+                          for="status-inactive"
+                          >Inactive</label
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-col space-y-2 justify-start pt-6">
+                  <button
+                    class="w-full text-center bg-gray-200 dark:bg-gray-600 text-text-light dark:text-text-dark py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                  >
+                    First
+                  </button>
+                  <button
+                    class="w-full text-center bg-gray-200 dark:bg-gray-600 text-text-light dark:text-text-dark py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    class="w-full text-center bg-gray-200 dark:bg-gray-600 text-text-light dark:text-text-dark py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                  >
+                    Next
+                  </button>
+                  <button
+                    class="w-full text-center bg-gray-200 dark:bg-gray-600 text-text-light dark:text-text-dark py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                  >
+                    Last
+                  </button>
+                  <button
+                    class="w-full text-center bg-accent-green text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-accent-green/90 transition-colors mt-4"
+                  >
+                    Add
+                  </button>
+                  <button
+                    class="w-full text-center bg-primary text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-primary/90 transition-colors"
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

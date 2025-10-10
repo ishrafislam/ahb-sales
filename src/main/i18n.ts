@@ -1,6 +1,8 @@
 import { app } from "electron";
 import path from "node:path";
 import fs from "node:fs";
+import en from "../locales/en.json";
+import bn from "../locales/bn.json";
 
 type Lang = "bn" | "en";
 
@@ -43,22 +45,8 @@ export function setLanguage(lang: Lang) {
   saveSettings(current);
 }
 
-// Minimal dictionary example (extend later)
+// Standard locale mapping files
 export const dict: Record<Lang, Record<string, string>> = {
-  en: {
-    app_title: "AHB Sales",
-    menu_file: "File",
-    menu_new: "New",
-    menu_open: "Open",
-    menu_save: "Save",
-    menu_save_as: "Save As",
-  },
-  bn: {
-    app_title: "এএইচবি সেলস",
-    menu_file: "ফাইল",
-    menu_new: "নতুন",
-    menu_open: "ওপেন",
-    menu_save: "সেভ",
-    menu_save_as: "সেভ অ্যাজ",
-  },
+  en,
+  bn,
 };
