@@ -127,6 +127,19 @@ describe("DashboardView.vue", () => {
     await pInput.setValue("চিনি");
     await nextTick();
 
+    // Wait for dropdown items to appear (avoid race with async loadProducts)
+    const waitFor = async (fn: () => boolean, tries = 10) => {
+      for (let i = 0; i < tries; i++) {
+        await Promise.resolve();
+        await nextTick();
+        if (fn()) return;
+      }
+      throw new Error("Timeout waiting for condition");
+    };
+    await waitFor(
+      () => wrapper.findAll("li").some((li) => li.text().includes("চিনি"))
+    );
+
     // click Add button to add first match
     const addBtn = wrapper.findAll("button").find((b) => b.text() === "Add");
     expect(addBtn).toBeTruthy();
