@@ -1,7 +1,7 @@
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 import { contextBridge, ipcRenderer } from "electron";
-import type { Product, Customer } from "./main/data";
+import type { Product, Customer, Invoice } from "./main/data";
 
 type AppAPI = {
   // File operations
@@ -26,6 +26,8 @@ type AppAPI = {
   ) => Promise<Customer[]>;
   addCustomer: (c: unknown) => Promise<unknown>;
   updateCustomer: (id: number, patch: unknown) => Promise<unknown>;
+  // Phase 2: Invoices
+  postInvoice: (payload: unknown) => Promise<Invoice>;
   onDataChanged: (
     cb: (payload: { kind: string; action: string; id: number }) => void
   ) => () => void;
@@ -56,6 +58,7 @@ const api: AppAPI = {
   addCustomer: (c) => ipcRenderer.invoke("data:add-customer", c),
   updateCustomer: (id, patch) =>
     ipcRenderer.invoke("data:update-customer", id, patch),
+  postInvoice: (payload) => ipcRenderer.invoke("data:post-invoice", payload),
   onDataChanged: (cb) => {
     const listener = (
       _: unknown,
