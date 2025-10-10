@@ -145,9 +145,7 @@ describe("DashboardView.vue", () => {
     if (dropdownItem) {
       await dropdownItem.trigger("click");
     } else {
-      const addBtn = wrapper
-        .findAll("button")
-        .find((b) => b.text() === "Add");
+      const addBtn = wrapper.findAll("button").find((b) => b.text() === "Add");
       expect(addBtn).toBeTruthy();
       await addBtn!.trigger("click");
     }
@@ -155,9 +153,7 @@ describe("DashboardView.vue", () => {
 
     // Wait until at least one non-empty row appears
     await waitFor(() =>
-      wrapper
-        .findAll("tbody tr")
-        .some((tr) => !tr.text().includes("No items"))
+      wrapper.findAll("tbody tr").some((tr) => !tr.text().includes("No items"))
     );
 
     // One row present
