@@ -16,23 +16,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun
         with:
-          node-version: "22"
+          bun-version: "1.3.0"
 
       - name: Install dependencies
-        run: npm install
+        run: bun install
 
       - name: Lint
-        run: npm run lint
+        run: bun run lint
 
       - name: Build (Vite + Electron Forge)
         env:
           # Electron may require a display variable for some build steps; often not needed for package/make
           CI: "true"
         run: |
-          npm run package
+          bun run package
 
       - name: Run unit tests (if present)
-        run: npm run test --if-present --silent
+        run: bun run test
