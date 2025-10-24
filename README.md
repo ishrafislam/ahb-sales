@@ -32,42 +32,53 @@ This README reflects the current implementation.
 - If the key is missing/invalid, the app refuses to open or save encrypted files (by design).
 
 Generate a key (example):
+
 - node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 Set up in development:
+
 - Create a .env file with AHB_KEY_HEX=<your_64_char_hex_key>
 
 Set up in packaged/production:
+
 - Configure AHB_KEY_HEX as an environment variable in the target OS before launching the app.
 
 Notes:
+
 - Unit tests provide their own deterministic key; this does not affect runtime builds.
 - There is no key rotation and no password prompt in v1.
 
 ## Getting Started (development)
 
 Prerequisites
+
 - Node.js 20+ (project CI uses Node 22)
 - A valid AHB_KEY_HEX in your environment (or .env in repo root)
 
 Install
+
 - npm install
 
 Run (development)
+
 - npm start
 
 Lint
+
 - npm run lint
 
 Tests
+
 - npm test
 
 Package
+
 - npm run package
 
 ## Functional Scope
 
 Core business rules
+
 - Wholesale trading model.
 - One file per branch; file lifespan is user-defined (daily/weekly/long-lived).
 - Currency: Bangladeshi Taka (৳), displayed with 2 decimals.
@@ -76,39 +87,48 @@ Core business rules
 - Single unit per product; no unit conversions.
 
 Implemented features
-1) File operations
+
+1. File operations
+
 - New/Open/Save/Save As and unsaved-change prompts on new/open/close/quit flows.
 - Manual save: the app tracks dirty state; there is no autosave.
 
-2) Customer management
+2. Customer management
+
 - Add, list, update basic fields (ID, name, address, active).
 - Outstanding (due) is persisted and updated by invoice posting.
 
-3) Product management
+3. Product management
+
 - Add, list, update (ID, name, unit, price, stock, active).
 - Product stock is decremented on invoice posting and incremented on purchase entry.
 
-4) Invoice management
+4. Invoice management
+
 - Draft and post invoices on the Dashboard.
 - Lines: product, quantity, rate override, unit, line totals.
 - Totals: discount (validated), subtotal, net, paid, previous due, due, current due.
 - Validations: stock availability, non-negative discount/paid, paid ≤ previousDue + net, etc.
 - Updates customer outstanding to current due on posting.
 
-5) Purchase entry
+5. Purchase entry
+
 - Add purchases (product, quantity); increments product stock.
 - Product Purchase History view.
 
-6) Histories
+6. Histories
+
 - Customer History: rows of Date, Total, Bill (Net), Paid, Due, Previous Due, Current Due, Comment.
 - Product Sales History: sales lines per product (Date, Invoice #, Customer, Quantity, Rate, Total).
 - Product Purchase History: quantities added per product (Date, Quantity, Unit).
 
-7) i18n
+7. i18n
+
 - Language setting persisted (BN/EN) and applied to the application menu with runtime switching.
 - Main views/components are not yet localized.
 
 Not yet implemented (planned)
+
 - Reports: Daily Report, Client Report (All Client), Money Transaction Report — Day Wise, Daily Payment Report.
 - Printing: Print preview and direct print with printer/paper/margins presets.
 - Full UI localization for all views and labels.
@@ -117,12 +137,15 @@ Not yet implemented (planned)
 ## Data Model (high level)
 
 Product
+
 - id (1–1000), nameBn, nameEn?, description?, unit, price, stock, active, createdAt, updatedAt
 
 Customer
+
 - id (>0 int), nameBn, nameEn?, address?, outstanding, active, createdAt, updatedAt
 
 Invoice (posted)
+
 - id, no (sequence), date (ISO), customerId
 - lines: sn, productId, unit, description?, quantity, rate, lineTotal
 - discount, notes?, totals { subtotal, net }
@@ -130,6 +153,7 @@ Invoice (posted)
 - status ("posted"), createdAt, updatedAt
 
 Purchase
+
 - id, date (ISO), productId, unit, quantity, notes?, createdAt, updatedAt
 
 ## UI Overview
@@ -156,6 +180,7 @@ Purchase
 ## Phase-wise Implementation Plan
 
 Phase 0: Foundations and architecture — DONE
+
 - Encrypted .ahbs container (AES-256-GCM, versioned header).
 - AHB_KEY_HEX required via environment; no insecure fallback.
 - New/Open/Save/Save As with user-friendly error handling.
@@ -163,18 +188,21 @@ Phase 0: Foundations and architecture — DONE
 - Initial tests and CI on PRs.
 
 Phase 1: Domain schema and core lists — DONE
+
 - Products and Customers storage/validation.
 - IPC endpoints and preload bindings.
 - UI to add/list/update Products and Customers.
 - Manual save with dirty tracking and prompts; no autosave.
 
 Phase 2: Sales and stock — DONE
+
 - Dashboard invoice posting: header, lines, summary.
 - Ceil-to-2 rounding policy across calculations.
 - Discount validations and stock checks.
 - Stock decremented on posting; customer outstanding updated.
 
 Phase 3: Payments, histories, purchases — DONE
+
 - Paid input enabled in Dashboard; due math enforced:
   - paid ≥ 0 and ≤ previousDue + net
   - previousDue/currentDue snapshots per invoice
@@ -188,15 +216,17 @@ Phase 3: Payments, histories, purchases — DONE
   - postPurchase increments stock and populates purchase history.
 
 Phase 4: Purchases (enhancements) — PLANNED
-- Supplier information (free text in v1 scope) and richer metadata.
+
 - Filters/search in purchase history (by date range/product).
 - Edit/delete purchase entries with stock adjustments and audit trails.
 
 Phase 5: Reporting and printing — PLANNED
+
 - Reports: Daily, Client (All Client), Money Transaction Report — Day Wise, Daily Payment Report.
 - Printing: preview and direct print, printer selection, paper size and margin presets.
 
 Phase 6: Usability and polish — PLANNED
+
 - Full UI localization (BN/EN) across all components.
 - Search dialogs (customers/products by ID/name), Bengali font validation, teal/cyan theme polish.
 - Robust error handling and user feedback across flows.
@@ -211,11 +241,13 @@ Phase 6: Usability and polish — PLANNED
     - Validate preload/IPC to enforce this invariant.
 
 Phase 7: Performance and hardening — PLANNED
+
 - Indexing/caching, compaction, and backups.
 - Integrity checks on load/save; schema migrations across versions.
 - Optional exports: CSV/Excel for reports (PDF via print-to-PDF).
 
 Phase 8: Future-ready hooks — PLANNED
+
 - Per-file branch label, schema versioning/migrations, role hooks (disabled).
 - Extensibility points verified with sample files and migrations.
 
@@ -231,7 +263,7 @@ Phase 8: Future-ready hooks — PLANNED
 
 - UI localization for all views (only app menu is localized now).
 - Reporting and printing not implemented yet.
-- Supplier fields and richer purchasing flows not implemented yet.
+- Purchasing flow enhancements (filters, edit/delete with audit) not implemented yet.
 - Menu enable/disable state after file actions may need refinement (planned).
 
 ## Notes

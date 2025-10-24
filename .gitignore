@@ -191,3 +191,6 @@ packages/**
 
 # Previous workflow images folder
 old_workflow/
+
+# Local seed data outputs
+seeds/
