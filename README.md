@@ -215,17 +215,12 @@ Phase 3: Payments, histories, purchases — DONE
 - Purchase entry:
   - postPurchase increments stock and populates purchase history.
 
-Phase 4: Purchases (enhancements) — PLANNED
-
-- Filters/search in purchase history (by date range/product).
-- Edit/delete purchase entries with stock adjustments and audit trails.
-
-Phase 5: Reporting and printing — PLANNED
+Phase 4: Reporting and printing — PLANNED
 
 - Reports: Daily, Client (All Client), Money Transaction Report — Day Wise, Daily Payment Report.
 - Printing: preview and direct print, printer selection, paper size and margin presets.
 
-Phase 6: Usability and polish — PLANNED
+Phase 5: Usability and polish — PLANNED
 
 - Full UI localization (BN/EN) across all components.
 - Search dialogs (customers/products by ID/name), Bengali font validation, teal/cyan theme polish.
@@ -240,13 +235,13 @@ Phase 6: Usability and polish — PLANNED
     - Disable/hide Outstanding edits in Update flows; future changes to outstanding must come via invoices/payments logic only.
     - Validate preload/IPC to enforce this invariant.
 
-Phase 7: Performance and hardening — PLANNED
+Phase 6: Performance and hardening — PLANNED
 
 - Indexing/caching, compaction, and backups.
 - Integrity checks on load/save; schema migrations across versions.
 - Optional exports: CSV/Excel for reports (PDF via print-to-PDF).
 
-Phase 8: Future-ready hooks — PLANNED
+Phase 7: Future-ready hooks — PLANNED
 
 - Per-file branch label, schema versioning/migrations, role hooks (disabled).
 - Extensibility points verified with sample files and migrations.
@@ -263,7 +258,7 @@ Phase 8: Future-ready hooks — PLANNED
 
 - UI localization for all views (only app menu is localized now).
 - Reporting and printing not implemented yet.
-- Purchasing flow enhancements (filters, edit/delete with audit) not implemented yet.
+ 
 - Menu enable/disable state after file actions may need refinement (planned).
 
 ## Notes
