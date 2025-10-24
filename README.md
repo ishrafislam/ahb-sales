@@ -1,222 +1,240 @@
-# AHB Sales - Requirements Document
+# AHB Sales
 
-## Project Overview
+A desktop app (Electron + Vue 3 + Vite + Tailwind + TypeScript) to replace the Microsoft Access-based wholesale management system for Abdul Hamid & Brothers. Each .ahbs file contains all cumulative business data for a single branch.
 
-AHB Sales is a desktop application built with Electron to replace the Microsoft Access-based wholesale business management system for Abdul Hamid and Brothers. Each .ahbs file contains all cumulative business data for a single branch (customers, products, transactions, history). The UI is bilingual (Bengali primary, English secondary) with runtime switching.
+This README reflects the current implementation.
 
-## File-Based Architecture
+## Current Status (at a glance)
 
-- File Extension: `.ahbs` (AHB Sales)
-- File Operations: New, Open, Save, Save As
-- Behavior: Single-document model (like Notepad) — one file open at a time
-- Data Model: Cumulative data retained in the file
-- File Security (Confirmed):
-  - Encrypted at rest using a single symmetric key (AES-256-GCM recommended), embedded at build time
-  - No password prompt and no key rotation
-  - Files are only readable by the AHB Sales app; external apps cannot read `.ahbs`
-- File Lifecycle Policy (Confirmed):
-  - One file equals one branch; no multi-branch logic in a single file
-  - Users decide the file’s lifespan (daily/weekly/long-lived)
-  - The app just opens a file and loads its contents — no automatic linking across files
+- File container: Encrypted .ahbs (AES-256-GCM, versioned header) with a JSON payload.
+- File ops: New, Open, Save, Save As with unsaved-change prompts.
+- Data: Products, Customers, Invoices (with Paid/Previous Due/Current Due), Purchases.
+- UI: Startup (New/Open), Dashboard for invoice entry, modals for Products, Customers, Customer History, Product Sales History, Product Purchase History, and Purchase Entry.
+- Rounding: ceil to 2 decimals consistently (line totals, subtotals, net, due).
+- i18n: Runtime language switching (BN/EN) for the app menu; main views are not localized yet.
+- Tests: Unit and component tests for crypto, data, invoices (incl. paid/due), purchases, i18n, renderer views.
+- CI: Lint, package, and test on PRs (Windows runner).
 
-## Confirmed Decisions and Terminology
+## Architecture and File Format
 
-- Terminology: “Item” is called “Product” throughout UI and docs
-- Branching: One file = one branch; no inter-branch transfers or consolidation logic
-- Identifiers:
-  - Invoice numbers: auto-generated
-  - Product IDs: numeric; constraint intent “maximum of 1000” — see Open Clarifications
-- Inventory:
-  - Single unit per product; no conversions
-  - Returns add stock back; no separate stock-adjustment flow
-- Discounts/Payments:
-  - Discount at invoice summary only (no line-level discounts)
-  - Previous due can be paid via a new purchase or by adjusting previous invoices
-- Localization:
-  - Bilingual UI (BN/EN), one language at a time based on settings
-  - Left-to-right; runtime language switching without restart
-- Currency and Rounding:
-  - Bangladeshi Taka (৳), 2 decimal digits
-  - Policy: ceil to 2 decimals (see Open Clarifications)
-- Printing:
-  - Print Preview and Direct Print
-  - Printer selection, paper size and margin presets (Office-like)
-  - No QR/barcodes on invoices
-- Import/Roles:
-  - No data import/migration in v1; no authentication/roles in v1
-- Performance:
-  - “Industry standard” — design for large datasets with indexed lookups and responsive UI
+- Single-document app: one .ahbs file open at a time.
+- One file = one branch; no inter-branch logic.
+- Encrypted container:
+  - Format: [MAGIC "AHBS"][VERSION 1][IV][TAG][CIPHERTEXT(JSON)]
+  - Cipher: AES-256-GCM
+- Payload: JSON document with versioned schema; currently stores products, customers, invoices, purchases, and sequence counters.
 
-## Core Business Model
+## Key Management (important)
 
-- Business Type: Wholesale trading
-- Branch Types: Storage facilities and showrooms (one file per branch)
-- Cumulative data model (historical records retained)
-- Currency: Bangladeshi Taka (৳)
+- Encryption key is supplied via the environment variable AHB_KEY_HEX (64 hex chars = 32 bytes).
+- During development, you can store it in a .env file at the repo root (used at runtime by the app in dev).
+- The same key is required to open previously created .ahbs files; keep it safe and consistent.
+- If the key is missing/invalid, the app refuses to open or save encrypted files (by design).
 
-## Identified Features
+Generate a key (example):
+- node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
-### 1) Customer Management
+Set up in development:
+- Create a .env file with AHB_KEY_HEX=<your_64_char_hex_key>
 
-- Customer Entry: ID, name (Bengali; English optional), address, outstanding balance, active/inactive
-- Operations: add, edit, search (by ID/name), list, history
-- History Columns: Date, Total Amount, Discount, Bill, Payment, Due, Payment Against, Previous Due, Notes
+Set up in packaged/production:
+- Configure AHB_KEY_HEX as an environment variable in the target OS before launching the app.
 
-### 2) Product Management
+Notes:
+- Unit tests provide their own deterministic key; this does not affect runtime builds.
+- There is no key rotation and no password prompt in v1.
 
-- Product Entry: Product ID (numeric), name (Bengali; English optional), description, unit price, stock, unit (single), active/inactive
-- Operations: add, edit, search (by ID/name), list, availability
+## Getting Started (development)
 
-### 3) Sales/Invoice Management
+Prerequisites
+- Node.js 20+ (project CI uses Node 22)
+- A valid AHB_KEY_HEX in your environment (or .env in repo root)
 
-- Header: auto invoice number, date, previous date reference, customer selection (ID dropdown, name, address)
-- Lines: S/N, product name, description, unit, quantity, rate, line total
-- Summary: total, discount, bill (net), payment, due, payment against old due, previous outstanding, timestamp/notes
-- Operations: create/edit invoice, post transaction, payment processing, print (Single/Direct/Select)
+Install
+- npm install
 
-### 4) Purchase Management
+Run (development)
+- npm start
 
-- Purchase entry: date, supplier info (free text v1), item-wise purchase recording
-- Item Purchase History: date-wise, quantity, unit shown, filter by product
+Lint
+- npm run lint
 
-### 5) Product Sale History
+Tests
+- npm test
 
-- Date-wise sales, customer linkage, quantity, filtering
+Package
+- npm run package
 
-### 6) Payment Management
+## Functional Scope
 
-- Payment Entry: reference/identity, amount, date/timestamp, notes
-- Features: record/edit payments, payment history
-- Payment Report: date, customer-wise payments, amounts
+Core business rules
+- Wholesale trading model.
+- One file per branch; file lifespan is user-defined (daily/weekly/long-lived).
+- Currency: Bangladeshi Taka (৳), displayed with 2 decimals.
+- Rounding policy: ceil to 2 decimals for monetary math (line totals, subtotal, net, due).
+- Product ID range: 1–1000 inclusive (enforced).
+- Single unit per product; no unit conversions.
 
-### 7) Reporting System
+Implemented features
+1) File operations
+- New/Open/Save/Save As and unsaved-change prompts on new/open/close/quit flows.
+- Manual save: the app tracks dirty state; there is no autosave.
 
-- Daily Report: daily transaction summary, date-range selection
-- Client Report (All Client): date-range, columns (Total Sale, Discount, Bill, Payment, Due), customer breakdown with subtotals and previous balance
-- Money Transaction Report — Day Wise: includes Payment Against Old Due and Previous Outstanding
-- Daily Payment Report
+2) Customer management
+- Add, list, update basic fields (ID, name, address, active).
+- Outstanding (due) is persisted and updated by invoice posting.
 
-### 8) User Interface Components
+3) Product management
+- Add, list, update (ID, name, unit, price, stock, active).
+- Product stock is decremented on invoice posting and incremented on purchase entry.
 
-- Main Dashboard: company header, invoice ID display, quantity/stock display, developer credit (for legacy parity)
-- Navigation Sidebar:
-  - Print Options: Single, Direct, Select Print
-  - History, Customer Form, Product Form, Client List, Product List, Product Purchase History, Product Sale History, Purchase Entry, Total Sell, Daily Report, Client Report, Daily Payment Report
-- Date Display: current date (DD/MM/YY), previous transaction date reference
-- Business Info Panel: group/company, location, outstanding
-- Search Dialogs: customers/products by ID or name, close button
-- Record Navigation: first/prev/next/last/add/edit/post/refresh/ok/cancel/close/done
+4) Invoice management
+- Draft and post invoices on the Dashboard.
+- Lines: product, quantity, rate override, unit, line totals.
+- Totals: discount (validated), subtotal, net, paid, previous due, due, current due.
+- Validations: stock availability, non-negative discount/paid, paid ≤ previousDue + net, etc.
+- Updates customer outstanding to current due on posting.
 
-## Technical Requirements
+5) Purchase entry
+- Add purchases (product, quantity); increments product stock.
+- Product Purchase History view.
 
-- Framework: Electron
-- UI Language: Bengali primary, English secondary
-- Database: Proposed — SQLite as payload inside encrypted `.ahbs`; alternative — structured JSON with indexing (to be finalized in Phase 0)
-- Reporting: printing with preview and direct print
-- UI/UX: Bengali font support, DD/MM/YY, responsive grids/tables, teal/cyan theme
+6) Histories
+- Customer History: rows of Date, Total, Bill (Net), Paid, Due, Previous Due, Current Due, Comment.
+- Product Sales History: sales lines per product (Date, Invoice #, Customer, Quantity, Rate, Total).
+- Product Purchase History: quantities added per product (Date, Quantity, Unit).
 
-## Data Model Considerations
+7) i18n
+- Language setting persisted (BN/EN) and applied to the application menu with runtime switching.
+- Main views/components are not yet localized.
 
-- Each file is a self-contained branch
-- Cumulative storage with full transaction history and customer ledger
-- Inventory management (single-unit products, stock changes via sales/purchases/returns)
+Not yet implemented (planned)
+- Reports: Daily Report, Client Report (All Client), Money Transaction Report — Day Wise, Daily Payment Report.
+- Printing: Print preview and direct print with printer/paper/margins presets.
+- Full UI localization for all views and labels.
+- Bulk import/migration; roles/auth (out of scope for v1).
 
-## Open Clarifications
+## Data Model (high level)
 
-1. Product ID constraint: “The id will be numeric and the length will be maximum of 1000.” Please confirm which is intended:
-   - Numeric range 1–1000 per file (recommended), or
-   - Maximum of 1000 products per file with unique numeric IDs, or
-   - Numeric string up to 1000 digits (unlikely)
+Product
+- id (1–1000), nameBn, nameEn?, description?, unit, price, stock, active, createdAt, updatedAt
 
-2. Rounding policy: “No rounding… 2 decimals (we can round to ceil).” Confirm that ceil to 2 decimals is preferred over standard half-up rounding.
+Customer
+- id (>0 int), nameBn, nameEn?, address?, outstanding, active, createdAt, updatedAt
+
+Invoice (posted)
+- id, no (sequence), date (ISO), customerId
+- lines: sn, productId, unit, description?, quantity, rate, lineTotal
+- discount, notes?, totals { subtotal, net }
+- paid, previousDue, currentDue
+- status ("posted"), createdAt, updatedAt
+
+Purchase
+- id, date (ISO), productId, unit, quantity, notes?, createdAt, updatedAt
+
+## UI Overview
+
+- Startup screen: New File / Open File.
+- Dashboard:
+  - Header: New/Open/Save/Save As via header buttons and application menu.
+  - Customer search and selection.
+  - Product search/add for receipt lines.
+  - Summary: Total, Discount, Bill (Net), Paid, Due, Previous Due, Net Due, Notes.
+  - Complete button posts the invoice.
+  - Quick Actions open modals: Customers, Products, Customer History, Product Sales History, Product Purchase History, Purchase Entry.
+- Modals:
+  - Products: navigate by ID, add or update details, view list.
+  - Customers: navigate by ID, add or update details, view list.
+  - Histories and Purchase Entry as described under features.
+
+## Tests and CI
+
+- Unit tests: crypto container, data model operations, invoices (math/validations), purchases, i18n persistence.
+- Component tests: App, Dashboard, Products/Customers views and event refresh.
+- CI (PRs to main/develop on Windows): install, lint, package, test.
 
 ## Phase-wise Implementation Plan
 
 Phase 0: Foundations and architecture — DONE
+- Encrypted .ahbs container (AES-256-GCM, versioned header).
+- AHB_KEY_HEX required via environment; no insecure fallback.
+- New/Open/Save/Save As with user-friendly error handling.
+- Runtime language switching for app menu (BN/EN) with persisted setting.
+- Initial tests and CI on PRs.
 
-- Implemented `.ahbs` container: versioned header + AES-256-GCM encryption. Key required via env; no insecure fallback.
-- File New/Open/Save/Save As complete, with user-friendly error messages on open/decrypt failures.
-- Runtime i18n (BN/EN) with persistence and IPC events.
-- Tests in place for crypto, i18n, and a basic renderer check; CI runs on PRs.
-- Acceptance: Achieved (encrypted read/write; runtime language toggle).
+Phase 1: Domain schema and core lists — DONE
+- Products and Customers storage/validation.
+- IPC endpoints and preload bindings.
+- UI to add/list/update Products and Customers.
+- Manual save with dirty tracking and prompts; no autosave.
 
-Development key (.env)
+Phase 2: Sales and stock — DONE
+- Dashboard invoice posting: header, lines, summary.
+- Ceil-to-2 rounding policy across calculations.
+- Discount validations and stock checks.
+- Stock decremented on posting; customer outstanding updated.
 
-- Run this code to create key: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+Phase 3: Payments, histories, purchases — DONE
+- Paid input enabled in Dashboard; due math enforced:
+  - paid ≥ 0 and ≤ previousDue + net
+  - previousDue/currentDue snapshots per invoice
+- Listings:
+  - listInvoicesByCustomer, listProductSales, listProductPurchases.
+- UI:
+  - Customer History modal.
+  - Product Sales History modal.
+  - Product Purchase History modal.
+- Purchase entry:
+  - postPurchase increments stock and populates purchase history.
 
-- For local development, you can place a 64-hex-character key in a `.env` file at the repo root:
-  - Copy `.env.example` to `.env`
-  - Replace AHB_KEY_HEX with your own secure key (32 bytes in hex)
-  - Note: Keep it secret. Files require the same key to open later.
+Phase 4: Purchases (enhancements) — PLANNED
+- Supplier information (free text in v1 scope) and richer metadata.
+- Filters/search in purchase history (by date range/product).
+- Edit/delete purchase entries with stock adjustments and audit trails.
 
-Phase 1: Domain schema and core lists — DONE (core)
+Phase 5: Reporting and printing — PLANNED
+- Reports: Daily, Client (All Client), Money Transaction Report — Day Wise, Daily Payment Report.
+- Printing: preview and direct print, printer selection, paper size and margin presets.
 
-- Scope (v1 slice): Products and Customers only (Invoices/Payments later).
-- Data model (persisted inside the encrypted `.ahbs` JSON payload):
-  - Product: id (1–1000), nameBn, nameEn?, description?, unit, price, stock, active, createdAt/updatedAt
-  - Customer: id (>0 int), nameBn, nameEn?, address?, outstanding, active, createdAt/updatedAt
-  - Validation: product ID range; required fields; explicit numeric parsing for price/stock/outstanding (rejects invalid, preserves legitimate zeros)
-- Operations:
-  - Add/Update/Get/List Products and Customers; active toggle; sorted lists.
-- IPC and Preload:
-  - Main exposes list/add/update and broadcasts `data:changed` events.
-  - Preload wraps IPC; typed return values (`Product[]` / `Customer[]`).
-- UI (minimal v1):
-  - Vue 3 views for product and customer lists with add forms; auto-refresh on `data:changed`.
-  - Startup shows only two buttons: Open Existing file, New file. After a file loads, tabs for Products/Customers and Save/Save As controls appear.
-  - Autosave: add/update operations write the current document immediately when a file is open.
-- Tests (TDD):
-  - Data model tests for add/update/list/validation and roundtrip persistence.
-  - Component tests for Products/Customers views (empty state, list render, add flow, event-driven refresh).
-  - App shell test updated for the new startup flow.
-- Acceptance:
-  - Data persists and reloads with file save/open.
-  - Product ID constraints enforced; basic add flow available in UI and edit supported via IPC (UI edit deferred).
+Phase 6: Usability and polish — PLANNED
+- Full UI localization (BN/EN) across all components.
+- Search dialogs (customers/products by ID/name), Bengali font validation, teal/cyan theme polish.
+- Robust error handling and user feedback across flows.
+- Menu state consistency improvements (e.g., rebuilding menu after New/Open/Save As).
+- New items:
+  - Negative stock of product: define policy and implement behavior.
+    - Option A (default): Disallow negative stock (current behavior); show clear validation in Dashboard.
+    - Option B (configurable): Allow negative stock with warnings and clear highlighting in UI and reports. Ensure downstream math stays consistent.
+  - Due input only while creating customer:
+    - Allow “Outstanding” to be set only in the Add flow.
+    - Disable/hide Outstanding edits in Update flows; future changes to outstanding must come via invoices/payments logic only.
+    - Validate preload/IPC to enforce this invariant.
 
-Deferred from Phase 1 (to a minor follow-up):
+Phase 7: Performance and hardening — PLANNED
+- Indexing/caching, compaction, and backups.
+- Integrity checks on load/save; schema migrations across versions.
+- Optional exports: CSV/Excel for reports (PDF via print-to-PDF).
 
-- Edit UI for products/customers (IPC already available; UI wiring pending)
-- Optional list filters/search (by ID/name)
-
-Phase 2: Sales and stock
-
-- Invoice entry (header, lines, summary). Ledger math: due, Payment Against Old Due, Previous Outstanding.
-- Posting updates stock; returns implemented as negative sale/return that adds back stock.
-- Acceptance: Create/edit/print invoice (basic); stock consistent; balances correct.
-
-Phase 3: Purchases
-
-- Purchase entry (supplier free text), item lines; product purchase history with filters.
-- Acceptance: Purchases persist; stock increases; history correct.
-
-Phase 4: Payments and ledger
-
-- Payment entry (reference, amount, date). Customer ledger/history views.
-- Acceptance: Payment report by date; running balances accurate.
-
-Phase 5: Reporting and printing
-
-- Daily report, Client report (All Client), Money Transaction Report — Day Wise, Daily Payment Report.
-- Printing: preview and direct with printer/paper/margin presets.
-- Acceptance: Reports correct with 2-decimal policy; configurable printing.
-
-Phase 6: Usability and polish
-
-- Search dialogs, Bengali font validation, teal/cyan theme, robust error handling.
-- Acceptance: Smooth runtime language switch; stable behavior at scale.
-
-Phase 7: Performance and hardening
-
-- Indexing/caching, compaction, backups. Optional report exports (PDF via print-to-PDF, CSV/Excel later).
-- Acceptance: Responsive with large datasets; integrity checks pass.
-
-Phase 8: Future-ready hooks
-
+Phase 8: Future-ready hooks — PLANNED
 - Per-file branch label, schema versioning/migrations, role hooks (disabled).
-- Acceptance: Extensibility verified; migrations tested on sample files.
+- Extensibility points verified with sample files and migrations.
+
+## Decisions and Policies
+
+- One file equals one branch; no multi-branch logic.
+- Product IDs are integers 1–1000.
+- Monetary rounding: ceil to two decimals (policy set and enforced).
+- No QR/barcodes in invoices v1.
+- No data import/migration in v1; no auth/roles in v1.
+
+## Known Gaps
+
+- UI localization for all views (only app menu is localized now).
+- Reporting and printing not implemented yet.
+- Supplier fields and richer purchasing flows not implemented yet.
+- Menu enable/disable state after file actions may need refinement (planned).
 
 ## Notes
 
-- Legacy system used file-per-day with cumulative data; this app lets users choose the file lifespan
-- Bengali language support is critical; printing is heavily used
-- UI should favor legibility and speed over flashy design
+- Legacy system used file-per-day with cumulative data; this app lets users choose file lifespan.
+- Printing and bilingual support are significant to end users and prioritized in upcoming phases.

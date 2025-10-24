@@ -75,6 +75,13 @@
     >
       <CustomerHistory @navigate="onNavigate" />
     </BaseModal>
+    <BaseModal
+      v-if="showPurchaseEntry"
+      title="Product Purchase"
+      @close="closeModals"
+    >
+      <ProductPurchaseModal />
+    </BaseModal>
   </div>
 </template>
 
@@ -87,6 +94,7 @@ import ProductSalesHistory from "./views/ProductSalesHistory.vue";
 import ProductPurchaseHistory from "./views/ProductPurchaseHistory.vue";
 import CustomerHistory from "./views/CustomerHistory.vue";
 import BaseModal from "./components/BaseModal.vue";
+import ProductPurchaseModal from "./views/ProductPurchaseModal.vue";
 
 const lang = ref<"bn" | "en">("bn");
 // Modal flags
@@ -95,6 +103,7 @@ const showProducts = ref(false);
 const showSalesHistory = ref(false);
 const showPurchaseHistory = ref(false);
 const showCustomerHistory = ref(false);
+const showPurchaseEntry = ref(false);
 const loaded = ref(false);
 
 // simple i18n removed from template usage; kept title only
@@ -128,6 +137,7 @@ function closeModals() {
   showSalesHistory.value = false;
   showPurchaseHistory.value = false;
   showCustomerHistory.value = false;
+  showPurchaseEntry.value = false;
 }
 
 function onNavigate(
@@ -138,6 +148,7 @@ function onNavigate(
     | "product-sales-history"
     | "product-purchase-history"
     | "customer-history"
+    | "purchase-entry"
     | string
 ) {
   if (page === "dashboard") {
@@ -162,6 +173,11 @@ function onNavigate(
   if (page === "product-purchase-history") {
     closeModals();
     showPurchaseHistory.value = true;
+    return;
+  }
+  if (page === "purchase-entry") {
+    closeModals();
+    showPurchaseEntry.value = true;
     return;
   }
   if (page === "customer-history") {

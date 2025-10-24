@@ -36,6 +36,10 @@ import {
   listCustomers,
   type AhbDataV1,
   postInvoice,
+  listInvoicesByCustomer,
+  listProductSales,
+  listProductPurchases,
+  postPurchase,
 } from "./main/data";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -240,8 +244,53 @@ ipcMain.handle(
         id: ln.productId,
       })
     );
+    // Notify customer outstanding update
+    notifyAll("data:changed", {
+      kind: "customer",
+      action: "update",
+      id: inv.customerId,
+    });
     isDirty = true;
     return inv;
+  }
+);
+
+// Phase 3: listing endpoints
+ipcMain.handle(
+  "data:list-invoices-by-customer",
+  async (_e, customerId: number) => {
+    const data = currentDoc.data as AhbDataV1;
+    return listInvoicesByCustomer(data, customerId);
+  }
+);
+ipcMain.handle("data:list-product-sales", async (_e, productId: number) => {
+  const data = currentDoc.data as AhbDataV1;
+  return listProductSales(data, productId);
+});
+ipcMain.handle("data:list-product-purchases", async (_e, productId: number) => {
+  const data = currentDoc.data as AhbDataV1;
+  return listProductPurchases(data, productId);
+});
+
+// Phase 3: post purchase (stock increment)
+ipcMain.handle(
+  "data:post-purchase",
+  async (_e, payload: Parameters<typeof postPurchase>[1]) => {
+    const data = currentDoc.data as AhbDataV1;
+    const purchase = postPurchase(data, payload);
+    notifyAll("data:changed", {
+      kind: "purchase",
+      action: "post",
+      id: purchase.productId,
+    });
+    // notify product stock update
+    notifyAll("data:changed", {
+      kind: "product",
+      action: "stock-updated",
+      id: purchase.productId,
+    });
+    isDirty = true;
+    return purchase;
   }
 );
 

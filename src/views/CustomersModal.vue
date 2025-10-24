@@ -2,13 +2,14 @@
   <div class="flex flex-1 min-h-0">
     <!-- Left list -->
     <div class="w-[30%] border-r border-gray-200 flex flex-col">
-      <div class="flex-grow overflow-y-auto">
+      <div ref="leftListRef" class="flex-grow overflow-y-auto">
         <ul>
           <li
             v-for="id in idList"
             :key="id"
             class="px-4 py-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100"
             :class="{ 'bg-blue-100': id === selectedId }"
+            :data-id="id"
             @click="select(id)"
           >
             <div class="flex items-center">
@@ -145,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 
 interface CustomerRow {
   id: number;
@@ -196,6 +197,7 @@ function syncFromSelected() {
 function select(id: number) {
   selectedId.value = id;
   syncFromSelected();
+  void scrollSelectedIntoView();
 }
 
 async function load() {
@@ -213,6 +215,7 @@ async function load() {
     selectedId.value = 1;
   }
   syncFromSelected();
+  await scrollSelectedIntoView();
 }
 
 function first() {
@@ -264,11 +267,30 @@ async function update() {
 let off: null | (() => void) = null;
 onMounted(() => {
   load();
+  void scrollSelectedIntoView();
   off = window.ahb.onDataChanged((payload) => {
-    if (payload.kind === "customer") load();
+    if (payload.kind === "customer") {
+      load();
+      void scrollSelectedIntoView();
+    }
   });
 });
 onUnmounted(() => {
   if (off) off();
+});
+
+const leftListRef = ref<HTMLElement | null>(null);
+async function scrollSelectedIntoView() {
+  await nextTick();
+  const container = leftListRef.value;
+  if (!container) return;
+  const el = container.querySelector(
+    `[data-id="${selectedId.value}"]`
+  ) as HTMLElement | null;
+  if (el) el.scrollIntoView({ block: "nearest" });
+}
+
+watch(selectedId, () => {
+  void scrollSelectedIntoView();
 });
 </script>

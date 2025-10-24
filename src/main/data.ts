@@ -33,7 +33,12 @@ export type AhbDataV1 = {
 };
 
 export function initData(): AhbDataV1 {
-  return { products: [], customers: [], invoices: [], invoiceSeq: 1 };
+  return {
+    products: [],
+    customers: [],
+    invoices: [],
+    invoiceSeq: 1,
+  };
 }
 
 // Helpers
@@ -76,6 +81,10 @@ export type Invoice = {
   discount: number;
   notes?: string;
   totals: { subtotal: number; net: number };
+  // Phase 3: Payments & dues
+  paid: number; // amount paid against this invoice (may also cover previous due)
+  previousDue: number; // customer's outstanding before posting this invoice
+  currentDue: number; // customer's outstanding after posting this invoice
   status: "posted"; // Phase 2: only posted receipts
   createdAt: string;
   updatedAt: string;
@@ -91,6 +100,7 @@ export type PostInvoiceInput = {
     description?: string;
   }>;
   discount?: number;
+  paid?: number;
   notes?: string;
 };
 
@@ -131,6 +141,15 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
     throw new Error("Discount must be a non-negative number");
   if (discount > subtotal) throw new Error("Discount cannot exceed subtotal");
   const net = ceil2(subtotal - discount);
+  const previousDue = ceil2(Number(customer.outstanding || 0));
+  const paid = Number(input.paid ?? 0);
+  if (!Number.isFinite(paid) || paid < 0)
+    throw new Error("Paid must be a non-negative number");
+  const maxPayable = ceil2(previousDue + net);
+  if (paid > maxPayable)
+    throw new Error("Paid amount cannot exceed previous due plus net bill");
+  const invoiceDue = Math.max(0, ceil2(net - paid));
+  const currentDue = ceil2(previousDue + invoiceDue);
 
   // Stock check
   for (const l of lines) {
@@ -153,6 +172,9 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
     discount,
     notes: input.notes?.trim() || undefined,
     totals: { subtotal, net },
+    paid,
+    previousDue,
+    currentDue,
     status: "posted",
     createdAt: nowIso(),
     updatedAt: nowIso(),
@@ -166,6 +188,15 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
     data.products[idx] = {
       ...prod,
       stock: prod.stock - l.quantity,
+      updatedAt: nowIso(),
+    };
+  }
+  // Update customer outstanding (currentDue)
+  const custIdx = data.customers.findIndex((c) => c.id === customer.id);
+  if (custIdx !== -1) {
+    data.customers[custIdx] = {
+      ...customer,
+      outstanding: currentDue,
       updatedAt: nowIso(),
     };
   }
@@ -324,4 +355,157 @@ export function listCustomers(
   return (opts?.activeOnly ? arr.filter((x) => x.active) : arr).sort(
     (a, b) => a.id - b.id
   );
+}
+
+// -----------------------
+// Phase 3: History helpers
+// -----------------------
+export function listInvoicesByCustomer(
+  data: AhbDataV1,
+  customerId: number
+): Invoice[] {
+  ensurePhase2(data);
+  return data.invoices
+    .filter((inv) => inv.customerId === customerId)
+    .slice()
+    .sort((a, b) => b.no - a.no);
+}
+
+export type ProductSaleLine = {
+  date: string;
+  invoiceNo: number;
+  productId: number;
+  productNameBn?: string;
+  unit: string;
+  quantity: number;
+  rate: number;
+  lineTotal: number;
+  customerId: number;
+  customerNameBn?: string;
+};
+
+export function listProductSales(
+  data: AhbDataV1,
+  productId: number
+): ProductSaleLine[] {
+  ensurePhase2(data);
+  const prod = data.products.find((p) => p.id === productId);
+  const mapCust = new Map<number, string>(
+    data.customers.map((c) => [c.id, c.nameBn])
+  );
+  const res: ProductSaleLine[] = [];
+  for (const inv of data.invoices) {
+    for (const ln of inv.lines) {
+      if (ln.productId === productId) {
+        res.push({
+          date: inv.date,
+          invoiceNo: inv.no,
+          productId,
+          productNameBn: prod?.nameBn,
+          unit: ln.unit,
+          quantity: ln.quantity,
+          rate: ln.rate,
+          lineTotal: ln.lineTotal,
+          customerId: inv.customerId,
+          customerNameBn: mapCust.get(inv.customerId),
+        });
+      }
+    }
+  }
+  return res.sort((a, b) => b.invoiceNo - a.invoiceNo);
+}
+
+export type ProductPurchaseLine = {
+  date: string;
+  productId: number;
+  productNameBn?: string;
+  unit: string;
+  quantity: number;
+};
+
+export function listProductPurchases(
+  data: AhbDataV1,
+  productId: number
+): ProductPurchaseLine[] {
+  ensurePhase3(data);
+  const prod = data.products.find((p) => p.id === productId);
+  return data.purchases
+    .filter((p) => p.productId === productId)
+    .map((p) => ({
+      date: p.date,
+      productId: p.productId,
+      productNameBn: prod?.nameBn,
+      unit: p.unit,
+      quantity: p.quantity,
+    }))
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+// -----------------------
+// Phase 3: Purchases
+// -----------------------
+export type Purchase = {
+  id: string;
+  date: string; // ISO
+  productId: number;
+  unit: string;
+  quantity: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PostPurchaseInput = {
+  date?: string;
+  productId: number;
+  quantity: number;
+  notes?: string;
+};
+
+export type AhbDataV3 = AhbDataV2 & {
+  purchases: Purchase[];
+};
+
+export function ensurePhase3(data: AhbDataV1): asserts data is AhbDataV3 {
+  ensurePhase2(data);
+  if (!("purchases" in data)) {
+    (data as unknown as AhbDataV3).purchases = [];
+  }
+}
+
+export function postPurchase(
+  data: AhbDataV1,
+  input: PostPurchaseInput
+): Purchase {
+  ensurePhase3(data);
+  const date = input.date ? new Date(input.date) : new Date();
+  if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
+  const prodIdx = data.products.findIndex((p) => p.id === input.productId);
+  if (prodIdx === -1) throw new Error("Product not found");
+  const qty = Number(input.quantity);
+  if (!Number.isFinite(qty) || qty <= 0)
+    throw new Error("Quantity must be > 0");
+
+  const prod = data.products[prodIdx];
+  const purchase: Purchase = {
+    id: genId(),
+    date: date.toISOString(),
+    productId: prod.id,
+    unit: prod.unit,
+    quantity: qty,
+    notes: input.notes?.trim() || undefined,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  };
+
+  // persist purchase
+  data.purchases.push(purchase);
+  // increment stock
+  data.products[prodIdx] = {
+    ...prod,
+    stock: (Number(prod.stock) || 0) + qty,
+    updatedAt: nowIso(),
+  };
+
+  return purchase;
 }

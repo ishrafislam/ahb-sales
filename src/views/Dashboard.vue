@@ -94,6 +94,12 @@
               History
             </button>
             <button
+              class="col-span-2 bg-green-100 text-green-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-green-200 transition-colors"
+              @click="navigate('purchase-entry')"
+            >
+              Product Purchase
+            </button>
+            <button
               class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
               @click="navigate('customers')"
             >
@@ -145,28 +151,28 @@
             <div class="flex justify-between items-center">
               <span class="text-gray-600"> Paid </span>
               <input
+                v-model.number="paid"
                 class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm"
                 type="number"
-                :value="'0.00'"
-                disabled
+                min="0"
               />
             </div>
             <div class="flex justify-between items-center">
               <span class="text-gray-600"> Due </span>
-              <span class="font-semibold text-red-600"> {{ netText }} </span>
+              <span class="font-semibold text-red-600"> {{ dueText }} </span>
             </div>
             <div
               class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200"
             >
               <span class="text-gray-600"> Previous Due </span>
-              <span class="font-semibold"> 0.00 </span>
+              <span class="font-semibold"> {{ previousDueText }} </span>
             </div>
             <div
               class="flex justify-between items-center p-2 bg-red-100 rounded-md"
             >
               <span class="font-bold text-base text-red-600"> Net Due </span>
               <span class="font-bold text-lg text-red-600">
-                {{ netText }}
+                {{ netDueText }}
               </span>
             </div>
             <div class="mt-2 flex items-end gap-2">
@@ -215,7 +221,9 @@
             </div>
             <div>
               <span class="text-gray-600"> Due: </span>
-              <span class="font-medium text-red-600 ml-1"> — </span>
+              <span class="font-medium text-red-600 ml-1">
+                {{ formatMoney(Number(selectedCustomer?.outstanding || 0)) }}
+              </span>
             </div>
           </div>
         </div>
@@ -351,6 +359,7 @@ type Prod = {
 type Cust = {
   id: number;
   nameBn: string;
+  outstanding?: number;
 };
 
 const today = computed(() => new Date().toLocaleDateString("en-GB"));
@@ -365,6 +374,7 @@ const emit = defineEmits<{
       | "product-sales-history"
       | "product-purchase-history"
       | "customer-history"
+      | "purchase-entry"
   ): void;
 }>();
 
@@ -422,6 +432,7 @@ type ReceiptRow = {
 };
 const receipt = ref<ReceiptRow[]>([]);
 const discount = ref(0);
+const paid = ref(0);
 const notes = ref("");
 
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
@@ -445,12 +456,27 @@ const net = computed(() => {
   return ceil2(sub - clamped);
 });
 const netText = computed(() => formatMoney(net.value));
+const previousDue = computed(() =>
+  Number(selectedCustomer.value?.outstanding || 0)
+);
+const previousDueText = computed(() => formatMoney(previousDue.value));
+const due = computed(() => {
+  const p = Number(paid.value || 0);
+  const n = net.value;
+  const clamped = Math.max(0, Math.min(p, previousDue.value + n));
+  return ceil2(Math.max(0, n - clamped));
+});
+const dueText = computed(() => formatMoney(due.value));
+const netDue = computed(() => ceil2(previousDue.value + due.value));
+const netDueText = computed(() => formatMoney(netDue.value));
 
 const canComplete = computed(
   () =>
     !!selectedCustomer.value &&
     receipt.value.length > 0 &&
-    discount.value <= subtotal.value
+    discount.value <= subtotal.value &&
+    paid.value >= 0 &&
+    paid.value <= previousDue.value + net.value
 );
 
 function onSelectCustomer(c: Cust) {
@@ -499,6 +525,7 @@ async function complete() {
       date: new Date().toISOString(),
       customerId: selectedCustomer.value.id,
       discount: Number(discount.value || 0),
+      paid: Number(paid.value || 0),
       notes: notes.value,
       lines: receipt.value.map((r) => ({
         productId: r.productId,
@@ -513,6 +540,7 @@ async function complete() {
     // Reset draft
     receipt.value = [];
     discount.value = 0;
+    paid.value = 0;
     notes.value = "";
   } catch (e) {
     alert((e as Error).message);
@@ -521,7 +549,11 @@ async function complete() {
 
 async function loadCustomers() {
   const list = await window.ahb.listCustomers({ activeOnly: true });
-  customers.value = list.map((c) => ({ id: c.id, nameBn: c.nameBn }));
+  customers.value = list.map((c) => ({
+    id: c.id,
+    nameBn: c.nameBn,
+    outstanding: Number(c.outstanding || 0),
+  }));
 }
 async function loadProducts() {
   const list = await window.ahb.listProducts({ activeOnly: true });
