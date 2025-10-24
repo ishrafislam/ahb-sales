@@ -28,6 +28,16 @@ type AppAPI = {
   updateCustomer: (id: number, patch: unknown) => Promise<unknown>;
   // Phase 2: Invoices
   postInvoice: (payload: unknown) => Promise<Invoice>;
+  // Phase 3: History/listings
+  listInvoicesByCustomer: (customerId: number) => Promise<Invoice[]>;
+  listProductSales: (
+    productId: number
+  ) => Promise<import("./main/data").ProductSaleLine[]>;
+  listProductPurchases: (
+    productId: number
+  ) => Promise<import("./main/data").ProductPurchaseLine[]>;
+  // Phase 3: Purchase entry
+  postPurchase: (payload: unknown) => Promise<import("./main/data").Purchase>;
   onDataChanged: (
     cb: (payload: { kind: string; action: string; id: number }) => void
   ) => () => void;
@@ -59,6 +69,13 @@ const api: AppAPI = {
   updateCustomer: (id, patch) =>
     ipcRenderer.invoke("data:update-customer", id, patch),
   postInvoice: (payload) => ipcRenderer.invoke("data:post-invoice", payload),
+  listInvoicesByCustomer: (customerId) =>
+    ipcRenderer.invoke("data:list-invoices-by-customer", customerId),
+  listProductSales: (productId) =>
+    ipcRenderer.invoke("data:list-product-sales", productId),
+  listProductPurchases: (productId) =>
+    ipcRenderer.invoke("data:list-product-purchases", productId),
+  postPurchase: (payload) => ipcRenderer.invoke("data:post-purchase", payload),
   onDataChanged: (cb) => {
     const listener = (
       _: unknown,
