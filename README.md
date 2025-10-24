@@ -258,7 +258,7 @@ Phase 7: Future-ready hooks — PLANNED
 
 - UI localization for all views (only app menu is localized now).
 - Reporting and printing not implemented yet.
- 
+
 - Menu enable/disable state after file actions may need refinement (planned).
 
 ## Notes
