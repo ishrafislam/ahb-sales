@@ -82,6 +82,33 @@
     >
       <ProductPurchaseModal />
     </BaseModal>
+    <BaseModal
+      v-if="showReportMoneyCustomer"
+      title="Money Transaction — Customer Based"
+      :max-width="'5xl'"
+      @close="closeModals"
+    >
+      <ReportMoneyCustomer />
+    </BaseModal>
+    <BaseModal
+      v-if="showReportMoneyDayWise"
+      title="Money Transaction — Day Wise"
+      :max-width="'5xl'"
+      @close="closeModals"
+    >
+      <ReportMoneyDayWise />
+    </BaseModal>
+    <BaseModal
+      v-if="showReportDailyPayment"
+      title="Daily Payment Report"
+      :max-width="'4xl'"
+      @close="closeModals"
+    >
+      <ReportDailyPayment />
+    </BaseModal>
+    <BaseModal v-if="showSettings" title="Settings" @close="closeModals">
+      <SettingsModal />
+    </BaseModal>
   </div>
 </template>
 
@@ -95,6 +122,10 @@ import ProductPurchaseHistory from "./views/ProductPurchaseHistory.vue";
 import CustomerHistory from "./views/CustomerHistory.vue";
 import BaseModal from "./components/BaseModal.vue";
 import ProductPurchaseModal from "./views/ProductPurchaseModal.vue";
+import ReportMoneyCustomer from "./views/ReportMoneyCustomer.vue";
+import ReportMoneyDayWise from "./views/ReportMoneyDayWise.vue";
+import ReportDailyPayment from "./views/ReportDailyPayment.vue";
+import SettingsModal from "./views/SettingsModal.vue";
 
 const lang = ref<"bn" | "en">("bn");
 // Modal flags
@@ -104,6 +135,10 @@ const showSalesHistory = ref(false);
 const showPurchaseHistory = ref(false);
 const showCustomerHistory = ref(false);
 const showPurchaseEntry = ref(false);
+const showReportMoneyCustomer = ref(false);
+const showReportMoneyDayWise = ref(false);
+const showReportDailyPayment = ref(false);
+const showSettings = ref(false);
 const loaded = ref(false);
 
 // simple i18n removed from template usage; kept title only
@@ -138,6 +173,10 @@ function closeModals() {
   showPurchaseHistory.value = false;
   showCustomerHistory.value = false;
   showPurchaseEntry.value = false;
+  showReportMoneyCustomer.value = false;
+  showReportMoneyDayWise.value = false;
+  showReportDailyPayment.value = false;
+  showSettings.value = false;
 }
 
 function onNavigate(
@@ -149,6 +188,11 @@ function onNavigate(
     | "product-purchase-history"
     | "customer-history"
     | "purchase-entry"
+    | "reports"
+    | "report-money-customer"
+    | "report-money-daywise"
+    | "report-daily-payment"
+    | "settings"
     | string
 ) {
   if (page === "dashboard") {
@@ -178,6 +222,26 @@ function onNavigate(
   if (page === "purchase-entry") {
     closeModals();
     showPurchaseEntry.value = true;
+    return;
+  }
+  if (page === "report-money-customer") {
+    closeModals();
+    showReportMoneyCustomer.value = true;
+    return;
+  }
+  if (page === "report-money-daywise") {
+    closeModals();
+    showReportMoneyDayWise.value = true;
+    return;
+  }
+  if (page === "report-daily-payment") {
+    closeModals();
+    showReportDailyPayment.value = true;
+    return;
+  }
+  if (page === "settings") {
+    closeModals();
+    showSettings.value = true;
     return;
   }
   if (page === "customer-history") {

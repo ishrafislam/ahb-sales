@@ -18,7 +18,7 @@
             ✕
           </button>
         </div>
-        <div class="p-4 max-h-[75vh] overflow-hidden flex flex-col">
+        <div class="p-4 max-h-[85vh] overflow-auto flex flex-col">
           <slot />
         </div>
       </div>

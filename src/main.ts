@@ -40,6 +40,9 @@ import {
   listProductSales,
   listProductPurchases,
   postPurchase,
+  reportMoneyTransactionsCustomerRange,
+  reportMoneyTransactionsDayWise,
+  reportDailyPayments,
 } from "./main/data";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -209,6 +212,68 @@ ipcMain.handle("app:set-language", async (_e, lang: "bn" | "en") => {
   buildMenu();
 });
 
+// -----------------------
+// App settings (printing presets)
+// -----------------------
+type PrintSettings = {
+  paperSize: "A4" | "A5" | "Letter";
+  orientation: "portrait" | "landscape";
+  marginMm: number; // uniform margin in mm
+  // Stored only; not actively enforced with window.print()
+  printerDevice?: string;
+};
+
+const defaultPrintSettings: PrintSettings = {
+  paperSize: "A4",
+  orientation: "portrait",
+  marginMm: 12,
+};
+
+function getSettingsPath() {
+  // Store under userData directory
+  const dir = app.getPath("userData");
+  return path.join(dir, "settings.json");
+}
+
+function loadPrintSettings(): PrintSettings {
+  try {
+    const p = getSettingsPath();
+    if (!fs.existsSync(p)) return defaultPrintSettings;
+    const raw = fs.readFileSync(p, "utf-8");
+    const parsed = JSON.parse(raw);
+    return {
+      ...defaultPrintSettings,
+      ...parsed.print,
+    } as PrintSettings;
+  } catch {
+    return defaultPrintSettings;
+  }
+}
+
+function savePrintSettings(next: PrintSettings) {
+  try {
+    const p = getSettingsPath();
+    const payload = { print: next };
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify(payload, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Failed to save settings:", e);
+  }
+}
+
+ipcMain.handle("settings:get-print", async () => {
+  return loadPrintSettings();
+});
+ipcMain.handle(
+  "settings:set-print",
+  async (_e, settings: Partial<PrintSettings>) => {
+    const cur = loadPrintSettings();
+    const next = { ...cur, ...settings } as PrintSettings;
+    savePrintSettings(next);
+    return next;
+  }
+);
+
 // Phase 1: IPC for products/customers
 ipcMain.handle(
   "data:list-products",
@@ -293,6 +358,25 @@ ipcMain.handle(
     return purchase;
   }
 );
+
+// Phase 4: Reports IPC
+ipcMain.handle(
+  "report:money-customer-range",
+  async (_e, from: string, to: string) => {
+    const data = currentDoc.data as AhbDataV1;
+    return reportMoneyTransactionsCustomerRange(data, from, to);
+  }
+);
+
+ipcMain.handle("report:money-daywise", async (_e, from: string, to: string) => {
+  const data = currentDoc.data as AhbDataV1;
+  return reportMoneyTransactionsDayWise(data, from, to);
+});
+
+ipcMain.handle("report:daily-payment", async (_e, date: string) => {
+  const data = currentDoc.data as AhbDataV1;
+  return reportDailyPayments(data, date);
+});
 
 // -----------------------
 // App Menu (File + Language)

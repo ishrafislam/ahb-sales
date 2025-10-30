@@ -25,11 +25,19 @@
           </button>
         </div>
       </div>
-      <div class="flex items-center gap-2 text-sm text-gray-600">
-        <span> Date: </span>
-        <span>
-          {{ today }}
-        </span>
+      <div class="flex items-center gap-3">
+        <button
+          class="bg-white border border-gray-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-gray-100 transition-colors"
+          @click="navigate('settings')"
+        >
+          Settings
+        </button>
+        <div class="flex items-center gap-2 text-sm text-gray-600">
+          <span> Date: </span>
+          <span>
+            {{ today }}
+          </span>
+        </div>
       </div>
     </div>
 
@@ -88,13 +96,13 @@
         <div class="bg-white p-4 rounded-md shadow-sm border border-gray-200">
           <div class="grid grid-cols-2 gap-2">
             <button
-              class="col-span-2 bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
               @click="navigate('customer-history')"
             >
               History
             </button>
             <button
-              class="col-span-2 bg-green-100 text-green-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-green-200 transition-colors"
+              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
               @click="navigate('purchase-entry')"
             >
               Product Purchase
@@ -122,6 +130,24 @@
               @click="navigate('product-purchase-history')"
             >
               Purchase History
+            </button>
+            <button
+              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
+              @click="navigate('report-money-customer')"
+            >
+              Report: Customer
+            </button>
+            <button
+              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
+              @click="navigate('report-money-daywise')"
+            >
+              Report: Day Wise
+            </button>
+            <button
+              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
+              @click="navigate('report-daily-payment')"
+            >
+              Payment Report
             </button>
           </div>
         </div>
@@ -346,6 +372,7 @@
 <script setup lang="ts">
 defineOptions({ name: "AhbDashboardView" });
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { printInvoice } from "../print/invoice";
 
 type Prod = {
   id: number;
@@ -375,6 +402,10 @@ const emit = defineEmits<{
       | "product-purchase-history"
       | "customer-history"
       | "purchase-entry"
+      | "report-money-customer"
+      | "report-money-daywise"
+      | "report-daily-payment"
+      | "settings"
   ): void;
 }>();
 
@@ -537,6 +568,21 @@ async function complete() {
     showSuccess.value = true;
     successMessage.value = `Receipt saved successfully (Invoice #${inv.no})`;
     setTimeout(() => (showSuccess.value = false), 2500);
+    // Print the invoice immediately
+    try {
+      const productsMap: Record<number, { name: string; unit: string }> = {};
+      for (const r of receipt.value) {
+        productsMap[r.productId] = { name: r.nameBn, unit: r.unit };
+      }
+      printInvoice(inv as unknown as import("../main/data").Invoice, {
+        businessName: "ABDUL HAMID AND BROTHERS",
+        customerName: selectedCustomer.value.nameBn,
+        products: productsMap,
+      });
+    } catch (err) {
+      // non-fatal if print fails
+      console.error("print failed", err);
+    }
     // Reset draft
     receipt.value = [];
     discount.value = 0;

@@ -10,6 +10,7 @@ This README reflects the current implementation.
 - File ops: New, Open, Save, Save As with unsaved-change prompts.
 - Data: Products, Customers, Invoices (with Paid/Previous Due/Current Due), Purchases.
 - UI: Startup (New/Open), Dashboard for invoice entry, modals for Products, Customers, Customer History, Product Sales History, Product Purchase History, and Purchase Entry.
+- Reports & printing: Three report modals (Money Transaction — Customer Range, Money Transaction — Day Wise, Daily Payment) with print previews; invoice printing; saved print presets (paper/orientation/margins) via Settings.
 - Rounding: ceil to 2 decimals consistently (line totals, subtotals, net, due).
 - i18n: Runtime language switching (BN/EN) for the app menu; main views are not localized yet.
 - Tests: Unit and component tests for crypto, data, invoices (incl. paid/due), purchases, i18n, renderer views.
@@ -129,8 +130,8 @@ Implemented features
 
 Not yet implemented (planned)
 
-- Reports: Daily Report, Client Report (All Client), Money Transaction Report — Day Wise, Daily Payment Report.
-- Printing: Print preview and direct print with printer/paper/margins presets.
+- Full UI localization for all views and labels.
+- Bulk import/migration; roles/auth (out of scope for v1).
 - Full UI localization for all views and labels.
 - Bulk import/migration; roles/auth (out of scope for v1).
 
@@ -161,15 +162,17 @@ Purchase
 - Startup screen: New File / Open File.
 - Dashboard:
   - Header: New/Open/Save/Save As via header buttons and application menu.
+  - Settings: a Settings button to configure and persist print presets (paper size, orientation, margins).
   - Customer search and selection.
   - Product search/add for receipt lines.
   - Summary: Total, Discount, Bill (Net), Paid, Due, Previous Due, Net Due, Notes.
   - Complete button posts the invoice.
-  - Quick Actions open modals: Customers, Products, Customer History, Product Sales History, Product Purchase History, Purchase Entry.
+  - Quick Actions open modals: Customers, Products, Customer History, Product Sales History, Product Purchase History, Purchase Entry, and three Reports (Money Transaction — Customer Range, Money Transaction — Day Wise, Daily Payment).
 - Modals:
   - Products: navigate by ID, add or update details, view list.
   - Customers: navigate by ID, add or update details, view list.
   - Histories and Purchase Entry as described under features.
+  - Reports: each report opens in its own modal with a scrollable preview and sticky table headers for better readability.
 
 ## Tests and CI
 
@@ -215,10 +218,19 @@ Phase 3: Payments, histories, purchases — DONE
 - Purchase entry:
   - postPurchase increments stock and populates purchase history.
 
-Phase 4: Reporting and printing — PLANNED
+Phase 4: Reporting and printing — DONE
 
-- Reports: Daily, Client (All Client), Money Transaction Report — Day Wise, Daily Payment Report.
-- Printing: preview and direct print, printer selection, paper size and margin presets.
+- Reports (all dates displayed as DD-MM-YYYY):
+  - Money Transaction — Customer Range (date range filter)
+    - Columns: Date, Customer Name, Net Bill, Paid, Due, Previous Due, Total Due.
+  - Money Transaction — Day Wise (date range filter)
+    - Columns: Customer Name, Bill, Discount, Net Bill, Paid, Due, Previous Due, Total Due; grouped by day.
+  - Daily Payment Report (single date)
+    - Columns: Customer Name, Paid Amount.
+- Printing:
+  - Print preview and direct print for all reports and invoices.
+  - Print presets (paper size, orientation, margins) are configurable and persisted; defaults: A4, portrait, 12mm margins.
+  - Settings modal to manage presets; printing uses browser-like rendering with OS print dialog.
 
 Phase 5: Usability and polish — PLANNED
 
@@ -251,13 +263,13 @@ Phase 7: Future-ready hooks — PLANNED
 - One file equals one branch; no multi-branch logic.
 - Product IDs are integers 1–1000.
 - Monetary rounding: ceil to two decimals (policy set and enforced).
+- Report date display: DD-MM-YYYY for user-facing outputs; internal data uses ISO (YYYY-MM-DD).
 - No QR/barcodes in invoices v1.
 - No data import/migration in v1; no auth/roles in v1.
 
 ## Known Gaps
 
 - UI localization for all views (only app menu is localized now).
-- Reporting and printing not implemented yet.
 
 - Menu enable/disable state after file actions may need refinement (planned).
 
@@ -265,3 +277,49 @@ Phase 7: Future-ready hooks — PLANNED
 
 - Legacy system used file-per-day with cumulative data; this app lets users choose file lifespan.
 - Printing and bilingual support are significant to end users and prioritized in upcoming phases.
+
+## Reports and Printing
+
+Overview
+
+- Three reports are available from the Dashboard as separate buttons. Each opens a dedicated modal with a scrollable preview and sticky table headers.
+- All report dates are displayed as DD-MM-YYYY. Date inputs/filters accept YYYY-MM-DD.
+- All tables follow the app’s rounding policy (ceil to two decimals).
+
+Reports
+
+- Money Transaction — Customer Range (From/To): rows across all customers within the range with columns Date, Customer, Net Bill, Paid, Due, Previous Due, Total Due.
+- Money Transaction — Day Wise (From/To): grouped by day with customer rows and columns Bill, Discount, Net Bill, Paid, Due, Previous Due, Total Due.
+- Daily Payment (Date): per-customer payments for the given date with total paid at bottom.
+
+Printing
+
+- Reports and invoices can be printed. A browser-like print preview opens and the OS print dialog handles the actual print.
+- Print presets control the page: paper size, orientation, and margins. Defaults are A4, portrait, 12mm.
+- Presets are persisted in an app settings file under the OS user data directory and can be changed via the Settings button on the Dashboard.
+
+Invoice Printing
+
+- Invoices can be printed from the Dashboard and from Customer History using a shared print template for consistent layout and styling.
+
+## QA: Phase 4 sanity checks
+
+We include lightweight scripts to generate seed data and verify report outputs.
+
+1. Generate a seed file
+
+- Creates an encrypted .ahbs with demo products, customers, invoices, and purchases.
+- Output path: seeds/seed-phase4.ahbs
+
+2. Run the Phase 4 QA script
+
+- Decrypts the seed and runs the three report data functions over a recent 7-day range.
+- Logs ranges, counts, and totals for sanity checks.
+
+Example results from a 7-day seed on a development machine:
+
+- Customer Range: 89 rows; totals — Net Bill 158,963.01; Paid 145,908.00; Due 56,030.86
+- Day Wise: 7 days; first day rows: 10
+- Daily Payment (sample day): 12 rows; total paid: 18,510.00
+
+All unit tests and the QA script passed locally when these were recorded.

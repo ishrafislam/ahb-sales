@@ -45,6 +45,13 @@ export function initData(): AhbDataV1 {
 const nowIso = () => new Date().toISOString();
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+const isoToYmd = (iso: string) => iso.slice(0, 10); // YYYY-MM-DD (UTC slice)
+const toDDMMYYYY = (isoOrYmd: string) => {
+  // Accept either ISO or already YYYY-MM-DD; output DD-MM-YYYY
+  const ymd = isoOrYmd.includes("T") ? isoToYmd(isoOrYmd) : isoOrYmd;
+  const [y, m, d] = ymd.split("-");
+  return `${d}-${m}-${y}`;
+};
 
 // Ensure Phase 2 fields exist on data object for older files
 export type AhbDataV2 = Required<Pick<AhbDataV1, "invoices" | "invoiceSeq">> &
@@ -508,4 +515,269 @@ export function postPurchase(
   };
 
   return purchase;
+}
+
+// -----------------------
+// Phase 4: Reports (data aggregation)
+// -----------------------
+
+export type MoneyTxnCustomerRangeRow = {
+  date: string; // DD-MM-YYYY
+  customerId: number;
+  customerName?: string;
+  netBill: number;
+  paid: number;
+  due: number; // max(0, netBill - paid)
+  previousDue: number;
+  totalDue: number; // previousDue + due (== invoice.currentDue)
+};
+
+export type MoneyTxnCustomerRange = {
+  rows: MoneyTxnCustomerRangeRow[];
+  totals: { netBill: number; paid: number; due: number };
+};
+
+export function reportMoneyTransactionsCustomerRange(
+  data: AhbDataV1,
+  from: string,
+  to: string
+): MoneyTxnCustomerRange {
+  ensurePhase2(data);
+  const start = from;
+  const end = to;
+  const nameByCustomer = new Map<number, string>(
+    data.customers.map((c) => [c.id, c.nameBn])
+  );
+
+  const rows: MoneyTxnCustomerRangeRow[] = [];
+  for (const inv of data.invoices) {
+    const ymd = isoToYmd(inv.date);
+    if (ymd < start || ymd > end) continue;
+    const netBill = ceil2(inv.totals.net || 0);
+    const paid = ceil2(inv.paid || 0);
+    const due = Math.max(0, ceil2(netBill - paid));
+    const previousDue = ceil2(inv.previousDue || 0);
+    const totalDue = ceil2(previousDue + due); // equals inv.currentDue
+    rows.push({
+      date: toDDMMYYYY(ymd),
+      customerId: inv.customerId,
+      customerName: nameByCustomer.get(inv.customerId),
+      netBill,
+      paid,
+      due,
+      previousDue,
+      totalDue,
+    });
+  }
+
+  // Sort by date desc then customer asc for stability
+  rows.sort((a, b) =>
+    a.date < b.date ? 1 : a.date > b.date ? -1 : a.customerId - b.customerId
+  );
+
+  const totals = rows.reduce(
+    (acc, r) => ({
+      netBill: ceil2(acc.netBill + r.netBill),
+      paid: ceil2(acc.paid + r.paid),
+      due: ceil2(acc.due + r.due),
+    }),
+    { netBill: 0, paid: 0, due: 0 }
+  );
+
+  return { rows, totals };
+}
+
+export type MoneyTxnDayWiseRow = {
+  customerId: number;
+  customerName?: string;
+  bill: number; // sum of subtotals
+  discount: number; // sum of discounts
+  netBill: number; // sum of nets
+  paid: number; // sum of paid
+  due: number; // netBill - paid (ceil2, non-negative)
+  previousDue: number; // from earliest invoice for this customer on the day
+  totalDue: number; // previousDue + due
+};
+
+export type MoneyTxnDay = {
+  date: string; // DD-MM-YYYY
+  rows: MoneyTxnDayWiseRow[];
+  totals: {
+    bill: number;
+    discount: number;
+    netBill: number;
+    paid: number;
+    due: number;
+  };
+};
+
+export type MoneyTxnDayWise = {
+  days: MoneyTxnDay[];
+};
+
+export function reportMoneyTransactionsDayWise(
+  data: AhbDataV1,
+  from: string,
+  to: string
+): MoneyTxnDayWise {
+  ensurePhase2(data);
+  const start = from;
+  const end = to;
+  const nameByCustomer = new Map<number, string>(
+    data.customers.map((c) => [c.id, c.nameBn])
+  );
+
+  type Acc = {
+    bill: number;
+    discount: number;
+    netBill: number;
+    paid: number;
+    due: number;
+    earliestIso: string;
+    earliestPrevDue: number;
+  };
+
+  const dayMap = new Map<string, Map<number, Acc>>(); // ymd -> customerId -> Acc
+  for (const inv of data.invoices ?? []) {
+    const ymd = isoToYmd(inv.date);
+    if (ymd < start || ymd > end) continue;
+    const subtotal = ceil2(
+      inv.totals?.subtotal ??
+        inv.lines.reduce(
+          (s, l) => s + (l.lineTotal || ceil2(l.quantity * l.rate)),
+          0
+        )
+    );
+    const discount = ceil2(inv.discount || 0);
+    const net = ceil2(inv.totals?.net ?? Math.max(0, subtotal - discount));
+    const paid = ceil2(inv.paid || 0);
+    const due = Math.max(0, ceil2(net - paid));
+
+    let custMap = dayMap.get(ymd);
+    if (!custMap) {
+      custMap = new Map();
+      dayMap.set(ymd, custMap);
+    }
+    let acc = custMap.get(inv.customerId);
+    if (!acc) {
+      acc = {
+        bill: 0,
+        discount: 0,
+        netBill: 0,
+        paid: 0,
+        due: 0,
+        earliestIso: inv.date,
+        earliestPrevDue: ceil2(inv.previousDue || 0),
+      };
+      custMap.set(inv.customerId, acc);
+    }
+    acc.bill = ceil2(acc.bill + subtotal);
+    acc.discount = ceil2(acc.discount + discount);
+    acc.netBill = ceil2(acc.netBill + net);
+    acc.paid = ceil2(acc.paid + paid);
+    acc.due = ceil2(acc.due + due);
+    if (inv.date < acc.earliestIso) {
+      acc.earliestIso = inv.date;
+      acc.earliestPrevDue = ceil2(inv.previousDue || 0);
+    }
+  }
+
+  const days: MoneyTxnDay[] = [];
+  for (const [ymd, custMap] of dayMap) {
+    const rows: MoneyTxnDayWiseRow[] = [];
+    for (const [custId, acc] of custMap) {
+      const previousDue = ceil2(acc.earliestPrevDue);
+      const totalDue = ceil2(previousDue + acc.due);
+      rows.push({
+        customerId: custId,
+        customerName: nameByCustomer.get(custId),
+        bill: acc.bill,
+        discount: acc.discount,
+        netBill: acc.netBill,
+        paid: acc.paid,
+        due: acc.due,
+        previousDue,
+        totalDue,
+      });
+    }
+    // Sort rows by customer name/id for consistency
+    rows.sort((a, b) => {
+      const an = a.customerName ?? String(a.customerId);
+      const bn = b.customerName ?? String(b.customerId);
+      return an.localeCompare(bn, "en");
+    });
+    const totals = rows.reduce(
+      (t, r) => ({
+        bill: ceil2(t.bill + r.bill),
+        discount: ceil2(t.discount + r.discount),
+        netBill: ceil2(t.netBill + r.netBill),
+        paid: ceil2(t.paid + r.paid),
+        due: ceil2(t.due + r.due),
+      }),
+      { bill: 0, discount: 0, netBill: 0, paid: 0, due: 0 }
+    );
+    days.push({ date: toDDMMYYYY(ymd), rows, totals });
+  }
+  // Sort days by date desc (convert DD-MM-YYYY back for sort)
+  days.sort((a, b) => {
+    const [ad, am, ay] = a.date.split("-");
+    const [bd, bm, by] = b.date.split("-");
+    const as = `${ay}-${am}-${ad}`;
+    const bs = `${by}-${bm}-${bd}`;
+    return as < bs ? 1 : as > bs ? -1 : 0;
+  });
+  return { days };
+}
+
+// -----------------------
+// Phase 4: Daily Payment Report
+// -----------------------
+
+export type DailyPaymentRow = {
+  customerId: number;
+  customerName?: string;
+  paid: number;
+};
+
+export type DailyPaymentReport = {
+  header: { date: string }; // DD-MM-YYYY
+  rows: DailyPaymentRow[];
+  totals: { paid: number };
+};
+
+export function reportDailyPayments(
+  data: AhbDataV1,
+  date: string
+): DailyPaymentReport {
+  ensurePhase2(data);
+  const target = date; // YYYY-MM-DD
+  const nameByCustomer = new Map<number, string>(
+    data.customers.map((c) => [c.id, c.nameBn])
+  );
+
+  const rows: DailyPaymentRow[] = [];
+  for (const inv of data.invoices ?? []) {
+    const ymd = isoToYmd(inv.date);
+    if (ymd !== target) continue;
+    const paid = ceil2(inv.paid || 0);
+    if (paid <= 0) continue; // omit zero payments
+    rows.push({
+      customerId: inv.customerId,
+      customerName: nameByCustomer.get(inv.customerId),
+      paid,
+    });
+  }
+
+  // Sort rows by customer for stable display
+  rows.sort((a, b) => {
+    const an = a.customerName ?? String(a.customerId);
+    const bn = b.customerName ?? String(b.customerId);
+    return an.localeCompare(bn, "en");
+  });
+
+  const totals = rows.reduce((t, r) => ({ paid: ceil2(t.paid + r.paid) }), {
+    paid: 0,
+  });
+
+  return { header: { date: toDDMMYYYY(target) }, rows, totals };
 }
