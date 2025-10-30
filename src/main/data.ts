@@ -704,7 +704,7 @@ export function reportMoneyTransactionsDayWise(
     rows.sort((a, b) => {
       const an = a.customerName ?? String(a.customerId);
       const bn = b.customerName ?? String(b.customerId);
-      return an.localeCompare(bn, "en");
+      return an.localeCompare(bn, "bn");
     });
     const totals = rows.reduce(
       (t, r) => ({
@@ -772,7 +772,7 @@ export function reportDailyPayments(
   rows.sort((a, b) => {
     const an = a.customerName ?? String(a.customerId);
     const bn = b.customerName ?? String(b.customerId);
-    return an.localeCompare(bn, "en");
+    return an.localeCompare(bn, "bn");
   });
 
   const totals = rows.reduce((t, r) => ({ paid: ceil2(t.paid + r.paid) }), {

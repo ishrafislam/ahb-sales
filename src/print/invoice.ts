@@ -1,4 +1,5 @@
 import type { Invoice } from "../main/data";
+import { BUSINESS_NAME } from "../constants/business";
 
 function fmt(n: number): string {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
@@ -20,7 +21,7 @@ export function printInvoice(
     products: Record<number, ProductInfo>;
   }
 ) {
-  const business = opts.businessName ?? "ABDUL HAMID AND BROTHERS";
+  const business = opts.businessName ?? BUSINESS_NAME;
   const date = toDDMMYYYY(inv.date);
   const linesHtml = inv.lines
     .map((ln) => {

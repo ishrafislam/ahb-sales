@@ -77,9 +77,16 @@ function fmt(n: number) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 async function load() {
-  const rep = await window.ahb.reportDailyPayments(date.value);
-  rows.value = rep.rows;
-  totals.value = rep.totals;
+  try {
+    const rep = await window.ahb.reportDailyPayments(date.value);
+    rows.value = rep.rows;
+    totals.value = rep.totals;
+  } catch (err: any) {
+    alert(
+      "Failed to load daily payments: " +
+        (err && err.message ? err.message : String(err))
+    );
+  }
 }
 async function printReport() {
   const s = await window.ahb.getPrintSettings();

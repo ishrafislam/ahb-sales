@@ -169,11 +169,18 @@ function fmt(n: number) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }
 async function load() {
-  const rep = await window.ahb.reportMoneyTransactionsDayWise(
-    from.value,
-    to.value
-  );
-  days.value = rep.days;
+  try {
+    const rep = await window.ahb.reportMoneyTransactionsDayWise(
+      from.value,
+      to.value
+    );
+    days.value = rep.days;
+  } catch (err: any) {
+    alert(
+      "Failed to load day-wise money transactions report.\n" +
+        (err && err.message ? err.message : String(err))
+    );
+  }
 }
 async function printReport() {
   const s = await window.ahb.getPrintSettings();

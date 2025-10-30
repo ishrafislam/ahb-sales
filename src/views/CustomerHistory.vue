@@ -97,6 +97,7 @@
 defineOptions({ name: "AhbCustomerHistoryView" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { printInvoice } from "../print/invoice";
+import { BUSINESS_NAME } from "../constants/business";
 
 type Cust = { id: number; nameBn: string };
 
@@ -215,7 +216,7 @@ function onPrint(id: string) {
   for (const p of products.value)
     prodMap[p.id] = { name: p.nameBn, unit: p.unit };
   printInvoice(inv as unknown as import("../main/data").Invoice, {
-    businessName: "ABDUL HAMID AND BROTHERS",
+    businessName: BUSINESS_NAME,
     customerName: custName,
     products: prodMap,
   });

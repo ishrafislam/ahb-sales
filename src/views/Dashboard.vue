@@ -373,6 +373,7 @@
 defineOptions({ name: "AhbDashboardView" });
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { printInvoice } from "../print/invoice";
+import { BUSINESS_NAME } from "../constants/business";
 
 type Prod = {
   id: number;
@@ -575,7 +576,7 @@ async function complete() {
         productsMap[r.productId] = { name: r.nameBn, unit: r.unit };
       }
       printInvoice(inv as unknown as import("../main/data").Invoice, {
-        businessName: "ABDUL HAMID AND BROTHERS",
+        businessName: BUSINESS_NAME,
         customerName: selectedCustomer.value.nameBn,
         products: productsMap,
       });
