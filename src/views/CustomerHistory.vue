@@ -39,6 +39,7 @@
               <th class="px-4 py-3 text-right">Previous Due</th>
               <th class="px-4 py-3 text-right">Current Due</th>
               <th class="px-4 py-3">Comment</th>
+              <th class="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -71,6 +72,14 @@
               <td class="px-4 py-3">
                 {{ row.notes || "" }}
               </td>
+              <td class="px-4 py-3 text-right">
+                <button
+                  class="bg-white border border-gray-300 py-1 px-2 rounded-md text-xs font-semibold hover:bg-gray-100"
+                  @click="onPrint(row.id)"
+                >
+                  Print
+                </button>
+              </td>
             </tr>
             <tr v-if="!rows.length">
               <td class="px-4 py-3 text-center text-gray-500" colspan="8">
@@ -87,10 +96,13 @@
 <script setup lang="ts">
 defineOptions({ name: "AhbCustomerHistoryView" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { printInvoice } from "../print/invoice";
+import { BUSINESS_NAME } from "../constants/business";
 
 type Cust = { id: number; nameBn: string };
 
 const customers = ref<Cust[]>([]);
+const products = ref<Array<{ id: number; nameBn: string; unit: string }>>([]);
 const selectedId = ref<number>(1);
 const invoices = ref<
   Awaited<ReturnType<typeof window.ahb.listInvoicesByCustomer>>
@@ -149,6 +161,14 @@ async function loadCustomers() {
 async function loadInvoices() {
   invoices.value = await window.ahb.listInvoicesByCustomer(selectedId.value);
 }
+async function loadProducts() {
+  const list = await window.ahb.listProducts({ activeOnly: false });
+  products.value = list.map((p) => ({
+    id: p.id,
+    nameBn: p.nameBn,
+    unit: p.unit,
+  }));
+}
 
 const leftListRef = ref<HTMLElement | null>(null);
 async function scrollSelectedIntoView() {
@@ -165,14 +185,17 @@ async function scrollSelectedIntoView() {
 
 let off: null | (() => void) = null;
 onMounted(async () => {
-  await loadCustomers();
-  await loadInvoices();
+  await Promise.all([loadCustomers(), loadInvoices(), loadProducts()]);
   await scrollSelectedIntoView();
   off = window.ahb.onDataChanged((p) => {
     if (p.kind === "invoice" || p.kind === "customer") {
       void loadCustomers();
       void loadInvoices();
+      void loadProducts();
       void scrollSelectedIntoView();
+    }
+    if (p.kind === "product") {
+      void loadProducts();
     }
   });
 });
@@ -183,4 +206,19 @@ onUnmounted(() => {
 watch(selectedId, () => {
   void scrollSelectedIntoView();
 });
+
+function onPrint(id: string) {
+  const inv = invoices.value.find((i) => i.id === id);
+  if (!inv) return;
+  const custName =
+    customersById.value.get(inv.customerId)?.nameBn ?? String(inv.customerId);
+  const prodMap: Record<number, { name: string; unit: string }> = {};
+  for (const p of products.value)
+    prodMap[p.id] = { name: p.nameBn, unit: p.unit };
+  printInvoice(inv as unknown as import("../main/data").Invoice, {
+    businessName: BUSINESS_NAME,
+    customerName: custName,
+    products: prodMap,
+  });
+}
 </script>

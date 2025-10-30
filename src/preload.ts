@@ -38,6 +38,38 @@ type AppAPI = {
   ) => Promise<import("./main/data").ProductPurchaseLine[]>;
   // Phase 3: Purchase entry
   postPurchase: (payload: unknown) => Promise<import("./main/data").Purchase>;
+  // Phase 4: Reports
+  reportMoneyTransactionsCustomerRange: (
+    from: string,
+    to: string
+  ) => Promise<import("./main/data").MoneyTxnCustomerRange>;
+  reportMoneyTransactionsDayWise: (
+    from: string,
+    to: string
+  ) => Promise<import("./main/data").MoneyTxnDayWise>;
+  reportDailyPayments: (
+    date: string
+  ) => Promise<import("./main/data").DailyPaymentReport>;
+  // Settings
+  getPrintSettings: () => Promise<{
+    paperSize: "A4" | "A5" | "Letter";
+    orientation: "portrait" | "landscape";
+    marginMm: number;
+    printerDevice?: string;
+  }>;
+  setPrintSettings: (
+    s: Partial<{
+      paperSize: "A4" | "A5" | "Letter";
+      orientation: "portrait" | "landscape";
+      marginMm: number;
+      printerDevice?: string;
+    }>
+  ) => Promise<{
+    paperSize: "A4" | "A5" | "Letter";
+    orientation: "portrait" | "landscape";
+    marginMm: number;
+    printerDevice?: string;
+  }>;
   onDataChanged: (
     cb: (payload: { kind: string; action: string; id: number }) => void
   ) => () => void;
@@ -76,6 +108,14 @@ const api: AppAPI = {
   listProductPurchases: (productId) =>
     ipcRenderer.invoke("data:list-product-purchases", productId),
   postPurchase: (payload) => ipcRenderer.invoke("data:post-purchase", payload),
+  reportMoneyTransactionsCustomerRange: (from, to) =>
+    ipcRenderer.invoke("report:money-customer-range", from, to),
+  reportMoneyTransactionsDayWise: (from, to) =>
+    ipcRenderer.invoke("report:money-daywise", from, to),
+  reportDailyPayments: (date) =>
+    ipcRenderer.invoke("report:daily-payment", date),
+  getPrintSettings: () => ipcRenderer.invoke("settings:get-print"),
+  setPrintSettings: (s) => ipcRenderer.invoke("settings:set-print", s),
   onDataChanged: (cb) => {
     const listener = (
       _: unknown,
