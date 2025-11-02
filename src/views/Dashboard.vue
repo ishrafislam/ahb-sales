@@ -1,6 +1,6 @@
 <template>
   <!-- eslint-disable -->
-  <div class="flex flex-col h-screen overflow-hidden p-3 lg:p-4 gap-3 lg:gap-4">
+  <div class="flex flex-col h-screen p-3 lg:p-4 gap-3 lg:gap-4">
     <!-- Header -->
     <div class="flex justify-between items-center mb-1">
       <div class="flex items-center gap-4">
@@ -54,9 +54,9 @@
         <div
           class="bg-white p-4 rounded-md shadow-sm border border-gray-200 relative"
         >
-          <h3 class="text-base font-semibold mb-3">
+          <!-- <h3 class="text-base font-semibold mb-3">
             {{ t("search_customer") }}
-          </h3>
+          </h3> -->
           <div class="flex items-center gap-2">
             <input
               id="search-customer"
@@ -102,70 +102,8 @@
           </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="bg-white p-4 rounded-md shadow-sm border border-gray-200">
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
-              @click="navigate('customer-history')"
-            >
-              {{ t("customer_history_title") }}
-            </button>
-            <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
-              @click="navigate('purchase-entry')"
-            >
-              {{ t("product_purchase_title") }}
-            </button>
-            <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
-              @click="navigate('customers')"
-            >
-              {{ t("customers_title") }}
-            </button>
-            <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
-              @click="navigate('products')"
-            >
-              {{ t("products_title") }}
-            </button>
-            <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
-              @click="navigate('product-sales-history')"
-            >
-              {{ t("product_sales_history_title") }}
-            </button>
-            <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
-              @click="navigate('product-purchase-history')"
-            >
-              {{ t("product_purchase_history_title") }}
-            </button>
-            <button
-              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
-              @click="navigate('report-money-customer')"
-            >
-              {{ t("report_money_customer_title") }}
-            </button>
-            <button
-              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
-              @click="navigate('report-money-daywise')"
-            >
-              {{ t("report_money_daywise_title") }}
-            </button>
-            <button
-              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
-              @click="navigate('report-daily-payment')"
-            >
-              {{ t("report_daily_payment_title") }}
-            </button>
-          </div>
-        </div>
-
         <!-- Summary card -->
-        <div
-          class="mt-auto bg-white p-3 rounded-md shadow-sm border border-gray-200"
-        >
+        <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200">
           <div class="space-y-1.5 text-sm">
             <div class="flex justify-between items-center">
               <span class="text-gray-600"> {{ t("total_price") }} </span>
@@ -228,6 +166,68 @@
                 {{ t("complete") }}
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div
+          class="bg-white p-4 rounded-md shadow-sm border border-gray-200 mt-auto"
+        >
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              @click="navigate('customer-history')"
+            >
+              {{ t("customer_history_title") }}
+            </button>
+            <button
+              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              @click="navigate('purchase-entry')"
+            >
+              {{ t("product_purchase_title") }}
+            </button>
+            <button
+              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              @click="navigate('customers')"
+            >
+              {{ t("customers_title") }}
+            </button>
+            <button
+              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              @click="navigate('products')"
+            >
+              {{ t("products_title") }}
+            </button>
+            <button
+              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              @click="navigate('product-sales-history')"
+            >
+              {{ t("product_sales_history_title") }}
+            </button>
+            <button
+              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              @click="navigate('product-purchase-history')"
+            >
+              {{ t("product_purchase_history_title") }}
+            </button>
+            <button
+              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
+              @click="navigate('report-money-customer')"
+            >
+              {{ t("report_money_customer_title") }}
+            </button>
+            <button
+              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
+              @click="navigate('report-money-daywise')"
+            >
+              {{ t("report_money_daywise_title") }}
+            </button>
+            <button
+              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
+              @click="navigate('report-daily-payment')"
+            >
+              {{ t("report_daily_payment_title") }}
+            </button>
           </div>
         </div>
       </div>
