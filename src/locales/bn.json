@@ -101,5 +101,9 @@
   "complete": "সম্পন্ন",
   "receipt_saved": "রশিদ সংরক্ষিত (ইনভয়েস #{no})",
   "added_to_stock": "পণ্য {id}-এ {qty} {unit} যোগ করা হয়েছে",
-  "confirm_negative_stock": "কিছু আইটেম বর্তমান স্টকের চেয়ে বেশি ({count})। তবুও সম্পন্ন করবেন?"
+  "confirm_negative_stock": "কিছু আইটেম বর্তমান স্টকের চেয়ে বেশি ({count})। তবুও সম্পন্ন করবেন?",
+  "confirm": "নিশ্চিত করুন",
+  "cancel": "বাতিল",
+  "confirm_title": "নিশ্চিতকরণ",
+  "oversell_warning": "বর্তমান স্টকের চেয়ে বেশি"
 }

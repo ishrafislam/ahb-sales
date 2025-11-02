@@ -101,5 +101,9 @@
   "complete": "Complete",
   "receipt_saved": "Receipt saved successfully (Invoice #{no})",
   "added_to_stock": "Added {qty} {unit} to product {id}",
-  "confirm_negative_stock": "Some items exceed current stock ({count}). Complete anyway?"
+  "confirm_negative_stock": "Some items exceed current stock ({count}). Complete anyway?",
+  "confirm": "Confirm",
+  "cancel": "Cancel",
+  "confirm_title": "Confirm",
+  "oversell_warning": "Exceeds current stock"
 }

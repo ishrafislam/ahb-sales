@@ -301,7 +301,18 @@
                   {{ idx + 1 }}
                 </td>
                 <td class="p-2">
-                  {{ row.nameBn }}
+                  <div class="flex items-center gap-2">
+                    <span>{{ row.nameBn }}</span>
+                    <span
+                      v-if="isOversell(row)"
+                      class="inline-flex items-center gap-1 text-red-700 text-xs font-medium"
+                      :title="t('oversell_warning')"
+                      aria-live="polite"
+                    >
+                      <span aria-hidden="true">⚠️</span>
+                      <span class="sr-only">{{ t("oversell_warning") }}</span>
+                    </span>
+                  </div>
                 </td>
                 <td class="p-2 text-center">
                   <input
@@ -394,6 +405,17 @@
         </div>
       </div>
     </div>
+
+    <!-- Confirm negative stock modal -->
+    <ConfirmModal
+      v-if="showConfirmNegative"
+      :title="t('confirm_title')"
+      :message="t('confirm_negative_stock', { count: confirmOversCount })"
+      :confirmLabel="t('confirm')"
+      :cancelLabel="t('cancel')"
+      @confirm="onConfirmNegative"
+      @cancel="onCancelNegative"
+    />
   </div>
 </template>
 
@@ -403,6 +425,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { printInvoice } from "../print/invoice";
 import { t } from "../i18n";
 import { BUSINESS_NAME } from "../constants/business";
+import ConfirmModal from "../components/ConfirmModal.vue";
 
 type Prod = {
   id: number;
@@ -540,6 +563,61 @@ const canComplete = computed(
     paid.value <= previousDue.value + net.value
 );
 
+async function complete() {
+  if (!selectedCustomer.value || receipt.value.length === 0) return;
+  // If any line exceeds current stock, show non-blocking confirm modal
+  const overs = receipt.value.filter((r) => isOversell(r)).length;
+  if (overs > 0) {
+    confirmOversCount.value = overs;
+    showConfirmNegative.value = true;
+    return;
+  }
+  await doPostInvoice();
+}
+
+async function doPostInvoice() {
+  try {
+    const payload = {
+      date: new Date().toISOString(),
+      customerId: selectedCustomer.value!.id,
+      discount: Number(discount.value || 0),
+      paid: Number(paid.value || 0),
+      notes: notes.value,
+      lines: receipt.value.map((r) => ({
+        productId: r.productId,
+        quantity: r.quantity,
+        rate: r.rate,
+      })),
+    };
+    const inv = await window.ahb.postInvoice(payload as unknown);
+    showSuccess.value = true;
+    successMessage.value = t("receipt_saved", { no: inv.no });
+    setTimeout(() => (showSuccess.value = false), 2500);
+    try {
+      const productsMap: Record<number, { name: string; unit: string }> = {};
+      for (const r of receipt.value) {
+        productsMap[r.productId] = { name: r.nameBn, unit: r.unit };
+      }
+      printInvoice(inv as unknown as import("../main/data").Invoice, {
+        businessName: BUSINESS_NAME,
+        customerName: selectedCustomer.value!.nameBn,
+        products: productsMap,
+      });
+    } catch (err) {
+      console.error("print failed", err);
+    }
+    // Reset draft
+    receipt.value = [];
+    discount.value = 0;
+    paid.value = 0;
+    notes.value = "";
+  } catch (e) {
+    showError.value = true;
+    errorMessage.value = (e as Error).message;
+    setTimeout(() => (showError.value = false), 3000);
+  }
+}
+
 function onSelectCustomer(c: Cust) {
   selectedCustomer.value = c;
   customerQuery.value = `${c.id} - ${c.nameBn}`;
@@ -579,57 +657,7 @@ function onQuantityInput(idx: number, evt: Event) {
   recomputeRow(idx);
 }
 
-async function complete() {
-  if (!selectedCustomer.value || receipt.value.length === 0) return;
-  // Optional confirmation if any line exceeds current stock
-  const overs = receipt.value.filter((r) => isOversell(r)).length;
-  if (overs > 0) {
-    const ok = window.confirm(t("confirm_negative_stock", { count: overs }));
-    if (!ok) return;
-  }
-  try {
-    const payload = {
-      date: new Date().toISOString(),
-      customerId: selectedCustomer.value.id,
-      discount: Number(discount.value || 0),
-      paid: Number(paid.value || 0),
-      notes: notes.value,
-      lines: receipt.value.map((r) => ({
-        productId: r.productId,
-        quantity: r.quantity,
-        rate: r.rate,
-      })),
-    };
-    const inv = await window.ahb.postInvoice(payload as unknown);
-    showSuccess.value = true;
-    successMessage.value = t("receipt_saved", { no: inv.no });
-    setTimeout(() => (showSuccess.value = false), 2500);
-    // Print the invoice immediately
-    try {
-      const productsMap: Record<number, { name: string; unit: string }> = {};
-      for (const r of receipt.value) {
-        productsMap[r.productId] = { name: r.nameBn, unit: r.unit };
-      }
-      printInvoice(inv as unknown as import("../main/data").Invoice, {
-        businessName: BUSINESS_NAME,
-        customerName: selectedCustomer.value.nameBn,
-        products: productsMap,
-      });
-    } catch (err) {
-      // non-fatal if print fails
-      console.error("print failed", err);
-    }
-    // Reset draft
-    receipt.value = [];
-    discount.value = 0;
-    paid.value = 0;
-    notes.value = "";
-  } catch (e) {
-    showError.value = true;
-    errorMessage.value = (e as Error).message;
-    setTimeout(() => (showError.value = false), 3000);
-  }
-}
+// (Removed older window.confirm-based complete() implementation)
 
 async function loadCustomers() {
   const list = await window.ahb.listCustomers({ activeOnly: true });
@@ -727,5 +755,16 @@ const productStock = computed(() => {
 function isOversell(row: ReceiptRow): boolean {
   const stk = productStock.value.get(row.productId) ?? 0;
   return row.quantity > stk;
+}
+
+// Confirm modal state & handlers
+const showConfirmNegative = ref(false);
+const confirmOversCount = ref(0);
+function onConfirmNegative() {
+  showConfirmNegative.value = false;
+  void doPostInvoice();
+}
+function onCancelNegative() {
+  showConfirmNegative.value = false;
 }
 </script>
