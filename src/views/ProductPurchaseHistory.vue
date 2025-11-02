@@ -31,9 +31,15 @@
         <table class="w-full text-left text-sm">
           <thead>
             <tr>
-              <th class="p-2">Date</th>
-              <th class="p-2 text-center">Quantity</th>
-              <th class="p-2">Unit</th>
+              <th class="p-2">
+                {{ t("date") }}
+              </th>
+              <th class="p-2 text-center">
+                {{ t("quantity") }}
+              </th>
+              <th class="p-2">
+                {{ t("unit") }}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -54,7 +60,7 @@
             </tr>
             <tr v-if="!rows.length">
               <td class="p-2 text-center text-gray-500" colspan="3">
-                No purchases
+                {{ t("no_purchases") }}
               </td>
             </tr>
           </tbody>
@@ -67,6 +73,7 @@
 <script setup lang="ts">
 defineOptions({ name: "AhbProductPurchaseHistoryView" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { t } from "../i18n";
 
 type Prod = { id: number; nameBn: string };
 

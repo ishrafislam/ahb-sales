@@ -2,28 +2,44 @@
   <div class="space-y-3">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div>
-        <label class="block text-xs text-gray-600 mb-1">Paper size</label>
+        <label class="block text-xs text-gray-600 mb-1">
+          {{ t("paper_size") }}
+        </label>
         <select
           v-model="paperSize"
           class="w-full bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
         >
-          <option value="A4">A4</option>
-          <option value="A5">A5</option>
-          <option value="Letter">Letter</option>
+          <option value="A4">
+            {{ t("a4") }}
+          </option>
+          <option value="A5">
+            {{ t("a5") }}
+          </option>
+          <option value="Letter">
+            {{ t("letter") }}
+          </option>
         </select>
       </div>
       <div>
-        <label class="block text-xs text-gray-600 mb-1">Orientation</label>
+        <label class="block text-xs text-gray-600 mb-1">
+          {{ t("orientation") }}
+        </label>
         <select
           v-model="orientation"
           class="w-full bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
         >
-          <option value="portrait">Portrait</option>
-          <option value="landscape">Landscape</option>
+          <option value="portrait">
+            {{ t("portrait") }}
+          </option>
+          <option value="landscape">
+            {{ t("landscape") }}
+          </option>
         </select>
       </div>
       <div>
-        <label class="block text-xs text-gray-600 mb-1">Margin (mm)</label>
+        <label class="block text-xs text-gray-600 mb-1">
+          {{ t("margin_mm") }}
+        </label>
         <input
           v-model.number="marginMm"
           type="number"
@@ -32,38 +48,42 @@
         />
       </div>
       <div>
-        <label class="block text-xs text-gray-600 mb-1">Printer (name)</label>
+        <label class="block text-xs text-gray-600 mb-1">
+          {{ t("printer_name") }}
+        </label>
         <input
           v-model="printerDevice"
           type="text"
-          placeholder="Optional"
+          :placeholder="t('optional')"
           class="w-full bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
         />
         <p class="text-xs text-gray-500 mt-1">
-          Stored only. Selecting printer programmatically is supported when
-          printing from main process.
+          {{ t("printer_note") }}
         </p>
       </div>
     </div>
     <div class="pt-2 flex gap-2 justify-end">
-      <button
-        class="bg-gray-200 text-gray-900 px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-gray-300"
-        @click="resetDefaults"
-      >
-        Reset
+      <button class="btn" @click="resetDefaults">
+        {{ t("reset") }}
       </button>
-      <button
-        class="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-blue-700"
-        @click="save"
-      >
-        Save
+      <button class="btn btn-primary" @click="save">
+        {{ t("save") }}
       </button>
+    </div>
+
+    <!-- Toasts -->
+    <div
+      v-if="showSuccess"
+      class="fixed bottom-4 right-4 bg-green-600 text-white px-3 py-2 rounded shadow"
+    >
+      {{ t("saved") }}
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { t } from "../i18n";
 
 const paperSize = ref<"A4" | "A5" | "Letter">("A4");
 const orientation = ref<"portrait" | "landscape">("portrait");
@@ -90,10 +110,13 @@ async function save() {
     marginMm: marginMm.value,
     printerDevice: printerDevice.value || undefined,
   });
-  alert("Saved");
+  showSuccess.value = true;
+  setTimeout(() => (showSuccess.value = false), 2000);
 }
 
 onMounted(() => {
   void load();
 });
+
+const showSuccess = ref(false);
 </script>

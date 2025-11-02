@@ -1,10 +1,12 @@
 <template>
   <div class="space-y-4">
-    <h3 class="text-xl font-semibold">Products</h3>
+    <h3 class="text-xl font-semibold">
+      {{ t("products_title") }}
+    </h3>
 
     <form class="grid grid-cols-7 gap-2 items-end" @submit.prevent="onAdd">
       <label class="col-span-1 text-sm">
-        ID
+        {{ t("id") }}
         <input
           v-model.number="form.id"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -15,7 +17,7 @@
         />
       </label>
       <label class="col-span-2 text-sm">
-        Name (BN)
+        {{ t("name") }}
         <input
           v-model="form.nameBn"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -23,14 +25,14 @@
         />
       </label>
       <label class="col-span-1 text-sm">
-        Unit
+        {{ t("unit") }}
         <input
           v-model="form.unit"
           class="mt-1 w-full border rounded px-2 py-1"
         />
       </label>
       <label class="col-span-1 text-sm">
-        Price
+        {{ t("price") }}
         <input
           v-model.number="form.price"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -39,7 +41,7 @@
         />
       </label>
       <label class="col-span-1 text-sm">
-        Stock
+        {{ t("stock") }}
         <input
           v-model.number="form.stock"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -51,7 +53,7 @@
         <button
           class="px-3 py-1.5 bg-teal-600 text-white rounded hover:bg-teal-700"
         >
-          Add
+          {{ t("add") }}
         </button>
         <span v-if="error" class="text-sm text-red-600 ml-2">
           {{ error }}
@@ -62,12 +64,24 @@
     <table class="min-w-full border text-sm">
       <thead>
         <tr class="bg-gray-100">
-          <th class="border px-2 py-1 text-left">ID</th>
-          <th class="border px-2 py-1 text-left">Name</th>
-          <th class="border px-2 py-1 text-left">Unit</th>
-          <th class="border px-2 py-1 text-right">Price</th>
-          <th class="border px-2 py-1 text-right">Stock</th>
-          <th class="border px-2 py-1 text-center">Active</th>
+          <th class="border px-2 py-1 text-left">
+            {{ t("id") }}
+          </th>
+          <th class="border px-2 py-1 text-left">
+            {{ t("name") }}
+          </th>
+          <th class="border px-2 py-1 text-left">
+            {{ t("unit") }}
+          </th>
+          <th class="border px-2 py-1 text-right">
+            {{ t("price") }}
+          </th>
+          <th class="border px-2 py-1 text-right">
+            {{ t("stock") }}
+          </th>
+          <th class="border px-2 py-1 text-center">
+            {{ t("active") }}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -92,7 +106,9 @@
           </td>
         </tr>
         <tr v-if="products.length === 0">
-          <td class="border px-2 py-2 text-center" colspan="6">No products</td>
+          <td class="border px-2 py-2 text-center" colspan="6">
+            {{ t("no_products") }}
+          </td>
         </tr>
       </tbody>
     </table>
@@ -101,6 +117,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
+import { t } from "../i18n";
 
 type Product = {
   id: number;

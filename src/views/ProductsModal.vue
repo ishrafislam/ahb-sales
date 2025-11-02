@@ -35,7 +35,7 @@
                 for="item-id"
                 class="block text-sm font-medium text-gray-600"
               >
-                Item ID
+                {{ t("item_id") }}
               </label>
               <input
                 id="item-id"
@@ -50,7 +50,7 @@
                 for="item-name"
                 class="block text-sm font-medium text-gray-600"
               >
-                Item Name
+                {{ t("item_name") }}
               </label>
               <input
                 id="item-name"
@@ -64,7 +64,7 @@
                 for="description"
                 class="block text-sm font-medium text-gray-600"
               >
-                Description
+                {{ t("description") }}
               </label>
               <textarea
                 id="description"
@@ -78,7 +78,7 @@
                 for="unit-price"
                 class="block text-sm font-medium text-gray-600"
               >
-                Unit Price
+                {{ t("unit_price") }}
               </label>
               <input
                 id="unit-price"
@@ -93,7 +93,7 @@
                   for="stock"
                   class="block text-sm font-medium text-gray-600"
                 >
-                  Stock
+                  {{ t("stock") }}
                 </label>
                 <input
                   id="stock"
@@ -107,7 +107,7 @@
                   for="unit"
                   class="block text-sm font-medium text-gray-600"
                 >
-                  Unit
+                  {{ t("unit") }}
                 </label>
                 <input
                   id="unit"
@@ -119,7 +119,7 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-600">
-                Status
+                {{ t("status") }}
               </label>
               <div class="mt-2 flex items-center space-x-4">
                 <label class="flex items-center">
@@ -129,7 +129,7 @@
                     type="radio"
                     value="active"
                   />
-                  <span class="ml-2 text-sm">Active</span>
+                  <span class="ml-2 text-sm">{{ t("active") }}</span>
                 </label>
                 <label class="flex items-center">
                   <input
@@ -138,7 +138,7 @@
                     type="radio"
                     value="inactive"
                   />
-                  <span class="ml-2 text-sm">Inactive</span>
+                  <span class="ml-2 text-sm">{{ t("inactive") }}</span>
                 </label>
               </div>
             </div>
@@ -148,39 +148,39 @@
               class="w-full text-center bg-gray-200 text-gray-900 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300"
               @click="first"
             >
-              First
+              {{ t("first") }}
             </button>
             <button
               class="w-full text-center bg-gray-200 text-gray-900 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300"
               @click="previous"
             >
-              Previous
+              {{ t("previous") }}
             </button>
             <button
               class="w-full text-center bg-gray-200 text-gray-900 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300"
               @click="next"
             >
-              Next
+              {{ t("next") }}
             </button>
             <button
               class="w-full text-center bg-gray-200 text-gray-900 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300"
               @click="last"
             >
-              Last
+              {{ t("last") }}
             </button>
             <button
               class="w-full text-center bg-green-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-green-700 mt-4"
               :disabled="exists || !canAdd"
               @click="add"
             >
-              Add
+              {{ t("add") }}
             </button>
             <button
               class="w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-blue-700"
               :disabled="!exists || !isDirty"
               @click="update"
             >
-              Update
+              {{ t("update") }}
             </button>
           </div>
         </div>
@@ -191,6 +191,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { t } from "../i18n";
 
 interface ProductRow {
   id: number;

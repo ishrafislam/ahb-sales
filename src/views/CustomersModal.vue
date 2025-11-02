@@ -35,7 +35,7 @@
                 for="customer-id"
                 class="block text-sm font-medium text-gray-600"
               >
-                ID
+                {{ t("id") }}
               </label>
               <input
                 id="customer-id"
@@ -50,7 +50,7 @@
                 for="customer-name"
                 class="block text-sm font-medium text-gray-600"
               >
-                Name
+                {{ t("name") }}
               </label>
               <input
                 id="customer-name"
@@ -64,7 +64,7 @@
                 for="customer-address"
                 class="block text-sm font-medium text-gray-600"
               >
-                Address
+                {{ t("address") }}
               </label>
               <textarea
                 id="customer-address"
@@ -74,9 +74,9 @@
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-600"
-                >Status</label
-              >
+              <label class="block text-sm font-medium text-gray-600">
+                {{ t("status") }}
+              </label>
               <div class="mt-2 flex items-center space-x-4">
                 <label class="flex items-center">
                   <input
@@ -85,7 +85,7 @@
                     type="radio"
                     value="active"
                   />
-                  <span class="ml-2 text-sm">Active</span>
+                  <span class="ml-2 text-sm">{{ t("active") }}</span>
                 </label>
                 <label class="flex items-center">
                   <input
@@ -94,7 +94,7 @@
                     type="radio"
                     value="inactive"
                   />
-                  <span class="ml-2 text-sm">Inactive</span>
+                  <span class="ml-2 text-sm">{{ t("inactive") }}</span>
                 </label>
               </div>
             </div>
@@ -104,39 +104,39 @@
               class="w-full text-center bg-blue-100 text-blue-700 py-2 px-4 rounded-md text-sm font-semibold hover:bg-blue-200"
               @click="first"
             >
-              First
+              {{ t("first") }}
             </button>
             <button
               class="w-full text-center bg-blue-100 text-blue-700 py-2 px-4 rounded-md text-sm font-semibold hover:bg-blue-200"
               @click="previous"
             >
-              Previous
+              {{ t("previous") }}
             </button>
             <button
               class="w-full text-center bg-blue-100 text-blue-700 py-2 px-4 rounded-md text-sm font-semibold hover:bg-blue-200"
               @click="next"
             >
-              Next
+              {{ t("next") }}
             </button>
             <button
               class="w-full text-center bg-blue-100 text-blue-700 py-2 px-4 rounded-md text-sm font-semibold hover:bg-blue-200"
               @click="last"
             >
-              Last
+              {{ t("last") }}
             </button>
             <button
               class="w-full text-center bg-green-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-green-700 mt-2"
               :disabled="exists || !canAdd"
               @click="add"
             >
-              Add
+              {{ t("add") }}
             </button>
             <button
               class="w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-blue-700"
               :disabled="!exists || !isDirty"
               @click="update"
             >
-              Update
+              {{ t("update") }}
             </button>
           </div>
         </div>
@@ -147,6 +147,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { t } from "../i18n";
 
 interface CustomerRow {
   id: number;

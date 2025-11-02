@@ -137,7 +137,7 @@ describe("postInvoice (Phase 2)", () => {
     ).toThrow(/exceed subtotal/);
   });
 
-  it("rejects insufficient stock and invalid quantities/rates", () => {
+  it("allows negative stock and rejects invalid quantities/rates", () => {
     const data = initData();
     addProduct(data, {
       id: 1,
@@ -148,13 +148,14 @@ describe("postInvoice (Phase 2)", () => {
     });
     addCustomer(data, { id: 1, nameBn: "C" });
 
-    // Insufficient stock
-    expect(() =>
-      postInvoice(data, {
-        customerId: 1,
-        lines: [{ productId: 1, quantity: 2 }],
-      })
-    ).toThrow(/Insufficient stock/);
+    // Previously would throw; now allowed and stock can go negative
+    const inv = postInvoice(data, {
+      customerId: 1,
+      lines: [{ productId: 1, quantity: 2 }],
+    });
+    expect(inv.lines[0]).toMatchObject({ productId: 1, quantity: 2 });
+    const p = data.products.find((p) => p.id === 1)!;
+    expect(p.stock).toBe(-1);
 
     // Invalid quantity
     expect(() =>

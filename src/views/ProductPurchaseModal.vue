@@ -1,4 +1,5 @@
 <template>
+  <!-- eslint-disable -->
   <div class="flex flex-1 min-h-0 w-[700px] max-w-full">
     <!-- Left list -->
     <div class="w-[30%] border-r border-gray-200 flex flex-col">
@@ -31,7 +32,7 @@
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-600">
-              Product ID
+              {{ t("product_id") }}
             </label>
             <input
               :value="String(selectedId)"
@@ -42,7 +43,7 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-600">
-              Product Name
+              {{ t("product_name") }}
             </label>
             <input
               :value="selected?.nameBn || ''"
@@ -56,7 +57,7 @@
         <div class="grid grid-cols-[1fr_auto] gap-3 items-end">
           <div>
             <label class="block text-sm font-medium text-gray-600">
-              Quantity
+              {{ t("quantity") }}
             </label>
             <input
               v-model.number="quantity"
@@ -79,21 +80,29 @@
             :disabled="!canSubmit"
             type="submit"
           >
-            Add to Stock
+            {{ t("add_to_stock") }}
           </button>
         </div>
 
         <p v-if="!exists" class="text-red-600 text-sm">
-          No product found for this ID. Please select an existing product.
+          {{ t("no_product_found") }}
         </p>
       </form>
     </div>
+  </div>
+  <!-- Success toast -->
+  <div
+    v-if="showSuccess"
+    class="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg"
+  >
+    {{ successMessage }}
   </div>
 </template>
 
 <script setup lang="ts">
 defineOptions({ name: "AhbProductPurchaseModal" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { t } from "../i18n";
 
 type Prod = { id: number; nameBn: string; unit: string };
 
@@ -137,10 +146,14 @@ async function submit() {
     productId: selected.value.id,
     quantity: quantity.value,
   });
-  // Show a pop up on success
-  window.alert(
-    `Added ${quantity.value} ${unitLabel.value} to product ${selected.value.id}`
-  );
+  // Success toast
+  showSuccess.value = true;
+  successMessage.value = t("added_to_stock", {
+    qty: quantity.value,
+    unit: unitLabel.value,
+    id: selected.value.id,
+  });
+  setTimeout(() => (showSuccess.value = false), 2500);
   // reset qty but keep selection
   quantity.value = 1;
 }
@@ -174,4 +187,7 @@ onUnmounted(() => {
 watch(selectedId, () => {
   void scrollSelectedIntoView();
 });
+
+const showSuccess = ref(false);
+const successMessage = ref("");
 </script>

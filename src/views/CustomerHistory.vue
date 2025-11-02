@@ -31,15 +31,33 @@
         <table class="w-full text-sm text-left">
           <thead class="text-xs uppercase bg-gray-50 sticky top-0">
             <tr>
-              <th class="px-4 py-3">Date</th>
-              <th class="px-4 py-3 text-right">Total Price</th>
-              <th class="px-4 py-3 text-right">Bill</th>
-              <th class="px-4 py-3 text-right">Paid</th>
-              <th class="px-4 py-3 text-right">Due</th>
-              <th class="px-4 py-3 text-right">Previous Due</th>
-              <th class="px-4 py-3 text-right">Current Due</th>
-              <th class="px-4 py-3">Comment</th>
-              <th class="px-4 py-3 text-right">Actions</th>
+              <th class="px-4 py-3">
+                {{ t("date") }}
+              </th>
+              <th class="px-4 py-3 text-right">
+                {{ t("total_price") }}
+              </th>
+              <th class="px-4 py-3 text-right">
+                {{ t("bill") }}
+              </th>
+              <th class="px-4 py-3 text-right">
+                {{ t("paid") }}
+              </th>
+              <th class="px-4 py-3 text-right">
+                {{ t("due") }}
+              </th>
+              <th class="px-4 py-3 text-right">
+                {{ t("previous_due") }}
+              </th>
+              <th class="px-4 py-3 text-right">
+                {{ t("current_due") }}
+              </th>
+              <th class="px-4 py-3">
+                {{ t("comment") }}
+              </th>
+              <th class="px-4 py-3 text-right">
+                {{ t("actions") }}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -77,13 +95,13 @@
                   class="bg-white border border-gray-300 py-1 px-2 rounded-md text-xs font-semibold hover:bg-gray-100"
                   @click="onPrint(row.id)"
                 >
-                  Print
+                  {{ t("print") }}
                 </button>
               </td>
             </tr>
             <tr v-if="!rows.length">
               <td class="px-4 py-3 text-center text-gray-500" colspan="8">
-                No invoices
+                {{ t("no_invoices") }}
               </td>
             </tr>
           </tbody>
@@ -96,6 +114,7 @@
 <script setup lang="ts">
 defineOptions({ name: "AhbCustomerHistoryView" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { t } from "../i18n";
 import { printInvoice } from "../print/invoice";
 import { BUSINESS_NAME } from "../constants/business";
 

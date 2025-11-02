@@ -1,10 +1,12 @@
 <template>
   <div class="space-y-4">
-    <h3 class="text-xl font-semibold">Customers</h3>
+    <h3 class="text-xl font-semibold">
+      {{ t("customers_title") }}
+    </h3>
 
     <form class="grid grid-cols-6 gap-2 items-end" @submit.prevent="onAdd">
       <label class="col-span-1 text-sm">
-        ID
+        {{ t("id") }}
         <input
           v-model.number="form.id"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -14,7 +16,7 @@
         />
       </label>
       <label class="col-span-2 text-sm">
-        Name (BN)
+        {{ t("name") }}
         <input
           v-model="form.nameBn"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -22,14 +24,14 @@
         />
       </label>
       <label class="col-span-2 text-sm">
-        Address
+        {{ t("address") }}
         <input
           v-model="form.address"
           class="mt-1 w-full border rounded px-2 py-1"
         />
       </label>
       <label class="col-span-1 text-sm">
-        Outstanding
+        {{ t("outstanding") }}
         <input
           v-model.number="form.outstanding"
           class="mt-1 w-full border rounded px-2 py-1"
@@ -41,7 +43,7 @@
         <button
           class="px-3 py-1.5 bg-teal-600 text-white rounded hover:bg-teal-700"
         >
-          Add
+          {{ t("add") }}
         </button>
         <span v-if="error" class="text-sm text-red-600 ml-2">
           {{ error }}
@@ -52,11 +54,21 @@
     <table class="min-w-full border text-sm">
       <thead>
         <tr class="bg-gray-100">
-          <th class="border px-2 py-1 text-left">ID</th>
-          <th class="border px-2 py-1 text-left">Name</th>
-          <th class="border px-2 py-1 text-left">Address</th>
-          <th class="border px-2 py-1 text-right">Outstanding</th>
-          <th class="border px-2 py-1 text-center">Active</th>
+          <th class="border px-2 py-1 text-left">
+            {{ t("id") }}
+          </th>
+          <th class="border px-2 py-1 text-left">
+            {{ t("name") }}
+          </th>
+          <th class="border px-2 py-1 text-left">
+            {{ t("address") }}
+          </th>
+          <th class="border px-2 py-1 text-right">
+            {{ t("outstanding") }}
+          </th>
+          <th class="border px-2 py-1 text-center">
+            {{ t("active") }}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -78,7 +90,9 @@
           </td>
         </tr>
         <tr v-if="customers.length === 0">
-          <td class="border px-2 py-2 text-center" colspan="5">No customers</td>
+          <td class="border px-2 py-2 text-center" colspan="5">
+            {{ t("no_customers") }}
+          </td>
         </tr>
       </tbody>
     </table>
@@ -87,6 +101,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
+import { t } from "../i18n";
 
 type Customer = {
   id: number;

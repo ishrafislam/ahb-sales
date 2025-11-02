@@ -31,12 +31,24 @@
         <table class="w-full text-left text-sm">
           <thead>
             <tr>
-              <th class="p-2">Date</th>
-              <th class="p-2">Invoice #</th>
-              <th class="p-2">Customer</th>
-              <th class="p-2 text-center">Quantity</th>
-              <th class="p-2 text-right">Unit Price</th>
-              <th class="p-2 text-right">Total</th>
+              <th class="p-2">
+                {{ t("date") }}
+              </th>
+              <th class="p-2">
+                {{ t("invoice_no") }}
+              </th>
+              <th class="p-2">
+                {{ t("customer") }}
+              </th>
+              <th class="p-2 text-center">
+                {{ t("quantity") }}
+              </th>
+              <th class="p-2 text-right">
+                {{ t("unit_price") }}
+              </th>
+              <th class="p-2 text-right">
+                {{ t("total") }}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -64,7 +76,7 @@
             </tr>
             <tr v-if="!rows.length">
               <td class="p-2 text-center text-gray-500" colspan="6">
-                No sales
+                {{ t("no_sales") }}
               </td>
             </tr>
           </tbody>
@@ -77,6 +89,7 @@
 <script setup lang="ts">
 defineOptions({ name: "AhbProductSalesHistoryView" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { t } from "../i18n";
 
 type Prod = { id: number; nameBn: string };
 

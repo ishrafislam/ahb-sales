@@ -21,13 +21,13 @@
             class="h-10 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700"
             @click="newFile"
           >
-            New File
+            {{ t("new_file") }}
           </button>
           <button
             class="h-10 rounded bg-gray-200 text-gray-900 font-semibold hover:bg-gray-300"
             @click="openFile"
           >
-            Open File
+            {{ t("open_file") }}
           </button>
         </div>
       </div>
@@ -40,7 +40,7 @@
     <!-- Modals -->
     <BaseModal
       v-if="showCustomers"
-      title="Customers"
+      :title="t('customers_title')"
       :max-width="'4xl'"
       @close="closeModals"
     >
@@ -48,7 +48,7 @@
     </BaseModal>
     <BaseModal
       v-if="showProducts"
-      title="Products"
+      :title="t('products_title')"
       :max-width="'5xl'"
       @close="closeModals"
     >
@@ -56,35 +56,35 @@
     </BaseModal>
     <BaseModal
       v-if="showSalesHistory"
-      title="Product Sales History"
+      :title="t('product_sales_history_title')"
       @close="closeModals"
     >
       <ProductSalesHistory @navigate="onNavigate" />
     </BaseModal>
     <BaseModal
       v-if="showPurchaseHistory"
-      title="Product Purchase History"
+      :title="t('product_purchase_history_title')"
       @close="closeModals"
     >
       <ProductPurchaseHistory @navigate="onNavigate" />
     </BaseModal>
     <BaseModal
       v-if="showCustomerHistory"
-      title="Customer History"
+      :title="t('customer_history_title')"
       @close="closeModals"
     >
       <CustomerHistory @navigate="onNavigate" />
     </BaseModal>
     <BaseModal
       v-if="showPurchaseEntry"
-      title="Product Purchase"
+      :title="t('product_purchase_title')"
       @close="closeModals"
     >
       <ProductPurchaseModal />
     </BaseModal>
     <BaseModal
       v-if="showReportMoneyCustomer"
-      title="Money Transaction — Customer Based"
+      :title="t('report_money_customer_title')"
       :max-width="'5xl'"
       @close="closeModals"
     >
@@ -92,7 +92,7 @@
     </BaseModal>
     <BaseModal
       v-if="showReportMoneyDayWise"
-      title="Money Transaction — Day Wise"
+      :title="t('report_money_daywise_title')"
       :max-width="'5xl'"
       @close="closeModals"
     >
@@ -100,13 +100,17 @@
     </BaseModal>
     <BaseModal
       v-if="showReportDailyPayment"
-      title="Daily Payment Report"
+      :title="t('report_daily_payment_title')"
       :max-width="'4xl'"
       @close="closeModals"
     >
       <ReportDailyPayment />
     </BaseModal>
-    <BaseModal v-if="showSettings" title="Settings" @close="closeModals">
+    <BaseModal
+      v-if="showSettings"
+      :title="t('settings_title')"
+      @close="closeModals"
+    >
       <SettingsModal />
     </BaseModal>
   </div>
@@ -114,6 +118,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { initI18n, t } from "./i18n";
 import ProductsModal from "./views/ProductsModal.vue";
 import CustomersModal from "./views/CustomersModal.vue";
 import Dashboard from "./views/Dashboard.vue";
@@ -157,6 +162,7 @@ function openFile() {
 // Save actions available within Dashboard itself
 
 onMounted(() => {
+  void initI18n();
   syncLang();
   window.ahb.onLanguageChanged((l) => {
     lang.value = l;

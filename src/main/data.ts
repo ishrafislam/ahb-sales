@@ -158,15 +158,7 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
   const invoiceDue = Math.max(0, ceil2(net - paid));
   const currentDue = ceil2(previousDue + invoiceDue);
 
-  // Stock check
-  for (const l of lines) {
-    const prod = data.products.find((p) => p.id === l.productId)!;
-    if (prod.stock < l.quantity) {
-      throw new Error(
-        `Insufficient stock for product ${prod.id} (${prod.nameBn}). Available: ${prod.stock}, required: ${l.quantity}`
-      );
-    }
-  }
+  // Stock check removed: allow negative stock (policy change)
 
   // Assign invoice no and id
   const invoiceNo = data.invoiceSeq++;
@@ -345,6 +337,10 @@ export function updateCustomer(
   const idx = data.customers.findIndex((x) => x.id === id);
   if (idx === -1) throw new Error("Customer not found");
   const old = data.customers[idx];
+  // Policy: Outstanding can only be set during creation; editing later is not allowed
+  if (Object.prototype.hasOwnProperty.call(patch, "outstanding")) {
+    throw new Error("Outstanding can only be set when creating a customer");
+  }
   const next: Customer = { ...old, ...patch, updatedAt: nowIso() };
   data.customers[idx] = next;
   return next;

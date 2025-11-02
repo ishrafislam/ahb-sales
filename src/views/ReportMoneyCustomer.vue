@@ -3,7 +3,9 @@
     <div class="bg-white border border-gray-200 rounded-md p-3 mb-3">
       <div class="flex flex-wrap items-end gap-2">
         <div class="flex flex-col">
-          <label class="text-xs text-gray-600"> From </label>
+          <label class="text-xs text-gray-600">
+            {{ t("from") }}
+          </label>
           <input
             v-model="from"
             type="date"
@@ -11,25 +13,20 @@
           />
         </div>
         <div class="flex flex-col">
-          <label class="text-xs text-gray-600"> To </label>
+          <label class="text-xs text-gray-600">
+            {{ t("to") }}
+          </label>
           <input
             v-model="to"
             type="date"
             class="bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
           />
         </div>
-        <button
-          class="ml-auto bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-blue-700"
-          @click="load"
-        >
-          Fetch
+        <button class="ml-auto btn btn-primary" @click="load">
+          {{ t("fetch") }}
         </button>
-        <button
-          class="bg-gray-200 text-gray-800 px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-gray-300"
-          :disabled="rows.length === 0"
-          @click="printReport"
-        >
-          Print
+        <button class="btn" :disabled="rows.length === 0" @click="printReport">
+          {{ t("print") }}
         </button>
       </div>
     </div>
@@ -37,15 +34,27 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="text-left border-b border-gray-200">
-            <th class="p-2 sticky top-0 bg-white z-10">Date</th>
-            <th class="p-2 sticky top-0 bg-white z-10">Customer Name</th>
-            <th class="p-2 text-right sticky top-0 bg-white z-10">Net Bill</th>
-            <th class="p-2 text-right sticky top-0 bg-white z-10">Paid</th>
-            <th class="p-2 text-right sticky top-0 bg-white z-10">Due</th>
-            <th class="p-2 text-right sticky top-0 bg-white z-10">
-              Previous Due
+            <th class="p-2 sticky top-0 bg-white z-10">
+              {{ t("date") }}
             </th>
-            <th class="p-2 text-right sticky top-0 bg-white z-10">Total Due</th>
+            <th class="p-2 sticky top-0 bg-white z-10">
+              {{ t("customer_name") }}
+            </th>
+            <th class="p-2 text-right sticky top-0 bg-white z-10">
+              {{ t("net_bill") }}
+            </th>
+            <th class="p-2 text-right sticky top-0 bg-white z-10">
+              {{ t("paid") }}
+            </th>
+            <th class="p-2 text-right sticky top-0 bg-white z-10">
+              {{ t("due") }}
+            </th>
+            <th class="p-2 text-right sticky top-0 bg-white z-10">
+              {{ t("previous_due") }}
+            </th>
+            <th class="p-2 text-right sticky top-0 bg-white z-10">
+              {{ t("total_due") }}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -74,13 +83,15 @@
           </tr>
           <tr v-if="rows.length === 0">
             <td class="p-2 text-center text-gray-500" colspan="7">
-              No records
+              {{ t("no_records") }}
             </td>
           </tr>
         </tbody>
         <tfoot>
           <tr>
-            <td class="p-2 font-semibold" colspan="2">Totals</td>
+            <td class="p-2 font-semibold" colspan="2">
+              {{ t("totals") }}
+            </td>
             <td class="p-2 text-right font-semibold">
               {{ fmt(totals.netBill) }}
             </td>
@@ -95,10 +106,19 @@
         </tfoot>
       </table>
     </div>
+
+    <!-- Error toast -->
+    <div
+      v-if="showError"
+      class="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded shadow-lg"
+    >
+      {{ errorMessage }}
+    </div>
   </div>
 </template>
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { t } from "../i18n";
 
 const todayYmd = () => {
   const d = new Date();
@@ -136,10 +156,9 @@ async function load() {
     rows.value = rep.rows;
     totals.value = rep.totals;
   } catch (err: any) {
-    alert(
-      "Failed to load report: " +
-        (err && err.message ? err.message : String(err))
-    );
+    showError.value = true;
+    errorMessage.value = err && err.message ? err.message : String(err);
+    setTimeout(() => (showError.value = false), 3000);
   }
 }
 async function printReport() {
@@ -216,4 +235,7 @@ async function printReport() {
 onMounted(() => {
   void load();
 });
+
+const showError = ref(false);
+const errorMessage = ref("");
 </script>
