@@ -3,7 +3,9 @@
     <div class="bg-white border border-gray-200 rounded-md p-3 mb-3">
       <div class="flex flex-wrap items-end gap-2">
         <div class="flex flex-col">
-          <label class="text-xs text-gray-600"> From </label>
+          <label class="text-xs text-gray-600">
+            {{ t("from") }}
+          </label>
           <input
             v-model="from"
             type="date"
@@ -11,25 +13,20 @@
           />
         </div>
         <div class="flex flex-col">
-          <label class="text-xs text-gray-600"> To </label>
+          <label class="text-xs text-gray-600">
+            {{ t("to") }}
+          </label>
           <input
             v-model="to"
             type="date"
             class="bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
           />
         </div>
-        <button
-          class="ml-auto bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-blue-700"
-          @click="load"
-        >
-          Fetch
+        <button class="ml-auto btn btn-primary" @click="load">
+          {{ t("fetch") }}
         </button>
-        <button
-          class="bg-gray-200 text-gray-800 px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-gray-300"
-          :disabled="days.length === 0"
-          @click="printReport"
-        >
-          Print
+        <button class="btn" :disabled="days.length === 0" @click="printReport">
+          {{ t("print") }}
         </button>
       </div>
     </div>
@@ -44,22 +41,23 @@
         <div
           class="flex items-center justify-between bg-gray-50 px-3 py-2 border-b border-gray-200"
         >
-          <div class="font-semibold">Date: {{ day.date }}</div>
+          <div class="font-semibold">{{ t("date") }}: {{ day.date }}</div>
           <div class="text-sm text-gray-700 flex gap-4">
             <span>
-              Bill: <strong>{{ fmt(day.totals.bill) }}</strong>
+              {{ t("bill") }}: <strong>{{ fmt(day.totals.bill) }}</strong>
             </span>
             <span>
-              Discount: <strong>{{ fmt(day.totals.discount) }}</strong>
+              {{ t("discount") }}:
+              <strong>{{ fmt(day.totals.discount) }}</strong>
             </span>
             <span>
-              Net: <strong>{{ fmt(day.totals.netBill) }}</strong>
+              {{ t("net") }}: <strong>{{ fmt(day.totals.netBill) }}</strong>
             </span>
             <span>
-              Paid: <strong>{{ fmt(day.totals.paid) }}</strong>
+              {{ t("paid") }}: <strong>{{ fmt(day.totals.paid) }}</strong>
             </span>
             <span>
-              Due: <strong>{{ fmt(day.totals.due) }}</strong>
+              {{ t("due") }}: <strong>{{ fmt(day.totals.due) }}</strong>
             </span>
           </div>
         </div>
@@ -67,21 +65,29 @@
           <table class="w-full text-sm">
             <thead>
               <tr class="text-left border-b border-gray-200">
-                <th class="p-2 sticky top-0 bg-white z-10">Customer</th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">Bill</th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">
-                  Discount
+                <th class="p-2 sticky top-0 bg-white z-10">
+                  {{ t("customer") }}
                 </th>
                 <th class="p-2 text-right sticky top-0 bg-white z-10">
-                  Net Bill
-                </th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">Paid</th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">Due</th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">
-                  Previous Due
+                  {{ t("bill") }}
                 </th>
                 <th class="p-2 text-right sticky top-0 bg-white z-10">
-                  Total Due
+                  {{ t("discount") }}
+                </th>
+                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                  {{ t("net_bill") }}
+                </th>
+                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                  {{ t("paid") }}
+                </th>
+                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                  {{ t("due") }}
+                </th>
+                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                  {{ t("previous_due") }}
+                </th>
+                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                  {{ t("total_due") }}
                 </th>
               </tr>
             </thead>
@@ -118,7 +124,7 @@
               </tr>
               <tr v-if="day.rows.length === 0">
                 <td class="p-2 text-center text-gray-500" colspan="8">
-                  No records
+                  {{ t("no_records") }}
                 </td>
               </tr>
             </tbody>
@@ -126,13 +132,22 @@
         </div>
       </div>
       <div v-if="days.length === 0" class="text-center text-sm text-gray-500">
-        No days found in range
+        {{ t("no_days_found") }}
       </div>
     </div>
+  </div>
+
+  <!-- Error toast -->
+  <div
+    v-if="showError"
+    class="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded shadow-lg"
+  >
+    {{ errorMessage }}
   </div>
 </template>
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { t } from "../i18n";
 
 type DayWiseRow = {
   customerId: number;
@@ -176,10 +191,9 @@ async function load() {
     );
     days.value = rep.days;
   } catch (err: any) {
-    alert(
-      "Failed to load day-wise money transactions report.\n" +
-        (err && err.message ? err.message : String(err))
-    );
+    showError.value = true;
+    errorMessage.value = err && err.message ? err.message : String(err);
+    setTimeout(() => (showError.value = false), 3000);
   }
 }
 async function printReport() {
@@ -274,4 +288,7 @@ async function printReport() {
 onMounted(() => {
   void load();
 });
+
+const showError = ref(false);
+const errorMessage = ref("");
 </script>

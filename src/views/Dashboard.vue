@@ -1,4 +1,5 @@
 <template>
+  <!-- eslint-disable -->
   <div class="flex flex-col h-screen overflow-hidden p-3 lg:p-4 gap-3 lg:gap-4">
     <!-- Header -->
     <div class="flex justify-between items-center mb-1">
@@ -9,19 +10,19 @@
             class="bg-white border border-gray-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-gray-100 transition-colors"
             @click="openFile"
           >
-            Open
+            {{ t("menu_open") }}
           </button>
           <button
             class="bg-white border border-gray-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-gray-100 transition-colors"
             @click="saveFile"
           >
-            Save
+            {{ t("menu_save") }}
           </button>
           <button
             class="bg-white border border-gray-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-gray-100 transition-colors"
             @click="saveFileAs"
           >
-            Save As
+            {{ t("menu_save_as") }}
           </button>
         </div>
       </div>
@@ -30,10 +31,10 @@
           class="bg-white border border-gray-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-gray-100 transition-colors"
           @click="navigate('settings')"
         >
-          Settings
+          {{ t("settings") }}
         </button>
         <div class="flex items-center gap-2 text-sm text-gray-600">
-          <span> Date: </span>
+          <span> {{ t("date_label") }}: </span>
           <span>
             {{ today }}
           </span>
@@ -53,23 +54,29 @@
         <div
           class="bg-white p-4 rounded-md shadow-sm border border-gray-200 relative"
         >
-          <h3 class="text-base font-semibold mb-3">Search Customer</h3>
+          <h3 class="text-base font-semibold mb-3">
+            {{ t("search_customer") }}
+          </h3>
           <div class="flex items-center gap-2">
             <input
               id="search-customer"
               v-model="customerQuery"
               name="search-customer"
               type="text"
-              placeholder="Enter Customer ID or Name"
+              :placeholder="t('search_customer_placeholder')"
               class="w-full bg-gray-50 border border-gray-300 rounded-md pl-3 pr-2 py-1.5 text-sm"
               @focus="customerDropdownOpen = true"
               @input="customerDropdownOpen = true"
+              @keydown.down.prevent="moveCustomerHighlight(1)"
+              @keydown.up.prevent="moveCustomerHighlight(-1)"
+              @keydown.enter.prevent="confirmCustomerSelection()"
+              @keydown.esc.prevent="customerDropdownOpen = false"
             />
             <button
               class="bg-blue-600 text-white py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-700 transition-colors"
               @click="selectFirstCustomerMatch"
             >
-              Search
+              {{ t("search") }}
             </button>
           </div>
           <div
@@ -78,9 +85,12 @@
           >
             <ul class="divide-y divide-gray-200">
               <li
-                v-for="c in filteredCustomers"
+                v-for="(c, idx) in filteredCustomers"
                 :key="c.id"
-                class="p-3 hover:bg-gray-50 cursor-pointer"
+                class="p-3 cursor-pointer"
+                :class="
+                  idx === customerHighlight ? 'bg-gray-100' : 'hover:bg-gray-50'
+                "
                 @click="onSelectCustomer(c)"
               >
                 <div class="flex justify-between items-center">
@@ -99,55 +109,55 @@
               class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
               @click="navigate('customer-history')"
             >
-              History
+              {{ t("customer_history_title") }}
             </button>
             <button
               class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
               @click="navigate('purchase-entry')"
             >
-              Product Purchase
+              {{ t("product_purchase_title") }}
             </button>
             <button
               class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
               @click="navigate('customers')"
             >
-              Customers
+              {{ t("customers_title") }}
             </button>
             <button
               class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
               @click="navigate('products')"
             >
-              Products
+              {{ t("products_title") }}
             </button>
             <button
               class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
               @click="navigate('product-sales-history')"
             >
-              Sales History
+              {{ t("product_sales_history_title") }}
             </button>
             <button
               class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
               @click="navigate('product-purchase-history')"
             >
-              Purchase History
+              {{ t("product_purchase_history_title") }}
             </button>
             <button
               class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
               @click="navigate('report-money-customer')"
             >
-              Report: Customer
+              {{ t("report_money_customer_title") }}
             </button>
             <button
               class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
               @click="navigate('report-money-daywise')"
             >
-              Report: Day Wise
+              {{ t("report_money_daywise_title") }}
             </button>
             <button
               class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
               @click="navigate('report-daily-payment')"
             >
-              Payment Report
+              {{ t("report_daily_payment_title") }}
             </button>
           </div>
         </div>
@@ -158,11 +168,11 @@
         >
           <div class="space-y-1.5 text-sm">
             <div class="flex justify-between items-center">
-              <span class="text-gray-600"> Total Price </span>
+              <span class="text-gray-600"> {{ t("total_price") }} </span>
               <span class="font-semibold"> {{ subtotalText }} </span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-600"> Discount </span>
+              <span class="text-gray-600"> {{ t("discount") }} </span>
               <input
                 v-model.number="discount"
                 type="number"
@@ -171,11 +181,11 @@
               />
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-600"> Bill </span>
+              <span class="text-gray-600"> {{ t("bill") }} </span>
               <span class="font-semibold"> {{ netText }} </span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-600"> Paid </span>
+              <span class="text-gray-600"> {{ t("paid") }} </span>
               <input
                 v-model.number="paid"
                 class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm"
@@ -184,19 +194,21 @@
               />
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-600"> Due </span>
+              <span class="text-gray-600"> {{ t("due") }} </span>
               <span class="font-semibold text-red-600"> {{ dueText }} </span>
             </div>
             <div
               class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200"
             >
-              <span class="text-gray-600"> Previous Due </span>
+              <span class="text-gray-600"> {{ t("previous_due") }} </span>
               <span class="font-semibold"> {{ previousDueText }} </span>
             </div>
             <div
               class="flex justify-between items-center p-2 bg-red-100 rounded-md"
             >
-              <span class="font-bold text-base text-red-600"> Net Due </span>
+              <span class="font-bold text-base text-red-600">
+                {{ t("net_due") }}
+              </span>
               <span class="font-bold text-lg text-red-600">
                 {{ netDueText }}
               </span>
@@ -204,7 +216,7 @@
             <div class="mt-2 flex items-end gap-2">
               <textarea
                 v-model="notes"
-                placeholder="Comment"
+                :placeholder="t('comment')"
                 rows="2"
                 class="flex-grow bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
               />
@@ -213,7 +225,7 @@
                 :disabled="!canComplete"
                 @click="complete"
               >
-                Complete
+                {{ t("complete") }}
               </button>
             </div>
           </div>
@@ -226,27 +238,27 @@
       >
         <div class="bg-blue-50 p-3 rounded-lg mb-4">
           <h3 class="text-base font-semibold mb-2 text-blue-700">
-            Customer Information
+            {{ t("customer_info") }}
           </h3>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 text-sm">
             <div>
-              <span class="text-gray-600"> ID: </span>
+              <span class="text-gray-600"> {{ t("id") }}: </span>
               <span class="font-medium ml-1">
                 {{ selectedCustomer?.id ?? "—" }}
               </span>
             </div>
             <div>
-              <span class="text-gray-600"> Name: </span>
+              <span class="text-gray-600"> {{ t("name") }}: </span>
               <span class="font-medium ml-1">
                 {{ selectedCustomer?.nameBn ?? "—" }}
               </span>
             </div>
             <div>
-              <span class="text-gray-600"> Last Bill: </span>
+              <span class="text-gray-600"> {{ t("last_bill") }}: </span>
               <span class="font-medium ml-1"> — </span>
             </div>
             <div>
-              <span class="text-gray-600"> Due: </span>
+              <span class="text-gray-600"> {{ t("due") }}: </span>
               <span class="font-medium text-red-600 ml-1">
                 {{ formatMoney(Number(selectedCustomer?.outstanding || 0)) }}
               </span>
@@ -262,19 +274,19 @@
                   #
                 </th>
                 <th class="p-2 text-xs font-semibold text-gray-600">
-                  PRODUCT NAME
+                  {{ t("product_name") }}
                 </th>
                 <th class="p-2 text-xs font-semibold text-gray-600 text-center">
-                  QUANTITY
+                  {{ t("quantity") }}
                 </th>
                 <th class="p-2 text-xs font-semibold text-gray-600 text-center">
-                  UNIT
+                  {{ t("unit") }}
                 </th>
                 <th class="p-2 text-xs font-semibold text-gray-600 text-right">
-                  UNIT PRICE
+                  {{ t("unit_price") }}
                 </th>
                 <th class="p-2 text-xs font-semibold text-gray-600 text-right">
-                  TOTAL
+                  {{ t("total") }}
                 </th>
               </tr>
             </thead>
@@ -283,12 +295,24 @@
                 v-for="(row, idx) in receipt"
                 :key="row.productId"
                 class="border-b border-gray-200"
+                :class="{ 'bg-red-50': isOversell(row) }"
               >
                 <td class="p-2 text-center">
                   {{ idx + 1 }}
                 </td>
                 <td class="p-2">
-                  {{ row.nameBn }}
+                  <div class="flex items-center gap-2">
+                    <span>{{ row.nameBn }}</span>
+                    <span
+                      v-if="isOversell(row)"
+                      class="inline-flex items-center gap-1 text-red-700 text-xs font-medium"
+                      :title="t('oversell_warning')"
+                      aria-live="polite"
+                    >
+                      <span aria-hidden="true">⚠️</span>
+                      <span class="sr-only">{{ t("oversell_warning") }}</span>
+                    </span>
+                  </div>
                 </td>
                 <td class="p-2 text-center">
                   <input
@@ -311,7 +335,7 @@
               </tr>
               <tr v-if="receipt.length === 0">
                 <td class="p-2 text-center text-gray-500" colspan="6">
-                  No items
+                  {{ t("no_items") }}
                 </td>
               </tr>
             </tbody>
@@ -325,10 +349,14 @@
               v-model="productQuery"
               name="search-product"
               type="text"
-              placeholder="Search for products to add..."
+              :placeholder="t('search_products_placeholder')"
               class="w-full bg-gray-50 border border-gray-300 rounded-md pl-3 pr-2 py-2 text-sm"
               @focus="productDropdownOpen = true"
               @input="productDropdownOpen = true"
+              @keydown.down.prevent="moveProductHighlight(1)"
+              @keydown.up.prevent="moveProductHighlight(-1)"
+              @keydown.enter.prevent="confirmProductSelection()"
+              @keydown.esc.prevent="productDropdownOpen = false"
             />
             <div
               v-if="productDropdownOpen && filteredProducts.length"
@@ -336,14 +364,19 @@
             >
               <ul class="text-sm">
                 <li
-                  v-for="p in filteredProducts"
+                  v-for="(p, idx) in filteredProducts"
                   :key="p.id"
-                  class="px-4 py-2 hover:bg-gray-50 cursor-pointer"
+                  class="px-4 py-2 cursor-pointer"
+                  :class="
+                    idx === productHighlight
+                      ? 'bg-gray-100'
+                      : 'hover:bg-gray-50'
+                  "
                   @click="onSelectProduct(p)"
                 >
                   <div class="flex justify-between">
                     <span class="font-medium">{{ p.nameBn }}</span>
-                    <span class="text-gray-500">ID: {{ p.id }}</span>
+                    <span class="text-gray-500">{{ t("id") }}: {{ p.id }}</span>
                   </div>
                 </li>
               </ul>
@@ -353,7 +386,7 @@
             class="bg-green-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-green-700 transition-colors"
             @click="addFirstProductMatch"
           >
-            Add
+            {{ t("add") }}
           </button>
         </div>
 
@@ -364,16 +397,35 @@
         >
           {{ successMessage }}
         </div>
+        <div
+          v-if="showError"
+          class="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded shadow-lg"
+        >
+          {{ errorMessage }}
+        </div>
       </div>
     </div>
+
+    <!-- Confirm negative stock modal -->
+    <ConfirmModal
+      v-if="showConfirmNegative"
+      :title="t('confirm_title')"
+      :message="t('confirm_negative_stock', { count: confirmOversCount })"
+      :confirmLabel="t('confirm')"
+      :cancelLabel="t('cancel')"
+      @confirm="onConfirmNegative"
+      @cancel="onCancelNegative"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 defineOptions({ name: "AhbDashboardView" });
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { printInvoice } from "../print/invoice";
+import { t } from "../i18n";
 import { BUSINESS_NAME } from "../constants/business";
+import ConfirmModal from "../components/ConfirmModal.vue";
 
 type Prod = {
   id: number;
@@ -511,6 +563,61 @@ const canComplete = computed(
     paid.value <= previousDue.value + net.value
 );
 
+async function complete() {
+  if (!selectedCustomer.value || receipt.value.length === 0) return;
+  // If any line exceeds current stock, show non-blocking confirm modal
+  const overs = receipt.value.filter((r) => isOversell(r)).length;
+  if (overs > 0) {
+    confirmOversCount.value = overs;
+    showConfirmNegative.value = true;
+    return;
+  }
+  await doPostInvoice();
+}
+
+async function doPostInvoice() {
+  try {
+    const payload = {
+      date: new Date().toISOString(),
+      customerId: selectedCustomer.value!.id,
+      discount: Number(discount.value || 0),
+      paid: Number(paid.value || 0),
+      notes: notes.value,
+      lines: receipt.value.map((r) => ({
+        productId: r.productId,
+        quantity: r.quantity,
+        rate: r.rate,
+      })),
+    };
+    const inv = await window.ahb.postInvoice(payload as unknown);
+    showSuccess.value = true;
+    successMessage.value = t("receipt_saved", { no: inv.no });
+    setTimeout(() => (showSuccess.value = false), 2500);
+    try {
+      const productsMap: Record<number, { name: string; unit: string }> = {};
+      for (const r of receipt.value) {
+        productsMap[r.productId] = { name: r.nameBn, unit: r.unit };
+      }
+      printInvoice(inv as unknown as import("../main/data").Invoice, {
+        businessName: BUSINESS_NAME,
+        customerName: selectedCustomer.value!.nameBn,
+        products: productsMap,
+      });
+    } catch (err) {
+      console.error("print failed", err);
+    }
+    // Reset draft
+    receipt.value = [];
+    discount.value = 0;
+    paid.value = 0;
+    notes.value = "";
+  } catch (e) {
+    showError.value = true;
+    errorMessage.value = (e as Error).message;
+    setTimeout(() => (showError.value = false), 3000);
+  }
+}
+
 function onSelectCustomer(c: Cust) {
   selectedCustomer.value = c;
   customerQuery.value = `${c.id} - ${c.nameBn}`;
@@ -550,49 +657,7 @@ function onQuantityInput(idx: number, evt: Event) {
   recomputeRow(idx);
 }
 
-async function complete() {
-  if (!selectedCustomer.value || receipt.value.length === 0) return;
-  try {
-    const payload = {
-      date: new Date().toISOString(),
-      customerId: selectedCustomer.value.id,
-      discount: Number(discount.value || 0),
-      paid: Number(paid.value || 0),
-      notes: notes.value,
-      lines: receipt.value.map((r) => ({
-        productId: r.productId,
-        quantity: r.quantity,
-        rate: r.rate,
-      })),
-    };
-    const inv = await window.ahb.postInvoice(payload as unknown);
-    showSuccess.value = true;
-    successMessage.value = `Receipt saved successfully (Invoice #${inv.no})`;
-    setTimeout(() => (showSuccess.value = false), 2500);
-    // Print the invoice immediately
-    try {
-      const productsMap: Record<number, { name: string; unit: string }> = {};
-      for (const r of receipt.value) {
-        productsMap[r.productId] = { name: r.nameBn, unit: r.unit };
-      }
-      printInvoice(inv as unknown as import("../main/data").Invoice, {
-        businessName: BUSINESS_NAME,
-        customerName: selectedCustomer.value.nameBn,
-        products: productsMap,
-      });
-    } catch (err) {
-      // non-fatal if print fails
-      console.error("print failed", err);
-    }
-    // Reset draft
-    receipt.value = [];
-    discount.value = 0;
-    paid.value = 0;
-    notes.value = "";
-  } catch (e) {
-    alert((e as Error).message);
-  }
-}
+// (Removed older window.confirm-based complete() implementation)
 
 async function loadCustomers() {
   const list = await window.ahb.listCustomers({ activeOnly: true });
@@ -640,7 +705,66 @@ function onGlobalClick(evt: MouseEvent) {
   if (!target.closest("#search-product")) productDropdownOpen.value = false;
 }
 
-// Success toast state
+// Toast states
 const showSuccess = ref(false);
 const successMessage = ref("");
+const showError = ref(false);
+const errorMessage = ref("");
+
+// Keyboard navigation for search dropdowns
+const customerHighlight = ref(0);
+const productHighlight = ref(0);
+watch(
+  () => customerQuery.value,
+  () => (customerHighlight.value = 0)
+);
+watch(
+  () => productQuery.value,
+  () => (productHighlight.value = 0)
+);
+function moveCustomerHighlight(delta: number) {
+  customerDropdownOpen.value = true;
+  const len = filteredCustomers.value.length;
+  if (!len) return;
+  customerHighlight.value = (customerHighlight.value + delta + len) % len;
+}
+function confirmCustomerSelection() {
+  const c =
+    filteredCustomers.value[customerHighlight.value] ||
+    filteredCustomers.value[0];
+  if (c) onSelectCustomer(c);
+}
+function moveProductHighlight(delta: number) {
+  productDropdownOpen.value = true;
+  const len = filteredProducts.value.length;
+  if (!len) return;
+  productHighlight.value = (productHighlight.value + delta + len) % len;
+}
+function confirmProductSelection() {
+  const p =
+    filteredProducts.value[productHighlight.value] || filteredProducts.value[0];
+  if (p) onSelectProduct(p);
+}
+
+// Negative stock detection
+const productStock = computed(() => {
+  const m = new Map<number, number>();
+  for (const p of products.value) m.set(p.id, Number(p.stock || 0));
+  return m;
+});
+function isOversell(row: ReceiptRow): boolean {
+  const stk = productStock.value.get(row.productId) ?? 0;
+  return row.quantity > stk;
+}
+
+// Confirm modal state & handlers
+const showConfirmNegative = ref(false);
+const confirmOversCount = ref(0);
+function onConfirmNegative() {
+  showConfirmNegative.value = false;
+  void doPostInvoice();
+}
+function onCancelNegative() {
+  showConfirmNegative.value = false;
+}
 </script>

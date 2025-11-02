@@ -139,6 +139,7 @@ async function handleNewFile() {
   writeCurrentTo(currentFilePath);
   notifyAll("app:document-changed");
   isDirty = false;
+  buildMenu();
 }
 
 async function handleOpenFile() {
@@ -159,6 +160,7 @@ async function handleOpenFile() {
     currentFilePath = filePath;
     notifyAll("app:document-changed");
     isDirty = false;
+    buildMenu();
   } catch (err) {
     console.error("Failed to open/decrypt file:", err);
     await dialog.showMessageBox({
@@ -184,6 +186,7 @@ async function handleSaveFile() {
   }
   writeCurrentTo(currentFilePath);
   isDirty = false;
+  buildMenu();
 }
 
 async function handleSaveFileAs() {
@@ -198,6 +201,7 @@ async function handleSaveFileAs() {
   writeCurrentTo(currentFilePath);
   notifyAll("app:document-changed");
   isDirty = false;
+  buildMenu();
 }
 
 // IPC wiring

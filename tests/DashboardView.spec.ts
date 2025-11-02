@@ -3,6 +3,7 @@ import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import DashboardView from "../src/views/Dashboard.vue";
 import type { PostInvoiceInput } from "../src/main/data";
+import { currentLang } from "../src/i18n";
 
 type DataChangedPayload = {
   kind: "product" | "customer";
@@ -18,6 +19,8 @@ describe("DashboardView.vue", () => {
   >;
 
   beforeEach(() => {
+    // Ensure English UI for deterministic text assertions
+    currentLang.value = "en";
     productsData = [];
     customersData = [];
     postInvoice = vi.fn(async (payload: PostInvoiceInput) => {

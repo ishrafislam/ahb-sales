@@ -12,7 +12,8 @@ This README reflects the current implementation.
 - UI: Startup (New/Open), Dashboard for invoice entry, modals for Products, Customers, Customer History, Product Sales History, Product Purchase History, and Purchase Entry.
 - Reports & printing: Three report modals (Money Transaction — Customer Range, Money Transaction — Day Wise, Daily Payment) with print previews; invoice printing; saved print presets (paper/orientation/margins) via Settings.
 - Rounding: ceil to 2 decimals consistently (line totals, subtotals, net, due).
-- i18n: Runtime language switching (BN/EN) for the app menu; main views are not localized yet.
+- i18n: Runtime language switching (BN/EN) across the renderer; main views/components are localized with EN/BN dictionaries and parameterized messages with EN fallback.
+- Feedback: Non-blocking toasts for success and errors across key flows (invoice post, report loading, settings, purchase entry).
 - Tests: Unit and component tests for crypto, data, invoices (incl. paid/due), purchases, i18n, renderer views.
 - CI: Lint, package, and test on PRs (Windows runner).
 
@@ -97,7 +98,7 @@ Implemented features
 2. Customer management
 
 - Add, list, update basic fields (ID, name, address, active).
-- Outstanding (due) is persisted and updated by invoice posting.
+- Outstanding (due) is persisted and updated by invoice posting and cannot be edited after creation.
 
 3. Product management
 
@@ -109,7 +110,7 @@ Implemented features
 - Draft and post invoices on the Dashboard.
 - Lines: product, quantity, rate override, unit, line totals.
 - Totals: discount (validated), subtotal, net, paid, previous due, due, current due.
-- Validations: stock availability, non-negative discount/paid, paid ≤ previousDue + net, etc.
+- Validations: non-negative discount/paid, paid ≤ previousDue + net, etc. Stock may go negative per policy (no availability block).
 - Updates customer outstanding to current due on posting.
 
 5. Purchase entry
@@ -126,7 +127,7 @@ Implemented features
 7. i18n
 
 - Language setting persisted (BN/EN) and applied to the application menu with runtime switching.
-- Main views/components are not yet localized.
+- Renderer-wide localization for major views (Dashboard, Settings, Products/Customers, histories, and reports). Parameterized translations (e.g., invoice saved message).
 
 Not yet implemented (planned)
 
@@ -232,20 +233,18 @@ Phase 4: Reporting and printing — DONE
   - Print presets (paper size, orientation, margins) are configurable and persisted; defaults: A4, portrait, 12mm margins.
   - Settings modal to manage presets; printing uses browser-like rendering with OS print dialog.
 
-Phase 5: Usability and polish — PLANNED
+Phase 5: Usability and polish — DONE
 
-- Full UI localization (BN/EN) across all components.
-- Search dialogs (customers/products by ID/name), Bengali font validation, teal/cyan theme polish.
-- Robust error handling and user feedback across flows.
-- Menu state consistency improvements (e.g., rebuilding menu after New/Open/Save As).
-- New items:
-  - Negative stock of product: define policy and implement behavior.
-    - Option A (default): Disallow negative stock (current behavior); show clear validation in Dashboard.
-    - Option B (configurable): Allow negative stock with warnings and clear highlighting in UI and reports. Ensure downstream math stays consistent.
-  - Due input only while creating customer:
-    - Allow “Outstanding” to be set only in the Add flow.
-    - Disable/hide Outstanding edits in Update flows; future changes to outstanding must come via invoices/payments logic only.
-    - Validate preload/IPC to enforce this invariant.
+- Renderer-wide i18n: BN/EN dictionaries with runtime switching and parameterized strings; EN fallback.
+- Search UX: Customer/product search boxes support keyboard navigation (up/down/enter/esc) and highlighted selection.
+- Toasts: Replaced blocking alerts with non-blocking toasts for success/error in Dashboard, reports, settings, and purchase entry.
+- Menu consistency: Application menu rebuilds after New/Open/Save/Save As to keep enable/disable state and labels in sync.
+- Theme and typography: Added Bengali-friendly font stack; introduced `.btn`, `.btn-primary`, `.btn-accent` classes and adopted them in key controls (e.g., reports, settings).
+- Policies (domain + UI):
+  - Negative stock allowed: Posting an invoice may reduce product stock below zero. UI highlights lines that oversell and asks for confirmation before completing.
+  - Outstanding only on create: The Outstanding field can be set when adding a customer and isn’t editable afterward; subsequent changes occur via invoices/payments. Enforced in domain logic and tests.
+- Reports and printing: Report modals show inline previews with sticky headers and use print presets from Settings.
+- Tests updated: Unit/component tests reflect new policies and i18n runtime; all tests green.
 
 Phase 6: Performance and hardening — PLANNED
 
@@ -266,12 +265,15 @@ Phase 7: Future-ready hooks — PLANNED
 - Report date display: DD-MM-YYYY for user-facing outputs; internal data uses ISO (YYYY-MM-DD).
 - No QR/barcodes in invoices v1.
 - No data import/migration in v1; no auth/roles in v1.
+- Stock policy: Negative stock is allowed. Posting an invoice may decrease a product's stock below zero; no hard block on availability. UI highlights overselling lines and requests confirmation on Complete.
+- Outstanding policy: Can be set at customer creation, not editable afterward; updated only by invoice posting logic.
 
-## Known Gaps
+## Known Gaps / Next Steps
 
-- UI localization for all views (only app menu is localized now).
-
-- Menu enable/disable state after file actions may need refinement (planned).
+- Extract a reusable toast component/composable to reduce duplication; standardize success/error/info variants.
+- Replace window.confirm on negative stock with a small in-app confirm modal for consistency with toasts.
+- Adopt `.btn` styles across all remaining CTAs for consistent theme usage.
+- Remove temporary template lint disables in complex views (Dashboard, Reports hub) by reformatting to strict Vue ESLint rules.
 
 ## Notes
 
@@ -302,7 +304,7 @@ Invoice Printing
 
 - Invoices can be printed from the Dashboard and from Customer History using a shared print template for consistent layout and styling.
 
-## QA: Phase 4 sanity checks
+## QA: Phase 4/5 sanity checks
 
 We include lightweight scripts to generate seed data and verify report outputs.
 
@@ -323,3 +325,9 @@ Example results from a 7-day seed on a development machine:
 - Daily Payment (sample day): 12 rows; total paid: 18,510.00
 
 All unit tests and the QA script passed locally when these were recorded.
+
+For Phase 5, we additionally validated:
+
+- i18n runtime selection (BN/EN) with parameterized strings and fallback.
+- Component behaviors: keyboard search navigation, toasts on errors (e.g., report load failures), and invoice completion success toast.
+- Negative stock UI: oversell rows highlighted; confirm prompt shown prior to posting.

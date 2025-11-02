@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import CustomersView from "../src/views/CustomersView.vue";
+import { currentLang } from "../src/i18n";
 
 type DataChanged = (payload: {
   kind: string;
@@ -14,6 +15,8 @@ describe("CustomersView.vue", () => {
   let dataChangedCb: DataChanged | null;
 
   beforeEach(() => {
+    // Ensure English UI for deterministic text assertions
+    currentLang.value = "en";
     customersData = [];
     dataChangedCb = null;
 
@@ -35,12 +38,11 @@ describe("CustomersView.vue", () => {
       };
     };
 
-    // @ts-expect-error - define test stub on global
-    window.ahb = {
+    (window as unknown as { ahb: unknown }).ahb = {
       listCustomers,
       addCustomer,
       onDataChanged,
-    };
+    } as unknown;
   });
 
   it("shows empty state when no customers", async () => {

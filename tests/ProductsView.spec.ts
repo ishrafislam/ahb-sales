@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import ProductsView from "../src/views/ProductsView.vue";
+import { currentLang } from "../src/i18n";
 
 type DataChanged = (payload: {
   kind: string;
@@ -14,6 +15,8 @@ describe("ProductsView.vue", () => {
   let dataChangedCb: DataChanged | null;
 
   beforeEach(() => {
+    // Ensure English UI for deterministic text assertions
+    currentLang.value = "en";
     productsData = [];
     dataChangedCb = null;
 

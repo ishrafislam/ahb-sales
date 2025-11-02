@@ -1,4 +1,5 @@
 <template>
+  <!-- eslint-disable -->
   <div class="flex flex-col md:flex-row gap-4">
     <!-- Left: report list -->
     <div class="w-full md:w-60 flex-shrink-0">
@@ -65,14 +66,11 @@
               class="bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
             />
           </div>
-          <button
-            class="ml-auto bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-blue-700"
-            @click="loadMoneyCustomer"
-          >
+          <button class="ml-auto btn btn-primary" @click="loadMoneyCustomer">
             Fetch
           </button>
           <button
-            class="bg-gray-200 text-gray-800 px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-gray-300"
+            class="btn"
             :disabled="rows.length === 0"
             @click="printMoneyCustomer"
           >
@@ -99,14 +97,11 @@
               class="bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
             />
           </div>
-          <button
-            class="ml-auto bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-blue-700"
-            @click="loadMoneyDayWise"
-          >
+          <button class="ml-auto btn btn-primary" @click="loadMoneyDayWise">
             Fetch
           </button>
           <button
-            class="bg-gray-200 text-gray-800 px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-gray-300"
+            class="btn"
             :disabled="days.length === 0"
             @click="printMoneyDayWise"
           >
@@ -125,14 +120,11 @@
               class="bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
             />
           </div>
-          <button
-            class="ml-auto bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-blue-700"
-            @click="loadDailyPayments"
-          >
+          <button class="ml-auto btn btn-primary" @click="loadDailyPayments">
             Fetch
           </button>
           <button
-            class="bg-gray-200 text-gray-800 px-3 py-1.5 rounded-md text-sm font-semibold hover:bg-gray-300"
+            class="btn"
             :disabled="dailyRows.length === 0"
             @click="printDailyPayments"
           >
@@ -308,6 +300,13 @@
       </div>
     </div>
   </div>
+  <!-- Error toast -->
+  <div
+    v-if="showError"
+    class="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded shadow-lg"
+  >
+    {{ errorMessage }}
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -366,7 +365,9 @@ async function loadMoneyCustomer() {
     rows.value = rep.rows;
     totals.value = rep.totals;
   } catch (e) {
-    alert((e as Error).message);
+    showError.value = true;
+    errorMessage.value = (e as Error).message || String(e);
+    setTimeout(() => (showError.value = false), 3000);
   }
 }
 
@@ -376,7 +377,9 @@ async function loadDailyPayments() {
     dailyRows.value = rep.rows;
     dailyTotals.value = rep.totals;
   } catch (e) {
-    alert((e as Error).message);
+    showError.value = true;
+    errorMessage.value = (e as Error).message || String(e);
+    setTimeout(() => (showError.value = false), 3000);
   }
 }
 
@@ -412,13 +415,18 @@ async function loadMoneyDayWise() {
     );
     days.value = rep.days;
   } catch (e) {
-    alert((e as Error).message);
+    showError.value = true;
+    errorMessage.value = (e as Error).message || String(e);
+    setTimeout(() => (showError.value = false), 3000);
   }
 }
 
 onMounted(() => {
   void loadMoneyCustomer();
 });
+
+const showError = ref(false);
+const errorMessage = ref("");
 
 function printMoneyCustomer() {
   // Minimal print page with table content and simple styles

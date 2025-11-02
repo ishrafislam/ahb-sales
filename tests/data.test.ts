@@ -69,8 +69,10 @@ describe("Phase 1 data model", () => {
     expect(c1.outstanding).toBe(0);
     expect(listCustomers(data).map((c) => c.id)).toEqual([10]);
     expect(() => addCustomer(data, { id: 10, nameBn: "Dup" })).toThrow();
-    const c1u = updateCustomer(data, 10, { outstanding: 100, active: false });
-    expect(c1u.outstanding).toBe(100);
+    // Policy: outstanding cannot be edited after creation
+    expect(() => updateCustomer(data, 10, { outstanding: 100 })).toThrow();
+    const c1u = updateCustomer(data, 10, { active: false });
+    expect(c1u.outstanding).toBe(0);
     expect(c1u.active).toBe(false);
   });
 
