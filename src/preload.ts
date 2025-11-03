@@ -79,6 +79,20 @@ type AppAPI = {
   ) => () => void;
   // App control
   onOpenSettings: (cb: () => void) => () => void;
+  onOpenAbout: (cb: () => void) => () => void;
+  getAppVersion: () => Promise<string>;
+  getAppName: () => Promise<string>;
+  getRuntimeInfo: () => Promise<{
+    versions: { electron: string; chrome: string; node: string };
+    buildDate?: string;
+    commitSha?: string;
+  }>;
+  // Updates
+  checkForUpdates: () => Promise<boolean>;
+  restartAndInstall: () => Promise<boolean>;
+  onUpdateEvent: (
+    cb: (payload: { kind: string; data?: unknown }) => void
+  ) => () => void;
 };
 
 const api: AppAPI = {
@@ -143,6 +157,31 @@ const api: AppAPI = {
     const listener = () => cb();
     ipcRenderer.on("app:open-settings", listener);
     return () => ipcRenderer.removeListener("app:open-settings", listener);
+  },
+  onOpenAbout: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on("app:open-about", listener);
+    return () => ipcRenderer.removeListener("app:open-about", listener);
+  },
+  getAppVersion: () => ipcRenderer.invoke("app:get-version"),
+  getAppName: () => ipcRenderer.invoke("app:get-name"),
+  getRuntimeInfo: () => ipcRenderer.invoke("app:get-runtime-info"),
+  checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
+  restartAndInstall: () => ipcRenderer.invoke("app:restart-and-install"),
+  onUpdateEvent: (cb) => {
+    const wrap = (kind: string) => (_: unknown, data?: unknown) =>
+      cb({ kind, data });
+    const pairs: Array<[string, ReturnType<typeof wrap>]> = [
+      ["update:checking", wrap("checking")],
+      ["update:available", wrap("available")],
+      ["update:not-available", wrap("not-available")],
+      ["update:error", wrap("error")],
+      ["update:downloaded", wrap("downloaded")],
+    ];
+    for (const [ch, fn] of pairs) ipcRenderer.on(ch, fn);
+    return () => {
+      for (const [ch, fn] of pairs) ipcRenderer.removeListener(ch, fn);
+    };
   },
 };
 

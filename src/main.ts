@@ -5,7 +5,9 @@ import {
   ipcMain,
   Menu,
   type MenuItemConstructorOptions,
+  autoUpdater,
 } from "electron";
+import { updateElectronApp } from "update-electron-app";
 // Load environment variables from .env (dev convenience)
 import * as dotenv from "dotenv";
 try {
@@ -58,6 +60,7 @@ const createWindow = () => {
     height: 720,
     minWidth: 1280,
     minHeight: 720,
+    title: app.getName(),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
     },
@@ -80,6 +83,15 @@ const createWindow = () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on("ready", () => {
+  // Ensure app name reflects productName in dev and prod
+  try {
+    app.setName("Abdul Hamid & Brothers: Sales");
+  } catch (e) {
+    // Non-fatal in environments where setName is restricted
+    console.debug("setName skipped:", (e as Error).message);
+  }
+  // Initialize auto-updates (no-op in dev unless forced)
+  initAutoUpdates();
   createWindow();
   buildMenu();
 });
@@ -487,10 +499,96 @@ function buildMenu() {
         },
       ],
     },
+    {
+      label: d.about ?? "About",
+      submenu: [
+        {
+          label: d.about_app ?? d.about ?? "About",
+          click: (): void => {
+            notifyAll("app:open-about");
+          },
+        },
+        { type: "separator" },
+        {
+          label: d.check_updates ?? "Check for Updates",
+          click: (): void => {
+            try {
+              autoUpdater.checkForUpdates();
+            } catch (e) {
+              console.error("checkForUpdates failed", e);
+            }
+          },
+        },
+      ],
+    },
   ];
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
 }
+
+// -----------------------
+// Updates (update-electron-app)
+// -----------------------
+function initAutoUpdates() {
+  const enabled = app.isPackaged || process.env.FORCE_UPDATER === "1";
+  if (!enabled) return;
+  try {
+    updateElectronApp({
+      repo: "ishrafislam/ahb-sales",
+      updateInterval: "1 hour",
+      logger: {
+        log: (...args: unknown[]) => console.log("[updater]", ...args),
+        info: (...args: unknown[]) => console.log("[updater]", ...args),
+        warn: (...args: unknown[]) => console.warn("[updater]", ...args),
+        error: (...args: unknown[]) => console.error("[updater]", ...args),
+      },
+    });
+  } catch (e) {
+    console.error("update-electron-app init failed", e);
+  }
+  // Forward updater events to renderer for toasts
+  autoUpdater.on("checking-for-update", () => notifyAll("update:checking"));
+  autoUpdater.on("update-available", () => notifyAll("update:available"));
+  autoUpdater.on("update-not-available", () =>
+    notifyAll("update:not-available")
+  );
+  autoUpdater.on("error", (err) => notifyAll("update:error", String(err)));
+  autoUpdater.on("update-downloaded", () => notifyAll("update:downloaded"));
+}
+
+// IPC for updates
+ipcMain.handle("app:check-for-updates", async () => {
+  try {
+    await autoUpdater.checkForUpdates();
+    return true;
+  } catch (e) {
+    console.error("manual checkForUpdates failed", e);
+    throw e;
+  }
+});
+// IPC for about info
+ipcMain.handle("app:get-version", async () => app.getVersion());
+ipcMain.handle("app:get-name", async () => app.getName());
+ipcMain.handle("app:get-runtime-info", async () => {
+  return {
+    versions: {
+      electron: process.versions.electron,
+      chrome: process.versions.chrome,
+      node: process.versions.node,
+    },
+    buildDate: process.env.BUILD_DATE || new Date().toISOString(),
+    commitSha: process.env.COMMIT_SHA || process.env.GITHUB_SHA || undefined,
+  } as const;
+});
+ipcMain.handle("app:restart-and-install", async () => {
+  try {
+    autoUpdater.quitAndInstall();
+    return true;
+  } catch (e) {
+    console.error("quitAndInstall failed", e);
+    throw e;
+  }
+});
 
 async function askToSaveChanges(): Promise<"save" | "dont" | "cancel"> {
   if (!isDirty) return "dont";

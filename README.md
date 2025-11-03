@@ -16,6 +16,7 @@ This README reflects the current implementation.
 - Feedback: Non-blocking toasts for success and errors across key flows (invoice post, report loading, settings, purchase entry).
 - Tests: Unit and component tests for crypto, data, invoices (incl. paid/due), purchases, i18n, renderer views.
 - CI: Lint, package, and test on PRs (Windows runner).
+- Updates: Auto-update initialized via update-electron-app with GitHub Releases (menu: Check for Updates). A cross-OS GitHub Actions workflow publishes artifacts on tag.
 
 ## Architecture and File Format
 
@@ -76,6 +77,28 @@ Tests
 Package
 
 - npm run package
+
+## Updates & Releases
+
+- Auto-update library: update-electron-app (GitHub Releases as update source).
+- Manual trigger: Application menu → Settings → Check for Updates.
+- Renderer UX: Non-blocking toast on checking/available/not-available; restart button appears after download.
+
+Publish a release
+
+1. Set secrets in GitHub repo:
+
+- GH_TOKEN (required for publishing)
+- AHB_KEY_HEX (required at runtime to build encrypted containers)
+- Optional for macOS notarization: APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, TEAM_ID
+
+2. Push a tag like v1.0.1 to trigger the workflow.
+3. Workflow runs on macOS/Windows/Linux and uploads artifacts to the GitHub Release (draft by default).
+
+Notes
+
+- Code signing/notarization are required for seamless updates on macOS and recommended on Windows. Fill in the secrets to enable.
+- Linux auto-update is a no-op; artifacts are still built and uploaded for manual distribution.
 
 ## Functional Scope
 

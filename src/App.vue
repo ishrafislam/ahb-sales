@@ -1,4 +1,5 @@
 <template>
+  <!-- eslint-disable -->
   <div class="min-h-screen">
     <div v-if="!loaded" class="min-h-screen grid place-items-center">
       <div class="text-center space-y-4 px-4">
@@ -95,12 +96,36 @@
       <ReportDailyPayment />
     </BaseModal>
     <BaseModal
+      v-if="showAbout"
+      :title="t('about_app')"
+      :max-width="'md'"
+      @close="closeModals"
+    >
+      <AboutModal />
+    </BaseModal>
+
+    <BaseModal
       v-if="showSettings"
       :title="t('settings_title')"
       @close="closeModals"
     >
       <SettingsModal />
     </BaseModal>
+
+    <!-- Update toast -->
+    <div
+      v-if="showUpdateToast"
+      class="fixed bottom-4 right-4 bg-gray-900 text-white px-4 py-2 rounded shadow-lg flex items-center gap-3"
+    >
+      <span>{{ updateToastText }}</span>
+      <button
+        v-if="canRestartForUpdate"
+        class="bg-green-600 hover:bg-green-700 text-white rounded px-3 py-1 text-sm"
+        @click="restartForUpdate"
+      >
+        Restart to update
+      </button>
+    </div>
   </div>
 </template>
 
@@ -119,6 +144,7 @@ import ReportMoneyCustomer from "./views/ReportMoneyCustomer.vue";
 import ReportMoneyDayWise from "./views/ReportMoneyDayWise.vue";
 import ReportDailyPayment from "./views/ReportDailyPayment.vue";
 import SettingsModal from "./views/SettingsModal.vue";
+import AboutModal from "./views/AboutModal.vue";
 
 const lang = ref<"bn" | "en">("bn");
 // Modal flags
@@ -132,7 +158,12 @@ const showReportMoneyCustomer = ref(false);
 const showReportMoneyDayWise = ref(false);
 const showReportDailyPayment = ref(false);
 const showSettings = ref(false);
+const showAbout = ref(false);
 const loaded = ref(false);
+// Update toast state
+const showUpdateToast = ref(false);
+const updateToastText = ref("");
+const canRestartForUpdate = ref(false);
 
 // simple i18n removed from template usage; kept title only
 
@@ -165,6 +196,43 @@ onMounted(() => {
       showSettings.value = true;
     });
   }
+  if (typeof (window.ahb as any).onOpenAbout === "function") {
+    (window.ahb as any).onOpenAbout(() => {
+      closeModals();
+      showAbout.value = true;
+    });
+  }
+  // Subscribe to updater events if available
+  if (typeof (window.ahb as any).onUpdateEvent === "function") {
+    (window.ahb as any).onUpdateEvent(
+      (ev: { kind: string; data?: unknown }) => {
+        if (ev.kind === "checking") {
+          updateToastText.value = "Checking for updates…";
+          canRestartForUpdate.value = false;
+          showUpdateToast.value = true;
+          setTimeout(() => (showUpdateToast.value = false), 2000);
+        } else if (ev.kind === "available") {
+          updateToastText.value = "Downloading update…";
+          canRestartForUpdate.value = false;
+          showUpdateToast.value = true;
+        } else if (ev.kind === "not-available") {
+          updateToastText.value = "You’re up to date.";
+          canRestartForUpdate.value = false;
+          showUpdateToast.value = true;
+          setTimeout(() => (showUpdateToast.value = false), 2000);
+        } else if (ev.kind === "downloaded") {
+          updateToastText.value = "Update downloaded.";
+          canRestartForUpdate.value = true;
+          showUpdateToast.value = true;
+        } else if (ev.kind === "error") {
+          updateToastText.value = `Update failed: ${String(ev.data || "")}`;
+          canRestartForUpdate.value = false;
+          showUpdateToast.value = true;
+          setTimeout(() => (showUpdateToast.value = false), 4000);
+        }
+      }
+    );
+  }
 });
 
 function closeModals() {
@@ -178,6 +246,7 @@ function closeModals() {
   showReportMoneyDayWise.value = false;
   showReportDailyPayment.value = false;
   showSettings.value = false;
+  showAbout.value = false;
 }
 
 function onNavigate(
@@ -248,6 +317,12 @@ function onNavigate(
   if (page === "customer-history") {
     closeModals();
     showCustomerHistory.value = true;
+  }
+}
+
+function restartForUpdate() {
+  if (typeof (window.ahb as any).restartAndInstall === "function") {
+    (window.ahb as any).restartAndInstall();
   }
 }
 
