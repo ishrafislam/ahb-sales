@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-3 min-h-screen">
+  <div class="min-h-screen">
     <div v-if="!loaded" class="min-h-screen grid place-items-center">
       <div class="text-center space-y-4 px-4">
         <h2 class="text-4xl font-bold">ABDUL HAMID & BROTHERS</h2>
@@ -58,6 +58,7 @@
     <BaseModal
       v-if="showCustomerHistory"
       :title="t('customer_history_title')"
+      :max-width="'5xl'"
       @close="closeModals"
     >
       <CustomerHistory @navigate="onNavigate" />

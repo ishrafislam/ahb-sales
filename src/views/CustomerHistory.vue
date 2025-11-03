@@ -1,19 +1,19 @@
 <template>
   <div class="flex flex-1 min-h-0">
     <!-- Left list: customers -->
-    <div class="w-[30%] border-r border-gray-200 flex flex-col">
+    <div class="w-[25%] border-r border-gray-200 flex flex-col">
       <div ref="leftListRef" class="flex-grow overflow-y-auto">
         <ul>
           <li
             v-for="id in idList"
             :key="id"
-            class="px-4 py-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100"
+            class="px-3 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100"
             :class="{ 'bg-blue-100': selectedId === id }"
             :data-id="id"
             @click="onSelectCustomer(id)"
           >
             <div class="flex items-center">
-              <div class="font-medium text-sm w-10">
+              <div class="font-medium text-sm text-right w-10">
                 {{ id }}
               </div>
               <div class="text-sm text-gray-600 ml-4">
@@ -26,36 +26,36 @@
     </div>
 
     <!-- Right pane: invoice table -->
-    <div class="w-[70%] flex flex-col overflow-hidden">
+    <div class="w-[75%] flex flex-col overflow-hidden">
       <div class="flex-grow overflow-y-auto">
         <table class="w-full text-sm text-left">
           <thead class="text-xs uppercase bg-gray-50 sticky top-0">
             <tr>
-              <th class="px-4 py-3">
+              <th class="px-3 py-2">
                 {{ t("date") }}
               </th>
-              <th class="px-4 py-3 text-right">
+              <th class="px-3 py-2 text-right">
                 {{ t("total_price") }}
               </th>
-              <th class="px-4 py-3 text-right">
+              <th class="px-3 py-2 text-right">
                 {{ t("bill") }}
               </th>
-              <th class="px-4 py-3 text-right">
+              <th class="px-3 py-2 text-right">
                 {{ t("paid") }}
               </th>
-              <th class="px-4 py-3 text-right">
+              <th class="px-3 py-2 text-right">
                 {{ t("due") }}
               </th>
-              <th class="px-4 py-3 text-right">
+              <th class="px-3 py-2 text-right">
                 {{ t("previous_due") }}
               </th>
-              <th class="px-4 py-3 text-right">
+              <th class="px-3 py-2 text-right">
                 {{ t("current_due") }}
               </th>
-              <th class="px-4 py-3">
+              <th class="px-3 py-2">
                 {{ t("comment") }}
               </th>
-              <th class="px-4 py-3 text-right">
+              <th class="px-3 py-2 text-right">
                 {{ t("actions") }}
               </th>
             </tr>
@@ -66,31 +66,31 @@
               :key="row.id"
               class="bg-white border-b hover:bg-gray-50"
             >
-              <td class="px-4 py-3 font-medium whitespace-nowrap">
+              <td class="px-3 py-2 font-medium whitespace-nowrap">
                 {{ formatDate(row.date) }}
               </td>
-              <td class="px-4 py-3 text-right">
+              <td class="px-3 py-2 text-right">
                 {{ money(row.subtotal) }}
               </td>
-              <td class="px-4 py-3 text-right">
+              <td class="px-3 py-2 text-right">
                 {{ money(row.net) }}
               </td>
-              <td class="px-4 py-3 text-right text-green-600">
+              <td class="px-3 py-2 text-right text-green-600">
                 {{ money(row.paid) }}
               </td>
-              <td class="px-4 py-3 text-right text-red-600">
+              <td class="px-3 py-2 text-right text-red-600">
                 {{ money(row.due) }}
               </td>
-              <td class="px-4 py-3 text-right">
+              <td class="px-3 py-2 text-right">
                 {{ money(row.previousDue) }}
               </td>
-              <td class="px-4 py-3 text-right font-semibold">
+              <td class="px-3 py-2 text-right font-semibold">
                 {{ money(row.currentDue) }}
               </td>
-              <td class="px-4 py-3">
+              <td class="px-3 py-2">
                 {{ row.notes || "" }}
               </td>
-              <td class="px-4 py-3 text-right">
+              <td class="px-3 py-2 text-right">
                 <button
                   class="bg-white border border-gray-300 py-1 px-2 rounded-md text-xs font-semibold hover:bg-gray-100"
                   @click="onPrint(row.id)"
