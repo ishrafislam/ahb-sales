@@ -105,5 +105,11 @@
   "confirm": "Confirm",
   "cancel": "Cancel",
   "confirm_title": "Confirm",
-  "oversell_warning": "Exceeds current stock"
+  "oversell_warning": "Exceeds current stock",
+  "select_customer_prompt_title": "Select a customer",
+  "select_customer_prompt": "Start by searching and selecting a customer on the left.",
+  "clear": "Clear",
+  "remove": "Remove",
+  "increase": "Increase",
+  "decrease": "Decrease"
 }

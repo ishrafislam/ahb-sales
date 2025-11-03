@@ -1,44 +1,10 @@
 <template>
   <!-- eslint-disable -->
   <div class="flex flex-col h-screen p-3 lg:p-4 gap-3 lg:gap-4">
-    <!-- Header -->
+    <!-- Header (title only) -->
     <div class="flex justify-between items-center mb-1">
       <div class="flex items-center gap-4">
         <h2 class="text-xl font-bold">ABDUL HAMID AND BROTHERS</h2>
-        <div class="flex items-center gap-2">
-          <button
-            class="bg-white border border-gray-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-gray-100 transition-colors"
-            @click="openFile"
-          >
-            {{ t("menu_open") }}
-          </button>
-          <button
-            class="bg-white border border-gray-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-gray-100 transition-colors"
-            @click="saveFile"
-          >
-            {{ t("menu_save") }}
-          </button>
-          <button
-            class="bg-white border border-gray-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-gray-100 transition-colors"
-            @click="saveFileAs"
-          >
-            {{ t("menu_save_as") }}
-          </button>
-        </div>
-      </div>
-      <div class="flex items-center gap-3">
-        <button
-          class="bg-white border border-gray-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-gray-100 transition-colors"
-          @click="navigate('settings')"
-        >
-          {{ t("settings") }}
-        </button>
-        <div class="flex items-center gap-2 text-sm text-gray-600">
-          <span> {{ t("date_label") }}: </span>
-          <span>
-            {{ today }}
-          </span>
-        </div>
       </div>
     </div>
 
@@ -50,6 +16,38 @@
       <div
         class="lg:col-span-1 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-hidden"
       >
+        <!-- File info (current file name + saved/unsaved icon) -->
+        <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200">
+          <div class="flex items-center justify-between text-sm">
+            <span class="truncate" :title="fileNameDisplay">{{
+              fileNameDisplay
+            }}</span>
+            <span
+              class="inline-flex items-center gap-1"
+              :class="fileDirty ? 'text-orange-500' : 'text-green-600'"
+              :title="fileDirty ? 'Unsaved changes' : 'Saved'"
+              :aria-label="fileDirty ? 'Unsaved changes' : 'Saved'"
+              role="img"
+            >
+              <!-- Check icon -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                class="w-5 h-5"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.5 7.5a1 1 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414l2.293 2.293 6.793-6.793a1 1 0 0 1 1.408 0z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              <span v-if="!fileDirty" class="text-xs font-medium">Saved</span>
+              <span v-if="fileDirty" class="text-xs font-medium">Unsaved</span>
+            </span>
+          </div>
+        </div>
+
         <!-- Search Customer -->
         <div
           class="bg-white p-4 rounded-md shadow-sm border border-gray-200 relative"
@@ -57,14 +55,14 @@
           <!-- <h3 class="text-base font-semibold mb-3">
             {{ t("search_customer") }}
           </h3> -->
-          <div class="flex items-center gap-2">
+          <div class="relative w-full">
             <input
               id="search-customer"
               v-model="customerQuery"
               name="search-customer"
               type="text"
               :placeholder="t('search_customer_placeholder')"
-              class="w-full bg-gray-50 border border-gray-300 rounded-md pl-3 pr-2 py-1.5 text-sm"
+              class="w-full bg-gray-50 border border-gray-300 rounded-md pl-3 pr-8 py-1.5 text-sm"
               @focus="customerDropdownOpen = true"
               @input="customerDropdownOpen = true"
               @keydown.down.prevent="moveCustomerHighlight(1)"
@@ -73,10 +71,14 @@
               @keydown.esc.prevent="customerDropdownOpen = false"
             />
             <button
-              class="bg-blue-600 text-white py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-700 transition-colors"
-              @click="selectFirstCustomerMatch"
+              v-if="selectedCustomer || customerQuery"
+              type="button"
+              class="absolute inset-y-0 right-2 my-auto flex items-center text-gray-500 hover:text-gray-700"
+              :aria-label="t('clear')"
+              @click="clearCustomerSelection"
             >
-              {{ t("search") }}
+              <span aria-hidden="true">×</span>
+              <span class="sr-only">{{ t("clear") }}</span>
             </button>
           </div>
           <div
@@ -105,7 +107,7 @@
         <!-- Summary card -->
         <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200">
           <div class="space-y-1.5 text-sm">
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center pr-1">
               <span class="text-gray-600"> {{ t("total_price") }} </span>
               <span class="font-semibold"> {{ subtotalText }} </span>
             </div>
@@ -115,39 +117,39 @@
                 v-model.number="discount"
                 type="number"
                 min="0"
-                class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm"
+                class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner"
               />
             </div>
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center pr-1">
               <span class="text-gray-600"> {{ t("bill") }} </span>
               <span class="font-semibold"> {{ netText }} </span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-600"> {{ t("paid") }} </span>
-              <input
-                v-model.number="paid"
-                class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm"
-                type="number"
-                min="0"
-              />
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-600"> {{ t("due") }} </span>
-              <span class="font-semibold text-red-600"> {{ dueText }} </span>
             </div>
             <div
               class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200"
             >
+              <span class="text-gray-600"> {{ t("paid") }} </span>
+              <input
+                v-model.number="paid"
+                class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner"
+                type="number"
+                min="0"
+              />
+            </div>
+            <div class="flex justify-between items-center pr-1">
+              <span class="text-gray-600"> {{ t("due") }} </span>
+              <span class="font-semibold text-red-600"> {{ dueText }} </span>
+            </div>
+            <div
+              class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200 pr-1"
+            >
               <span class="text-gray-600"> {{ t("previous_due") }} </span>
               <span class="font-semibold"> {{ previousDueText }} </span>
             </div>
-            <div
-              class="flex justify-between items-center p-2 bg-red-100 rounded-md"
-            >
-              <span class="font-bold text-base text-red-600">
+            <div class="flex justify-between items-center pr-1">
+              <span class="text-red-600">
                 {{ t("net_due") }}
               </span>
-              <span class="font-bold text-lg text-red-600">
+              <span class="font-bold text-red-600">
                 {{ netDueText }}
               </span>
             </div>
@@ -236,159 +238,224 @@
       <div
         class="lg:col-span-2 bg-white p-4 rounded-md shadow-sm border border-gray-200 flex flex-col min-h-0"
       >
-        <div class="bg-blue-50 p-3 rounded-lg mb-4">
-          <h3 class="text-base font-semibold mb-2 text-blue-700">
-            {{ t("customer_info") }}
-          </h3>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 text-sm">
-            <div>
-              <span class="text-gray-600"> {{ t("id") }}: </span>
-              <span class="font-medium ml-1">
-                {{ selectedCustomer?.id ?? "—" }}
-              </span>
+        <!-- Empty state when no customer is selected -->
+        <div
+          v-if="!selectedCustomer"
+          class="flex flex-1 items-center justify-center text-gray-600"
+        >
+          <div class="text-center">
+            <div class="text-lg font-semibold">
+              {{ t("select_customer_prompt_title") }}
             </div>
-            <div>
-              <span class="text-gray-600"> {{ t("name") }}: </span>
-              <span class="font-medium ml-1">
-                {{ selectedCustomer?.nameBn ?? "—" }}
-              </span>
-            </div>
-            <div>
-              <span class="text-gray-600"> {{ t("last_bill") }}: </span>
-              <span class="font-medium ml-1"> — </span>
-            </div>
-            <div>
-              <span class="text-gray-600"> {{ t("due") }}: </span>
-              <span class="font-medium text-red-600 ml-1">
-                {{ formatMoney(Number(selectedCustomer?.outstanding || 0)) }}
-              </span>
-            </div>
+            <div class="text-sm mt-1">{{ t("select_customer_prompt") }}</div>
           </div>
         </div>
 
-        <div class="flex-grow min-h-0 overflow-auto">
-          <table class="w-full text-left text-sm">
-            <thead class="border-b border-gray-200">
-              <tr>
-                <th class="p-2 text-xs font-semibold text-gray-600 text-center">
-                  #
-                </th>
-                <th class="p-2 text-xs font-semibold text-gray-600">
-                  {{ t("product_name") }}
-                </th>
-                <th class="p-2 text-xs font-semibold text-gray-600 text-center">
-                  {{ t("quantity") }}
-                </th>
-                <th class="p-2 text-xs font-semibold text-gray-600 text-center">
-                  {{ t("unit") }}
-                </th>
-                <th class="p-2 text-xs font-semibold text-gray-600 text-right">
-                  {{ t("unit_price") }}
-                </th>
-                <th class="p-2 text-xs font-semibold text-gray-600 text-right">
-                  {{ t("total") }}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(row, idx) in receipt"
-                :key="row.productId"
-                class="border-b border-gray-200"
-                :class="{ 'bg-red-50': isOversell(row) }"
-              >
-                <td class="p-2 text-center">
-                  {{ idx + 1 }}
-                </td>
-                <td class="p-2">
-                  <div class="flex items-center gap-2">
-                    <span>{{ row.nameBn }}</span>
-                    <span
-                      v-if="isOversell(row)"
-                      class="inline-flex items-center gap-1 text-red-700 text-xs font-medium"
-                      :title="t('oversell_warning')"
-                      aria-live="polite"
-                    >
-                      <span aria-hidden="true">⚠️</span>
-                      <span class="sr-only">{{ t("oversell_warning") }}</span>
-                    </span>
-                  </div>
-                </td>
-                <td class="p-2 text-center">
-                  <input
-                    class="w-16 bg-gray-50 border border-gray-300 rounded-md px-1 py-0.5 text-center text-sm"
-                    type="number"
-                    min="1"
-                    :value="row.quantity"
-                    @input="onQuantityInput(idx, $event)"
-                  />
-                </td>
-                <td class="p-2 text-center">
-                  {{ row.unit }}
-                </td>
-                <td class="p-2 text-right">
-                  {{ formatMoney(row.rate) }}
-                </td>
-                <td class="p-2 text-right">
-                  {{ formatMoney(row.lineTotal) }}
-                </td>
-              </tr>
-              <tr v-if="receipt.length === 0">
-                <td class="p-2 text-center text-gray-500" colspan="6">
-                  {{ t("no_items") }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="border-t border-gray-200 mt-4 pt-4 flex items-center gap-2">
-          <div class="relative flex-grow">
-            <input
-              id="search-product"
-              v-model="productQuery"
-              name="search-product"
-              type="text"
-              :placeholder="t('search_products_placeholder')"
-              class="w-full bg-gray-50 border border-gray-300 rounded-md pl-3 pr-2 py-2 text-sm"
-              @focus="productDropdownOpen = true"
-              @input="productDropdownOpen = true"
-              @keydown.down.prevent="moveProductHighlight(1)"
-              @keydown.up.prevent="moveProductHighlight(-1)"
-              @keydown.enter.prevent="confirmProductSelection()"
-              @keydown.esc.prevent="productDropdownOpen = false"
-            />
+        <template v-else>
+          <div class="bg-blue-50 p-3 rounded-lg mb-4">
+            <h3 class="text-base font-semibold mb-2 text-blue-700">
+              {{ t("customer_info") }}
+            </h3>
             <div
-              v-if="productDropdownOpen && filteredProducts.length"
-              class="absolute bottom-full left-0 w-full mb-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto"
+              class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 text-sm"
             >
-              <ul class="text-sm">
-                <li
-                  v-for="(p, idx) in filteredProducts"
-                  :key="p.id"
-                  class="px-4 py-2 cursor-pointer"
-                  :class="
-                    idx === productHighlight
-                      ? 'bg-gray-100'
-                      : 'hover:bg-gray-50'
-                  "
-                  @click="onSelectProduct(p)"
-                >
-                  <div class="flex justify-between">
-                    <span class="font-medium">{{ p.nameBn }}</span>
-                    <span class="text-gray-500">{{ t("id") }}: {{ p.id }}</span>
-                  </div>
-                </li>
-              </ul>
+              <div>
+                <span class="text-gray-600"> {{ t("id") }}: </span>
+                <span class="font-medium ml-1">
+                  {{ selectedCustomer?.id ?? "—" }}
+                </span>
+              </div>
+              <div>
+                <span class="text-gray-600"> {{ t("name") }}: </span>
+                <span class="font-medium ml-1">
+                  {{ selectedCustomer?.nameBn ?? "—" }}
+                </span>
+              </div>
+              <div>
+                <span class="text-gray-600"> {{ t("last_bill") }}: </span>
+                <span class="font-medium ml-1"> {{ lastBillText }} </span>
+              </div>
+              <div>
+                <span class="text-gray-600"> {{ t("due") }}: </span>
+                <span class="font-medium text-red-600 ml-1">
+                  {{ formatMoney(Number(selectedCustomer?.outstanding || 0)) }}
+                </span>
+              </div>
             </div>
           </div>
-          <button
-            class="bg-green-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-green-700 transition-colors"
-            @click="addFirstProductMatch"
+
+          <div class="flex-grow min-h-0 overflow-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="border-b border-gray-200">
+                <tr>
+                  <th
+                    class="p-2 text-xs font-semibold text-gray-600 text-center"
+                  >
+                    #
+                  </th>
+                  <th class="p-2 text-xs font-semibold text-gray-600">
+                    {{ t("product_name") }}
+                  </th>
+                  <th
+                    class="p-2 text-xs font-semibold text-gray-600 text-center"
+                  >
+                    {{ t("quantity") }}
+                  </th>
+                  <th
+                    class="p-2 text-xs font-semibold text-gray-600 text-center"
+                  >
+                    {{ t("unit") }}
+                  </th>
+                  <th
+                    class="p-2 text-xs font-semibold text-gray-600 text-right"
+                  >
+                    {{ t("unit_price") }}
+                  </th>
+                  <th
+                    class="p-2 text-xs font-semibold text-gray-600 text-right"
+                  >
+                    {{ t("total") }}
+                  </th>
+                  <th
+                    class="p-2 text-xs font-semibold text-gray-600 text-center"
+                  >
+                    {{ t("actions") }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(row, idx) in receipt"
+                  :key="row.productId"
+                  class="border-b border-gray-200"
+                  :class="{ 'bg-red-50': isOversell(row) }"
+                >
+                  <td class="p-2 text-center">
+                    {{ idx + 1 }}
+                  </td>
+                  <td class="p-2">
+                    <div class="flex items-center gap-2">
+                      <span>{{ row.nameBn }}</span>
+                      <span
+                        v-if="isOversell(row)"
+                        class="inline-flex items-center gap-1 text-red-700 text-xs font-medium"
+                        :title="t('oversell_warning')"
+                        aria-live="polite"
+                      >
+                        <span aria-hidden="true">⚠️</span>
+                        <span class="sr-only">{{ t("oversell_warning") }}</span>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="p-2 text-center">
+                    <div class="inline-flex items-center gap-1">
+                      <button
+                        type="button"
+                        class="inline-flex items-center justify-center w-6 h-6 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                        :aria-label="t('decrease')"
+                        :title="t('decrease')"
+                        @click="adjustQuantity(idx, -1)"
+                      >
+                        <span aria-hidden="true">−</span>
+                        <span class="sr-only">{{ t("decrease") }}</span>
+                      </button>
+                      <input
+                        class="w-16 bg-gray-50 border border-gray-300 rounded-md px-1 py-0.5 text-center text-sm no-spinner"
+                        type="number"
+                        min="1"
+                        :value="row.quantity"
+                        @input="onQuantityInput(idx, $event)"
+                      />
+                      <button
+                        type="button"
+                        class="inline-flex items-center justify-center w-6 h-6 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                        :aria-label="t('increase')"
+                        :title="t('increase')"
+                        @click="adjustQuantity(idx, 1)"
+                      >
+                        <span aria-hidden="true">+</span>
+                        <span class="sr-only">{{ t("increase") }}</span>
+                      </button>
+                    </div>
+                  </td>
+                  <td class="p-2 text-center">
+                    {{ row.unit }}
+                  </td>
+                  <td class="p-2 text-right">
+                    {{ formatMoney(row.rate) }}
+                  </td>
+                  <td class="p-2 text-right">
+                    {{ formatMoney(row.lineTotal) }}
+                  </td>
+                  <td class="p-2 text-center">
+                    <button
+                      type="button"
+                      class="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                      :aria-label="t('remove')"
+                      :title="t('remove')"
+                      @click="removeReceiptRow(idx)"
+                    >
+                      <span aria-hidden="true">×</span>
+                      <span class="sr-only">{{ t("remove") }}</span>
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="receipt.length === 0">
+                  <td class="p-2 text-center text-gray-500" colspan="7">
+                    {{ t("no_items") }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div
+            class="border-t border-gray-200 mt-4 pt-4 flex items-center gap-2"
           >
-            {{ t("add") }}
-          </button>
-        </div>
+            <div class="relative flex-grow">
+              <input
+                id="search-product"
+                v-model="productQuery"
+                name="search-product"
+                type="text"
+                :placeholder="t('search_products_placeholder')"
+                class="w-full bg-gray-50 border border-gray-300 rounded-md pl-3 pr-2 py-2 text-sm"
+                @focus="productDropdownOpen = true"
+                @input="productDropdownOpen = true"
+                @keydown.down.prevent="moveProductHighlight(1)"
+                @keydown.up.prevent="moveProductHighlight(-1)"
+                @keydown.enter.prevent="confirmProductSelection()"
+                @keydown.esc.prevent="productDropdownOpen = false"
+              />
+              <div
+                v-if="productDropdownOpen && filteredProducts.length"
+                class="absolute bottom-full left-0 w-full mb-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto"
+              >
+                <ul class="text-sm">
+                  <li
+                    v-for="(p, idx) in filteredProducts"
+                    :key="p.id"
+                    class="px-4 py-2 cursor-pointer"
+                    :class="
+                      idx === productHighlight
+                        ? 'bg-gray-100'
+                        : 'hover:bg-gray-50'
+                    "
+                    @click="onSelectProduct(p)"
+                  >
+                    <div class="flex justify-between">
+                      <span class="font-medium">{{ p.nameBn }}</span>
+                      <span class="text-gray-500"
+                        >{{ t("id") }}: {{ p.id }}</span
+                      >
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <!-- Add button removed: selecting a dropdown item adds it to the invoice -->
+          </div>
+        </template>
 
         <!-- Success toast -->
         <div
@@ -442,7 +509,7 @@ type Cust = {
   outstanding?: number;
 };
 
-const today = computed(() => new Date().toLocaleDateString("en-GB"));
+// const today = computed(() => new Date().toLocaleDateString("en-GB"));
 
 const emit = defineEmits<{
   (
@@ -465,15 +532,7 @@ const emit = defineEmits<{
 function navigate(page: Parameters<typeof emit>[1]) {
   emit("navigate", page);
 }
-function openFile() {
-  window.ahb.openFile();
-}
-function saveFile() {
-  window.ahb.saveFile();
-}
-function saveFileAs() {
-  window.ahb.saveFileAs();
-}
+// File actions are available in the application menu; inline buttons removed.
 
 // Draft receipt state
 const customers = ref<Cust[]>([]);
@@ -518,6 +577,9 @@ const receipt = ref<ReceiptRow[]>([]);
 const discount = ref(0);
 const paid = ref(0);
 const notes = ref("");
+const lastBillText = ref("—");
+const fileNameDisplay = ref("—");
+const fileDirty = ref(false);
 
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
 const formatMoney = (n: number) => (Number.isFinite(n) ? n.toFixed(2) : "0.00");
@@ -611,6 +673,9 @@ async function doPostInvoice() {
     discount.value = 0;
     paid.value = 0;
     notes.value = "";
+    if (selectedCustomer.value) {
+      void loadLastBillForCustomer(selectedCustomer.value.id);
+    }
   } catch (e) {
     showError.value = true;
     errorMessage.value = (e as Error).message;
@@ -622,11 +687,15 @@ function onSelectCustomer(c: Cust) {
   selectedCustomer.value = c;
   customerQuery.value = `${c.id} - ${c.nameBn}`;
   customerDropdownOpen.value = false;
+  void loadLastBillForCustomer(c.id);
 }
-function selectFirstCustomerMatch() {
-  if (filteredCustomers.value.length)
-    onSelectCustomer(filteredCustomers.value[0]);
+function clearCustomerSelection() {
+  selectedCustomer.value = null;
+  customerQuery.value = "";
+  customerDropdownOpen.value = false;
+  lastBillText.value = "—";
 }
+// removed: selectFirstCustomerMatch (search is live on keypress)
 
 function onSelectProduct(p: Prod) {
   const idx = receipt.value.findIndex((r) => r.productId === p.id);
@@ -646,15 +715,26 @@ function onSelectProduct(p: Prod) {
   productDropdownOpen.value = false;
   productQuery.value = "";
 }
-function addFirstProductMatch() {
-  if (filteredProducts.value.length) onSelectProduct(filteredProducts.value[0]);
-}
+// removed: addFirstProductMatch (select from dropdown to add)
 
 function onQuantityInput(idx: number, evt: Event) {
   const input = evt.target as HTMLInputElement;
   const val = Math.max(1, Math.floor(Number(input.value || 1)));
   receipt.value[idx].quantity = val;
   recomputeRow(idx);
+}
+
+function adjustQuantity(idx: number, delta: number) {
+  const row = receipt.value[idx];
+  if (!row) return;
+  row.quantity = Math.max(1, Number(row.quantity || 1) + delta);
+  recomputeRow(idx);
+}
+
+function removeReceiptRow(idx: number) {
+  if (idx >= 0 && idx < receipt.value.length) {
+    receipt.value.splice(idx, 1);
+  }
 }
 
 // (Removed older window.confirm-based complete() implementation)
@@ -692,9 +772,21 @@ onMounted(async () => {
   });
   // Click-away to close dropdowns
   window.addEventListener("click", onGlobalClick);
+  // Initialize file info and subscribe to updates
+  try {
+    const info = await window.ahb.getFileInfo();
+    updateFileInfo(info);
+  } catch {
+    console.debug("file info init failed");
+  }
+  // Subscribe if available (tests may stub a minimal API)
+  if (typeof (window.ahb as any).onFileInfo === "function") {
+    offFileInfo = (window.ahb as any).onFileInfo(updateFileInfo);
+  }
 });
 onUnmounted(() => {
   if (off) off();
+  if (offFileInfo) offFileInfo();
   window.removeEventListener("click", onGlobalClick);
 });
 
@@ -710,6 +802,17 @@ const showSuccess = ref(false);
 const successMessage = ref("");
 const showError = ref(false);
 const errorMessage = ref("");
+
+let offFileInfo: null | (() => void) = null;
+function updateFileInfo(info: { path: string | null; isDirty: boolean }) {
+  fileDirty.value = Boolean(info.isDirty);
+  fileNameDisplay.value = friendlyName(info.path);
+}
+function friendlyName(p: string | null): string {
+  if (!p) return "—";
+  const parts = p.split(/[/\\\\]/);
+  return parts[parts.length - 1] || p;
+}
 
 // Keyboard navigation for search dropdowns
 const customerHighlight = ref(0);
@@ -766,5 +869,23 @@ function onConfirmNegative() {
 }
 function onCancelNegative() {
   showConfirmNegative.value = false;
+}
+
+async function loadLastBillForCustomer(customerId: number) {
+  try {
+    const invoices = await window.ahb.listInvoicesByCustomer(customerId);
+    if (!invoices || invoices.length === 0) {
+      lastBillText.value = "—";
+      return;
+    }
+    let latest = invoices[0];
+    for (const inv of invoices) {
+      if (inv.date > latest.date) latest = inv;
+    }
+    const d = new Date(latest.date);
+    lastBillText.value = d.toLocaleDateString("en-GB");
+  } catch {
+    lastBillText.value = "—";
+  }
 }
 </script>

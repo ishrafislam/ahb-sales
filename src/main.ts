@@ -116,6 +116,10 @@ if (!currentDoc.data || typeof currentDoc.data !== "object") {
   (currentDoc as AhbDocument).data = initData();
 }
 
+function broadcastFileInfo() {
+  notifyAll("app:file-info", { path: currentFilePath, isDirty });
+}
+
 function notifyAll(channel: string, ...args: unknown[]) {
   BrowserWindow.getAllWindows().forEach((w) =>
     w.webContents.send(channel, ...args)
@@ -140,6 +144,7 @@ async function handleNewFile() {
   notifyAll("app:document-changed");
   isDirty = false;
   buildMenu();
+  broadcastFileInfo();
 }
 
 async function handleOpenFile() {
@@ -161,6 +166,7 @@ async function handleOpenFile() {
     notifyAll("app:document-changed");
     isDirty = false;
     buildMenu();
+    broadcastFileInfo();
   } catch (err) {
     console.error("Failed to open/decrypt file:", err);
     await dialog.showMessageBox({
@@ -187,6 +193,7 @@ async function handleSaveFile() {
   writeCurrentTo(currentFilePath);
   isDirty = false;
   buildMenu();
+  broadcastFileInfo();
 }
 
 async function handleSaveFileAs() {
@@ -202,6 +209,7 @@ async function handleSaveFileAs() {
   notifyAll("app:document-changed");
   isDirty = false;
   buildMenu();
+  broadcastFileInfo();
 }
 
 // IPC wiring
@@ -209,6 +217,10 @@ ipcMain.handle("app:new-file", async () => newFileFlow());
 ipcMain.handle("app:open-file", async () => openFileFlow());
 ipcMain.handle("app:save-file", async () => handleSaveFile());
 ipcMain.handle("app:save-file-as", async () => handleSaveFileAs());
+ipcMain.handle("app:get-file-info", async () => ({
+  path: currentFilePath,
+  isDirty,
+}));
 ipcMain.handle("app:get-language", async () => getLanguage());
 ipcMain.handle("app:set-language", async (_e, lang: "bn" | "en") => {
   setLanguage(lang);
@@ -294,6 +306,7 @@ ipcMain.handle(
     const prod = addProduct(data, p);
     notifyAll("data:changed", { kind: "product", action: "add", id: prod.id });
     isDirty = true;
+    broadcastFileInfo();
     return prod;
   }
 );
@@ -320,6 +333,7 @@ ipcMain.handle(
       id: inv.customerId,
     });
     isDirty = true;
+    broadcastFileInfo();
     return inv;
   }
 );
@@ -359,6 +373,7 @@ ipcMain.handle(
       id: purchase.productId,
     });
     isDirty = true;
+    broadcastFileInfo();
     return purchase;
   }
 );
@@ -437,27 +452,38 @@ function buildMenu() {
       ],
     },
     {
-      label: d.menu_language ?? "Language",
+      label: d.settings ?? "Settings",
       submenu: [
         {
-          label: "বাংলা",
-          type: "radio",
-          checked: lang === "bn",
+          label: `${d.print} ${d.settings_title ?? d.settings ?? "Settings"}`,
           click: (): void => {
-            setLanguage("bn");
-            notifyAll("app:language-changed", "bn");
-            buildMenu();
+            notifyAll("app:open-settings");
           },
         },
         {
-          label: "English",
-          type: "radio",
-          checked: lang === "en",
-          click: (): void => {
-            setLanguage("en");
-            notifyAll("app:language-changed", "en");
-            buildMenu();
-          },
+          label: d.menu_language ?? "Language",
+          submenu: [
+            {
+              label: "বাংলা",
+              type: "radio",
+              checked: lang === "bn",
+              click: (): void => {
+                setLanguage("bn");
+                notifyAll("app:language-changed", "bn");
+                buildMenu();
+              },
+            },
+            {
+              label: "English",
+              type: "radio",
+              checked: lang === "en",
+              click: (): void => {
+                setLanguage("en");
+                notifyAll("app:language-changed", "en");
+                buildMenu();
+              },
+            },
+          ],
         },
       ],
     },
@@ -535,6 +561,7 @@ async function closeFileFlow(): Promise<void> {
   isDirty = false;
   notifyAll("app:document-closed");
   buildMenu();
+  broadcastFileInfo();
 }
 
 async function quitAppFlow(): Promise<void> {
@@ -555,6 +582,7 @@ ipcMain.handle(
     const prod = updateProduct(data, id, patch);
     notifyAll("data:changed", { kind: "product", action: "update", id });
     isDirty = true;
+    broadcastFileInfo();
     return prod;
   }
 );
@@ -574,6 +602,7 @@ ipcMain.handle(
     const cust = addCustomer(data, c);
     notifyAll("data:changed", { kind: "customer", action: "add", id: cust.id });
     isDirty = true;
+    broadcastFileInfo();
     return cust;
   }
 );
@@ -584,6 +613,7 @@ ipcMain.handle(
     const cust = updateCustomer(data, id, patch);
     notifyAll("data:changed", { kind: "customer", action: "update", id });
     isDirty = true;
+    broadcastFileInfo();
     return cust;
   }
 );

@@ -73,11 +73,14 @@ describe("DashboardView.vue", () => {
     } as unknown as AhbStub;
   });
 
-  it("renders and shows empty items with zero totals", async () => {
+  it("renders prompt to select customer and shows zero totals", async () => {
     const wrapper = mount(DashboardView);
     await Promise.resolve();
     await nextTick();
-    expect(wrapper.text()).toContain("No items");
+    expect(wrapper.text()).toContain("Select a customer");
+    expect(wrapper.text()).toContain(
+      "Start by searching and selecting a customer on the left."
+    );
     expect(wrapper.text()).toContain("Total Price");
     // Expect 0.00 visible at least once (subtotal/net)
     expect(wrapper.text()).toContain("0.00");
@@ -204,14 +207,16 @@ describe("DashboardView.vue", () => {
     await cItems[0].trigger("click");
     await nextTick();
 
-    // Add product
+    // Add product by selecting from dropdown
     const pInput = wrapper.get("#search-product");
     await pInput.trigger("focus");
     await pInput.setValue("Soap");
-    const addBtnCandidates = wrapper
-      .findAll("button")
-      .filter((b) => b.text() === "Add");
-    await addBtnCandidates[0].trigger("click");
+    await nextTick();
+    const pItems = wrapper
+      .findAll("li")
+      .filter((li) => li.text().includes("Soap"));
+    expect(pItems.length).toBeGreaterThan(0);
+    await pItems[0].trigger("click");
     await nextTick();
 
     // Set discount higher than subtotal (50)

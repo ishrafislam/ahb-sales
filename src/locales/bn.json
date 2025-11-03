@@ -105,5 +105,11 @@
   "confirm": "নিশ্চিত করুন",
   "cancel": "বাতিল",
   "confirm_title": "নিশ্চিতকরণ",
-  "oversell_warning": "বর্তমান স্টকের চেয়ে বেশি"
+  "oversell_warning": "বর্তমান স্টকের চেয়ে বেশি",
+  "select_customer_prompt_title": "একজন ক্রেতা নির্বাচন করুন",
+  "select_customer_prompt": "বাম পাশে সার্চ করে প্রথমে একজন ক্রেতা নির্বাচন করুন।",
+  "clear": "ক্লিয়ার",
+  "remove": "মুছে ফেলুন",
+  "increase": "বাড়ান",
+  "decrease": "কমান"
 }

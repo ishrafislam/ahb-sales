@@ -157,6 +157,13 @@ onMounted(() => {
   window.ahb.onDocumentChanged(() => {
     loaded.value = true;
   });
+  // Open settings when triggered from application menu (guard for tests)
+  if (typeof (window.ahb as any).onOpenSettings === "function") {
+    (window.ahb as any).onOpenSettings(() => {
+      closeModals();
+      showSettings.value = true;
+    });
+  }
 });
 
 function closeModals() {
