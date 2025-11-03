@@ -321,9 +321,11 @@ export function addCustomer(data: AhbDataV1, c: NewCustomer): Customer {
     nameBn: c.nameBn.trim(),
     nameEn: c.nameEn?.trim() || undefined,
     address: c.address?.trim() || undefined,
-    phone: c.phone
-      ? c.phone.toString().trim().slice(0, 50) || undefined
-      : undefined,
+    phone: (() => {
+      if (c.phone === undefined || c.phone === null) return undefined;
+      const trimmed = c.phone.toString().trim().slice(0, 50);
+      return trimmed ? trimmed : undefined;
+    })(),
     outstanding: parseNumber(c.outstanding, "outstanding", 0),
     active: c.active ?? true,
     createdAt: nowIso(),
@@ -354,9 +356,12 @@ export function updateCustomer(
   // Normalize phone length and trimming
   if (Object.prototype.hasOwnProperty.call(patch, "phone")) {
     const raw = (patch as Partial<Customer>).phone;
-    next.phone = raw
-      ? raw.toString().trim().slice(0, 50) || undefined
-      : undefined;
+    if (raw === undefined || raw === null) {
+      next.phone = undefined;
+    } else {
+      const trimmed = raw.toString().trim().slice(0, 50);
+      next.phone = trimmed ? trimmed : undefined;
+    }
   }
   data.customers[idx] = next;
   return next;

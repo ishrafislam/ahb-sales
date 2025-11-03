@@ -831,7 +831,7 @@ function updateFileInfo(info: { path: string | null; isDirty: boolean }) {
 }
 function friendlyName(p: string | null): string {
   if (!p) return "—";
-  const parts = p.split(/[/\\\\]/);
+  const parts = p.split(/[\\/]/);
   return parts[parts.length - 1] || p;
 }
 
