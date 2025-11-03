@@ -695,9 +695,8 @@ async function doPostInvoice() {
     discount.value = 0;
     paid.value = 0;
     notes.value = "";
-    if (selectedCustomer.value) {
-      void loadLastBillForCustomer(selectedCustomer.value.id);
-    }
+    // Reset customer selection after completing invoice
+    clearCustomerSelection();
   } catch (e) {
     showError.value = true;
     errorMessage.value = (e as Error).message;

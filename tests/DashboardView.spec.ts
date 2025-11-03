@@ -255,7 +255,7 @@ describe("DashboardView.vue", () => {
     expect(args.discount).toBe(10);
     expect(Array.isArray(args.lines) && args.lines.length).toBe(1);
 
-    // After complete, draft resets -> No items
-    expect(wrapper.text()).toContain("No items");
+    // After complete, draft and selection reset -> prompt to select customer
+    expect(wrapper.text()).toContain("Select a customer");
   });
 });
