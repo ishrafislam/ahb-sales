@@ -18,6 +18,7 @@ export type Customer = {
   nameBn: string;
   nameEn?: string;
   address?: string;
+  phone?: string;
   outstanding: number;
   active: boolean;
   createdAt: string;
@@ -320,6 +321,9 @@ export function addCustomer(data: AhbDataV1, c: NewCustomer): Customer {
     nameBn: c.nameBn.trim(),
     nameEn: c.nameEn?.trim() || undefined,
     address: c.address?.trim() || undefined,
+    phone: c.phone
+      ? c.phone.toString().trim().slice(0, 50) || undefined
+      : undefined,
     outstanding: parseNumber(c.outstanding, "outstanding", 0),
     active: c.active ?? true,
     createdAt: nowIso(),
@@ -341,7 +345,19 @@ export function updateCustomer(
   if (Object.prototype.hasOwnProperty.call(patch, "outstanding")) {
     throw new Error("Outstanding can only be set when creating a customer");
   }
-  const next: Customer = { ...old, ...patch, updatedAt: nowIso() };
+  const next: Customer = { ...old, updatedAt: nowIso() };
+  // Apply simple merges
+  if (patch.nameBn !== undefined) next.nameBn = patch.nameBn;
+  if (patch.nameEn !== undefined) next.nameEn = patch.nameEn;
+  if (patch.address !== undefined) next.address = patch.address;
+  if (patch.active !== undefined) next.active = patch.active;
+  // Normalize phone length and trimming
+  if (Object.prototype.hasOwnProperty.call(patch, "phone")) {
+    const raw = (patch as Partial<Customer>).phone;
+    next.phone = raw
+      ? raw.toString().trim().slice(0, 50) || undefined
+      : undefined;
+  }
   data.customers[idx] = next;
   return next;
 }

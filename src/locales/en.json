@@ -43,6 +43,7 @@
   "id": "ID",
   "name": "Name",
   "address": "Address",
+  "phone": "Phone Number",
   "status": "Status",
   "active": "Active",
   "inactive": "Inactive",
