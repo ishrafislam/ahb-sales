@@ -576,7 +576,7 @@ ipcMain.handle("app:get-runtime-info", async () => {
       chrome: process.versions.chrome,
       node: process.versions.node,
     },
-    buildDate: process.env.BUILD_DATE || new Date().toISOString(),
+    buildDate: process.env.BUILD_DATE || "dev",
     commitSha: process.env.COMMIT_SHA || process.env.GITHUB_SHA || undefined,
   } as const;
 });

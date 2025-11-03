@@ -123,7 +123,7 @@
         class="bg-green-600 hover:bg-green-700 text-white rounded px-3 py-1 text-sm"
         @click="restartForUpdate"
       >
-        Restart to update
+        {{ t("restart_to_update") }}
       </button>
     </div>
   </div>
@@ -207,25 +207,27 @@ onMounted(() => {
     (window.ahb as any).onUpdateEvent(
       (ev: { kind: string; data?: unknown }) => {
         if (ev.kind === "checking") {
-          updateToastText.value = "Checking for updates…";
+          updateToastText.value = t("update_checking");
           canRestartForUpdate.value = false;
           showUpdateToast.value = true;
           setTimeout(() => (showUpdateToast.value = false), 2000);
         } else if (ev.kind === "available") {
-          updateToastText.value = "Downloading update…";
+          updateToastText.value = t("update_downloading");
           canRestartForUpdate.value = false;
           showUpdateToast.value = true;
         } else if (ev.kind === "not-available") {
-          updateToastText.value = "You’re up to date.";
+          updateToastText.value = t("update_current");
           canRestartForUpdate.value = false;
           showUpdateToast.value = true;
           setTimeout(() => (showUpdateToast.value = false), 2000);
         } else if (ev.kind === "downloaded") {
-          updateToastText.value = "Update downloaded.";
+          updateToastText.value = t("update_downloaded");
           canRestartForUpdate.value = true;
           showUpdateToast.value = true;
         } else if (ev.kind === "error") {
-          updateToastText.value = `Update failed: ${String(ev.data || "")}`;
+          updateToastText.value = t("update_failed", {
+            error: String(ev.data || ""),
+          });
           canRestartForUpdate.value = false;
           showUpdateToast.value = true;
           setTimeout(() => (showUpdateToast.value = false), 4000);

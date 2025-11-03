@@ -118,5 +118,11 @@
   "remove": "Remove",
   "increase": "Increase",
   "decrease": "Decrease",
-  "summary_add_products_prompt": "Add products to the invoice first."
+  "summary_add_products_prompt": "Add products to the invoice first.",
+  "restart_to_update": "Restart to update",
+  "update_checking": "Checking for updates…",
+  "update_downloading": "Downloading update…",
+  "update_current": "You’re up to date.",
+  "update_downloaded": "Update downloaded.",
+  "update_failed": "Update failed: {error}"
 }
