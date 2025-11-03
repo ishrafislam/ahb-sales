@@ -2,11 +2,11 @@
   <!-- eslint-disable -->
   <div class="flex flex-col h-screen p-3 lg:p-4 gap-3 lg:gap-4">
     <!-- Header (title only) -->
-    <div class="flex justify-between items-center mb-1">
+    <!-- <div class="flex justify-between items-center mb-1">
       <div class="flex items-center gap-4">
         <h2 class="text-xl font-bold">ABDUL HAMID AND BROTHERS</h2>
       </div>
-    </div>
+    </div> -->
 
     <!-- Body -->
     <div
