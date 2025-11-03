@@ -10,11 +10,11 @@
 
     <!-- Body -->
     <div
-      class="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-4 min-h-0"
+      class="flex-grow grid grid-cols-1 lg:grid-cols-4 gap-3 lg:gap-4 min-h-0"
     >
       <!-- Left column -->
       <div
-        class="lg:col-span-1 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-hidden"
+        class="lg:col-span-1 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-y-auto"
       >
         <!-- File info (current file name + saved/unsaved icon) -->
         <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200">
@@ -236,7 +236,7 @@
 
       <!-- Right column -->
       <div
-        class="lg:col-span-2 bg-white p-4 rounded-md shadow-sm border border-gray-200 flex flex-col min-h-0"
+        class="lg:col-span-3 bg-white p-4 rounded-md shadow-sm border border-gray-200 flex flex-col min-h-0"
       >
         <!-- Empty state when no customer is selected -->
         <div
