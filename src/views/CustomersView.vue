@@ -51,6 +51,19 @@
       </div>
     </form>
 
+    <!-- Phone input placed below but still part of the add flow (bound to form) -->
+    <div class="grid grid-cols-6 gap-2">
+      <label class="col-span-2 text-sm">
+        {{ t("phone") }}
+        <input
+          v-model="form.phone"
+          class="mt-1 w-full border rounded px-2 py-1"
+          maxlength="50"
+          type="text"
+        />
+      </label>
+    </div>
+
     <table class="min-w-full border text-sm">
       <thead>
         <tr class="bg-gray-100">
@@ -107,6 +120,7 @@ type Customer = {
   id: number;
   nameBn: string;
   address?: string;
+  phone?: string;
   outstanding: number;
   active: boolean;
 };
@@ -118,11 +132,13 @@ const form = ref<{
   id: number | null;
   nameBn: string;
   address?: string;
+  phone?: string;
   outstanding: number;
 }>({
   id: null,
   nameBn: "",
   address: "",
+  phone: "",
   outstanding: 0,
 });
 
@@ -132,6 +148,7 @@ async function load() {
     id: c.id,
     nameBn: c.nameBn,
     address: c.address,
+    phone: c.phone,
     outstanding: Number(c.outstanding || 0),
     active: c.active !== false,
   }));
@@ -145,10 +162,17 @@ async function onAdd() {
       id: form.value.id,
       nameBn: form.value.nameBn,
       address: form.value.address,
+      phone: form.value.phone,
       outstanding: form.value.outstanding,
     });
     await load();
-    form.value = { id: null, nameBn: "", address: "", outstanding: 0 };
+    form.value = {
+      id: null,
+      nameBn: "",
+      address: "",
+      phone: "",
+      outstanding: 0,
+    };
   } catch (e) {
     error.value = (e as Error).message;
   }

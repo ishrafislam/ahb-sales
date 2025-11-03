@@ -74,6 +74,21 @@
               />
             </div>
             <div>
+              <label
+                for="customer-phone"
+                class="block text-sm font-medium text-gray-600"
+              >
+                {{ t("phone") }}
+              </label>
+              <input
+                id="customer-phone"
+                v-model="form.phone"
+                class="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 sm:text-sm"
+                type="text"
+                maxlength="50"
+              />
+            </div>
+            <div>
               <label class="block text-sm font-medium text-gray-600">
                 {{ t("status") }}
               </label>
@@ -153,6 +168,7 @@ interface CustomerRow {
   id: number;
   nameBn: string;
   address?: string;
+  phone?: string;
   active: boolean;
 }
 
@@ -162,6 +178,7 @@ const selectedId = ref<number>(1);
 const form = ref({
   nameBn: "",
   address: "",
+  phone: "",
   active: true,
 });
 
@@ -187,10 +204,12 @@ function syncFromSelected() {
   if (c) {
     form.value.nameBn = c.nameBn || "";
     form.value.address = c.address || "";
+    form.value.phone = c.phone || "";
     form.value.active = !!c.active;
   } else {
     form.value.nameBn = "";
     form.value.address = "";
+    form.value.phone = "";
     form.value.active = true;
   }
 }
@@ -207,6 +226,7 @@ async function load() {
     id: c.id,
     nameBn: c.nameBn,
     address: c.address,
+    phone: c.phone,
     active: c.active !== false,
   }));
   // Initialize selection to first existing or 1
@@ -239,6 +259,7 @@ const isDirty = computed(() => {
   return (
     (c.nameBn || "") !== form.value.nameBn ||
     (c.address || "") !== form.value.address ||
+    (c.phone || "") !== form.value.phone ||
     !!c.active !== !!form.value.active
   );
 });
@@ -249,6 +270,7 @@ async function add() {
     id: selectedId.value,
     nameBn: form.value.nameBn,
     address: form.value.address,
+    phone: form.value.phone,
     outstanding: 0,
     active: form.value.active,
   });
@@ -260,6 +282,7 @@ async function update() {
   await window.ahb.updateCustomer(selectedId.value, {
     nameBn: form.value.nameBn,
     address: form.value.address,
+    phone: form.value.phone,
     active: form.value.active,
   });
   await load();

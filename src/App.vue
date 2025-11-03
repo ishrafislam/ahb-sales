@@ -1,18 +1,5 @@
 <template>
-  <div class="p-4 space-y-3 min-h-screen">
-    <!-- <div class="flex flex-wrap gap-2">
-      <select
-        v-if="loaded"
-        v-model="lang"
-        class="px-2 py-1 border rounded"
-        @change="onLangChange"
-      >
-        <option value="bn">বাংলা</option>
-        <option value="en">English</option>
-      </select>
-    </div> -->
-
-    <!-- Initial full-screen file selection (styled) -->
+  <div class="min-h-screen">
     <div v-if="!loaded" class="min-h-screen grid place-items-center">
       <div class="text-center space-y-4 px-4">
         <h2 class="text-4xl font-bold">ABDUL HAMID & BROTHERS</h2>
@@ -33,7 +20,7 @@
       </div>
     </div>
 
-    <div v-if="loaded" class="pt-2">
+    <div v-if="loaded">
       <Dashboard @navigate="onNavigate" />
     </div>
 
@@ -71,6 +58,7 @@
     <BaseModal
       v-if="showCustomerHistory"
       :title="t('customer_history_title')"
+      :max-width="'5xl'"
       @close="closeModals"
     >
       <CustomerHistory @navigate="onNavigate" />
@@ -170,6 +158,13 @@ onMounted(() => {
   window.ahb.onDocumentChanged(() => {
     loaded.value = true;
   });
+  // Open settings when triggered from application menu (guard for tests)
+  if (typeof (window.ahb as any).onOpenSettings === "function") {
+    (window.ahb as any).onOpenSettings(() => {
+      closeModals();
+      showSettings.value = true;
+    });
+  }
 });
 
 function closeModals() {

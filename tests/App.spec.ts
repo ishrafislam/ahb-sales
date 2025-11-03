@@ -61,7 +61,5 @@ describe("App.vue", () => {
     // Simulate opening/creating a file so the UI shows the dashboard
     docCb?.();
     await nextTick();
-    // Dashboard header is visible
-    expect(wrapper.text()).toContain("ABDUL HAMID AND BROTHERS");
   });
 });

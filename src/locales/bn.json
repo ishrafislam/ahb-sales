@@ -43,6 +43,7 @@
   "id": "আইডি",
   "name": "নাম",
   "address": "ঠিকানা",
+  "phone": "ফোন নম্বর",
   "status": "স্ট্যাটাস",
   "active": "সক্রিয়",
   "inactive": "নিষ্ক্রিয়",
@@ -105,5 +106,12 @@
   "confirm": "নিশ্চিত করুন",
   "cancel": "বাতিল",
   "confirm_title": "নিশ্চিতকরণ",
-  "oversell_warning": "বর্তমান স্টকের চেয়ে বেশি"
+  "oversell_warning": "বর্তমান স্টকের চেয়ে বেশি",
+  "select_customer_prompt_title": "একজন ক্রেতা নির্বাচন করুন",
+  "select_customer_prompt": "বাম পাশে সার্চ করে প্রথমে একজন ক্রেতা নির্বাচন করুন।",
+  "clear": "ক্লিয়ার",
+  "remove": "মুছে ফেলুন",
+  "increase": "বাড়ান",
+  "decrease": "কমান",
+  "summary_add_products_prompt": "প্রথমে ইনভয়েসে পণ্য যোগ করুন।"
 }

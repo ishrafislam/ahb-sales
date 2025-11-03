@@ -18,7 +18,7 @@
             ✕
           </button>
         </div>
-        <div class="p-4 max-h-[85vh] overflow-auto flex flex-col">
+        <div class="max-h-[85vh] overflow-auto flex flex-col">
           <slot />
         </div>
       </div>
@@ -39,8 +39,8 @@ const emit = defineEmits<{ (e: "close"): void }>();
 
 const maxWidthClass = computed(() => {
   switch (props.maxWidth) {
-    case "md":
-      return "max-w-md";
+    // case "md":
+    //   return "max-w-md";
     case "lg":
       return "max-w-lg";
     case "xl":

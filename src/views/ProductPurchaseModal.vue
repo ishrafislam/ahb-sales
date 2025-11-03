@@ -1,6 +1,6 @@
 <template>
   <!-- eslint-disable -->
-  <div class="flex flex-1 min-h-0 w-[700px] max-w-full">
+  <div class="flex flex-1 min-h-0">
     <!-- Left list -->
     <div class="w-[30%] border-r border-gray-200 flex flex-col">
       <div ref="leftListRef" class="flex-grow overflow-y-auto">
@@ -14,7 +14,7 @@
             @click="select(id)"
           >
             <div class="flex items-center">
-              <div class="font-medium text-sm w-10">
+              <div class="font-medium text-sm text-right w-10">
                 {{ id }}
               </div>
               <div class="text-sm text-gray-600 ml-4">
@@ -54,24 +54,17 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-[1fr_auto] gap-3 items-end">
-          <div>
-            <label class="block text-sm font-medium text-gray-600">
-              {{ t("quantity") }}
-            </label>
-            <input
-              v-model.number="quantity"
-              class="w-full bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm"
-              type="number"
-              min="1"
-              :disabled="!exists"
-            />
-          </div>
-          <div class="pb-2 text-sm text-gray-700">
-            <span class="inline-block mt-6">
-              {{ unitLabel }}
-            </span>
-          </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-600">
+            {{ t("quantity") }} - ({{ unitLabel }})
+          </label>
+          <input
+            v-model.number="quantity"
+            class="w-full bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm no-spinner"
+            type="number"
+            min="1"
+            :disabled="!exists"
+          />
         </div>
 
         <div class="flex justify-end gap-2">

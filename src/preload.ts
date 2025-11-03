@@ -9,6 +9,10 @@ type AppAPI = {
   openFile: () => Promise<void>;
   saveFile: () => Promise<void>;
   saveFileAs: () => Promise<void>;
+  getFileInfo: () => Promise<{ path: string | null; isDirty: boolean }>;
+  onFileInfo: (
+    cb: (info: { path: string | null; isDirty: boolean }) => void
+  ) => () => void;
   // Language operations
   getLanguage: () => Promise<"bn" | "en">;
   setLanguage: (lang: "bn" | "en") => Promise<void>;
@@ -73,6 +77,8 @@ type AppAPI = {
   onDataChanged: (
     cb: (payload: { kind: string; action: string; id: number }) => void
   ) => () => void;
+  // App control
+  onOpenSettings: (cb: () => void) => () => void;
 };
 
 const api: AppAPI = {
@@ -80,6 +86,15 @@ const api: AppAPI = {
   openFile: () => ipcRenderer.invoke("app:open-file"),
   saveFile: () => ipcRenderer.invoke("app:save-file"),
   saveFileAs: () => ipcRenderer.invoke("app:save-file-as"),
+  getFileInfo: () => ipcRenderer.invoke("app:get-file-info"),
+  onFileInfo: (cb) => {
+    const listener = (
+      _: unknown,
+      info: { path: string | null; isDirty: boolean }
+    ) => cb(info);
+    ipcRenderer.on("app:file-info", listener);
+    return () => ipcRenderer.removeListener("app:file-info", listener);
+  },
   getLanguage: () => ipcRenderer.invoke("app:get-language"),
   setLanguage: (lang) => ipcRenderer.invoke("app:set-language", lang),
   onLanguageChanged: (cb) => {
@@ -123,6 +138,11 @@ const api: AppAPI = {
     ) => cb(payload);
     ipcRenderer.on("data:changed", listener);
     return () => ipcRenderer.removeListener("data:changed", listener);
+  },
+  onOpenSettings: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on("app:open-settings", listener);
+    return () => ipcRenderer.removeListener("app:open-settings", listener);
   },
 };
 

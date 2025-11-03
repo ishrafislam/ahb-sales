@@ -73,14 +73,17 @@ describe("DashboardView.vue", () => {
     } as unknown as AhbStub;
   });
 
-  it("renders and shows empty items with zero totals", async () => {
+  it("renders prompt to select customer and hides summary until products added", async () => {
     const wrapper = mount(DashboardView);
     await Promise.resolve();
     await nextTick();
-    expect(wrapper.text()).toContain("No items");
-    expect(wrapper.text()).toContain("Total Price");
-    // Expect 0.00 visible at least once (subtotal/net)
-    expect(wrapper.text()).toContain("0.00");
+    expect(wrapper.text()).toContain("Select a customer");
+    expect(wrapper.text()).toContain(
+      "Start by searching and selecting a customer on the left."
+    );
+    // Summary should show prompt instead of totals when no products
+    expect(wrapper.text()).toContain("Add products to the invoice first.");
+    expect(wrapper.text()).not.toContain("Total Price");
   });
 
   it("selects a customer from dropdown and shows info", async () => {
@@ -204,14 +207,16 @@ describe("DashboardView.vue", () => {
     await cItems[0].trigger("click");
     await nextTick();
 
-    // Add product
+    // Add product by selecting from dropdown
     const pInput = wrapper.get("#search-product");
     await pInput.trigger("focus");
     await pInput.setValue("Soap");
-    const addBtnCandidates = wrapper
-      .findAll("button")
-      .filter((b) => b.text() === "Add");
-    await addBtnCandidates[0].trigger("click");
+    await nextTick();
+    const pItems = wrapper
+      .findAll("li")
+      .filter((li) => li.text().includes("Soap"));
+    expect(pItems.length).toBeGreaterThan(0);
+    await pItems[0].trigger("click");
     await nextTick();
 
     // Set discount higher than subtotal (50)
@@ -250,7 +255,7 @@ describe("DashboardView.vue", () => {
     expect(args.discount).toBe(10);
     expect(Array.isArray(args.lines) && args.lines.length).toBe(1);
 
-    // After complete, draft resets -> No items
-    expect(wrapper.text()).toContain("No items");
+    // After complete, draft and selection reset -> prompt to select customer
+    expect(wrapper.text()).toContain("Select a customer");
   });
 });
