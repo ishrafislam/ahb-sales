@@ -1,5 +1,5 @@
 {
-  "app_title": "এএইচবি সেলস",
+  "app_title": "আব্দুল হামিদ অ্যান্ড ব্রাদার্স",
   "menu_file": "ফাইল",
   "menu_new": "নতুন",
   "menu_open": "ওপেন",
@@ -8,7 +8,12 @@
   "menu_close": "বন্ধ",
   "menu_language": "ভাষা",
   "menu_quit": "বের হও",
+  "check_updates": "আপডেট পরীক্ষা করুন",
   "settings": "সেটিংস",
+  "about": "সম্পর্কিত",
+  "about_app": "অ্যাপ সম্পর্কে",
+  "version": "ভার্সন",
+  "build_date": "বিল্ড তারিখ",
   "date_label": "তারিখ",
   "open_file": "ফাইল ওপেন",
   "new_file": "নতুন ফাইল",
@@ -113,5 +118,11 @@
   "remove": "মুছে ফেলুন",
   "increase": "বাড়ান",
   "decrease": "কমান",
-  "summary_add_products_prompt": "প্রথমে ইনভয়েসে পণ্য যোগ করুন।"
+  "summary_add_products_prompt": "প্রথমে ইনভয়েসে পণ্য যোগ করুন।",
+  "restart_to_update": "আপডেট করতে রিস্টার্ট করুন",
+  "update_checking": "আপডেট খোঁজা হচ্ছে…",
+  "update_downloading": "আপডেট ডাউনলোড হচ্ছে…",
+  "update_current": "আপনি সর্বশেষ সংস্করণে আছেন।",
+  "update_downloaded": "আপডেট ডাউনলোড সম্পন্ন।",
+  "update_failed": "আপডেট ব্যর্থ: {error}"
 }
