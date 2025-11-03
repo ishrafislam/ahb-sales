@@ -112,5 +112,6 @@
   "clear": "Clear",
   "remove": "Remove",
   "increase": "Increase",
-  "decrease": "Decrease"
+  "decrease": "Decrease",
+  "summary_add_products_prompt": "Add products to the invoice first."
 }

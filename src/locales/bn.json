@@ -112,5 +112,6 @@
   "clear": "ক্লিয়ার",
   "remove": "মুছে ফেলুন",
   "increase": "বাড়ান",
-  "decrease": "কমান"
+  "decrease": "কমান",
+  "summary_add_products_prompt": "প্রথমে ইনভয়েসে পণ্য যোগ করুন।"
 }

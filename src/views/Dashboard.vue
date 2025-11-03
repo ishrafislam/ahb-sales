@@ -106,69 +106,91 @@
 
         <!-- Summary card -->
         <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200">
-          <div class="space-y-1.5 text-sm">
-            <div class="flex justify-between items-center pr-1">
-              <span class="text-gray-600"> {{ t("total_price") }} </span>
-              <span class="font-semibold"> {{ subtotalText }} </span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-600"> {{ t("discount") }} </span>
-              <input
-                v-model.number="discount"
-                type="number"
-                min="0"
-                class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner"
-              />
-            </div>
-            <div class="flex justify-between items-center pr-1">
-              <span class="text-gray-600"> {{ t("bill") }} </span>
-              <span class="font-semibold"> {{ netText }} </span>
-            </div>
-            <div
-              class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200"
-            >
-              <span class="text-gray-600"> {{ t("paid") }} </span>
-              <input
-                v-model.number="paid"
-                class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner"
-                type="number"
-                min="0"
-              />
-            </div>
-            <div class="flex justify-between items-center pr-1">
-              <span class="text-gray-600"> {{ t("due") }} </span>
-              <span class="font-semibold text-red-600"> {{ dueText }} </span>
-            </div>
-            <div
-              class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200 pr-1"
-            >
-              <span class="text-gray-600"> {{ t("previous_due") }} </span>
-              <span class="font-semibold"> {{ previousDueText }} </span>
-            </div>
-            <div class="flex justify-between items-center pr-1">
-              <span class="text-red-600">
-                {{ t("net_due") }}
-              </span>
-              <span class="font-bold text-red-600">
-                {{ netDueText }}
-              </span>
-            </div>
-            <div class="mt-2 flex items-end gap-2">
-              <textarea
-                v-model="notes"
-                :placeholder="t('comment')"
-                rows="2"
-                class="flex-grow bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
-              />
-              <button
-                class="bg-green-600 text-white py-2 px-3 rounded-md text-sm font-semibold hover:bg-green-700 transition-colors flex-shrink-0"
-                :disabled="!canComplete"
-                @click="complete"
+          <template v-if="receipt.length > 0">
+            <div class="space-y-1.5 text-sm">
+              <div class="flex justify-between items-center pr-1">
+                <span class="text-gray-600"> {{ t("total_price") }} </span>
+                <span class="font-semibold"> {{ subtotalText }} </span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-gray-600"> {{ t("discount") }} </span>
+                <input
+                  v-model.number="discount"
+                  type="number"
+                  min="0"
+                  class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner"
+                />
+              </div>
+              <div class="flex justify-between items-center pr-1">
+                <span class="text-gray-600"> {{ t("bill") }} </span>
+                <span class="font-semibold"> {{ netText }} </span>
+              </div>
+              <div
+                class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200"
               >
-                {{ t("complete") }}
-              </button>
+                <span class="text-gray-600"> {{ t("paid") }} </span>
+                <input
+                  v-model.number="paid"
+                  class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner"
+                  type="number"
+                  min="0"
+                />
+              </div>
+              <div class="flex justify-between items-center pr-1">
+                <span class="text-gray-600"> {{ t("due") }} </span>
+                <span class="font-semibold text-red-600"> {{ dueText }} </span>
+              </div>
+              <div
+                class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200 pr-1"
+              >
+                <span class="text-gray-600"> {{ t("previous_due") }} </span>
+                <span class="font-semibold"> {{ previousDueText }} </span>
+              </div>
+              <div class="flex justify-between items-center pr-1">
+                <span class="text-red-600">
+                  {{ t("net_due") }}
+                </span>
+                <span class="font-bold text-red-600">
+                  {{ netDueText }}
+                </span>
+              </div>
+              <div class="flex justify-between items-center">
+                <textarea
+                  v-model="notes"
+                  :placeholder="t('comment')"
+                  rows="2"
+                  class="flex-grow bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
+                />
+              </div>
+              <div class="mt-2 flex items-end gap-2">
+                <button
+                  class="flex-grow inline-flex items-center justify-center gap-2 bg-green-600 text-white py-2 px-3 mt-2 rounded-md text-sm font-semibold hover:bg-green-700 transition-colors flex-shrink-0"
+                  :disabled="!canComplete"
+                  @click="complete"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    class="w-4 h-4"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.5 7.5a1 1 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414l2.293 2.293 6.793-6.793a1 1 0 0 1 1.408 0z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                  <span>{{ t("complete") }}</span>
+                </button>
+              </div>
             </div>
-          </div>
+          </template>
+          <template v-else>
+            <div class="text-sm text-gray-600">
+              {{ t("summary_add_products_prompt") }}
+            </div>
+          </template>
         </div>
 
         <!-- Quick Actions -->

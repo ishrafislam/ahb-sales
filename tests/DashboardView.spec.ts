@@ -73,7 +73,7 @@ describe("DashboardView.vue", () => {
     } as unknown as AhbStub;
   });
 
-  it("renders prompt to select customer and shows zero totals", async () => {
+  it("renders prompt to select customer and hides summary until products added", async () => {
     const wrapper = mount(DashboardView);
     await Promise.resolve();
     await nextTick();
@@ -81,9 +81,9 @@ describe("DashboardView.vue", () => {
     expect(wrapper.text()).toContain(
       "Start by searching and selecting a customer on the left."
     );
-    expect(wrapper.text()).toContain("Total Price");
-    // Expect 0.00 visible at least once (subtotal/net)
-    expect(wrapper.text()).toContain("0.00");
+    // Summary should show prompt instead of totals when no products
+    expect(wrapper.text()).toContain("Add products to the invoice first.");
+    expect(wrapper.text()).not.toContain("Total Price");
   });
 
   it("selects a customer from dropdown and shows info", async () => {
