@@ -1,0 +1,37 @@
+name: Release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*.*.*"
+
+jobs:
+  publish:
+    name: Build and Publish
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Publish with Electron Forge
+        env:
+          AHB_KEY_HEX: ${{ secrets.AHB_KEY_HEX }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMIT_SHA: ${{ github.sha }}
+          BUILD_DATE: ${{ github.event.head_commit.timestamp }}
+        run: bun run publish
