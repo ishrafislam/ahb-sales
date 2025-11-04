@@ -31,6 +31,8 @@ jobs:
       - name: Publish with Electron Forge
         env:
           AHB_KEY_HEX: ${{ secrets.AHB_KEY_HEX }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMIT_SHA: ${{ github.sha }}
           BUILD_DATE: ${{ github.event.head_commit.timestamp }}
         run: bun run publish
