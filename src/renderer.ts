@@ -27,9 +27,11 @@
  */
 
 import "./index.css";
+import { initTheme } from "./theme";
 import { createApp } from "vue";
 import App from "./App.vue";
 
+void initTheme();
 const mount = document.createElement("div");
 document.body.appendChild(mount);
 createApp(App).mount(mount);

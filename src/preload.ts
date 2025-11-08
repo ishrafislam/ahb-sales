@@ -93,6 +93,14 @@ type AppAPI = {
   onUpdateEvent: (
     cb: (payload: { kind: string; data?: unknown }) => void
   ) => () => void;
+  // Theme
+  getTheme: () => Promise<{ source: string; effective: string }>;
+  setTheme: (
+    source: "system" | "light" | "dark"
+  ) => Promise<{ source: string; effective: string }>;
+  onThemeChanged: (
+    cb: (payload: { source: string; effective: string }) => void
+  ) => () => void;
 };
 
 const api: AppAPI = {
@@ -182,6 +190,16 @@ const api: AppAPI = {
     return () => {
       for (const [ch, fn] of pairs) ipcRenderer.removeListener(ch, fn);
     };
+  },
+  getTheme: () => ipcRenderer.invoke("settings:get-theme"),
+  setTheme: (source) => ipcRenderer.invoke("settings:set-theme", source),
+  onThemeChanged: (cb) => {
+    const listener = (
+      _: unknown,
+      payload: { source: string; effective: string }
+    ) => cb(payload);
+    ipcRenderer.on("app:theme-changed", listener);
+    return () => ipcRenderer.removeListener("app:theme-changed", listener);
   },
 };
 

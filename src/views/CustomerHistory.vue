@@ -1,14 +1,16 @@
 <template>
   <div class="flex flex-1 min-h-0">
     <!-- Left list: customers -->
-    <div class="w-[25%] border-r border-gray-200 flex flex-col">
+    <div
+      class="w-[25%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
+    >
       <div ref="leftListRef" class="flex-grow overflow-y-auto">
         <ul>
           <li
             v-for="id in idList"
             :key="id"
-            class="px-3 py-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100"
-            :class="{ 'bg-blue-100': selectedId === id }"
+            class="px-3 py-2 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+            :class="{ 'bg-blue-100 dark:bg-blue-950': selectedId === id }"
             :data-id="id"
             @click="onSelectCustomer(id)"
           >
@@ -16,7 +18,7 @@
               <div class="font-medium text-sm text-right w-10">
                 {{ id }}
               </div>
-              <div class="text-sm text-gray-600 ml-4">
+              <div class="text-sm text-gray-600 dark:text-gray-300 ml-4">
                 {{ customersById.get(id)?.nameBn || "" }}
               </div>
             </div>
@@ -29,7 +31,9 @@
     <div class="w-[75%] flex flex-col overflow-hidden">
       <div class="flex-grow overflow-y-auto">
         <table class="w-full text-sm text-left">
-          <thead class="text-xs uppercase bg-gray-50 sticky top-0">
+          <thead
+            class="text-xs uppercase bg-gray-50 dark:bg-gray-900 dark:text-gray-100 sticky top-0 border-b border-gray-200 dark:border-gray-700"
+          >
             <tr>
               <th class="px-3 py-2">
                 {{ t("date") }}
@@ -64,7 +68,7 @@
             <tr
               v-for="row in rows"
               :key="row.id"
-              class="bg-white border-b hover:bg-gray-50"
+              class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <td class="px-3 py-2 font-medium whitespace-nowrap">
                 {{ formatDate(row.date) }}
@@ -92,7 +96,7 @@
               </td>
               <td class="px-3 py-2 text-right">
                 <button
-                  class="bg-white border border-gray-300 py-1 px-2 rounded-md text-xs font-semibold hover:bg-gray-100"
+                  class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 py-1 px-2 rounded-md text-xs font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-100"
                   @click="onPrint(row.id)"
                 >
                   {{ t("print") }}
@@ -100,7 +104,10 @@
               </td>
             </tr>
             <tr v-if="!rows.length">
-              <td class="px-4 py-3 text-center text-gray-500" colspan="8">
+              <td
+                class="px-4 py-3 text-center text-gray-500 dark:text-gray-400"
+                colspan="9"
+              >
                 {{ t("no_invoices") }}
               </td>
             </tr>

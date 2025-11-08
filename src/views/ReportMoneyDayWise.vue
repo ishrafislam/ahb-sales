@@ -1,25 +1,27 @@
 <template>
   <div class="flex-1">
-    <div class="bg-white border border-gray-200 rounded-md p-3 mb-3">
+    <div
+      class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-3 mb-3"
+    >
       <div class="flex flex-wrap items-end gap-2">
         <div class="flex flex-col">
-          <label class="text-xs text-gray-600">
+          <label class="text-xs text-gray-600 dark:text-gray-300">
             {{ t("from") }}
           </label>
           <input
             v-model="from"
             type="date"
-            class="bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
+            class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm dark:text-gray-100"
           />
         </div>
         <div class="flex flex-col">
-          <label class="text-xs text-gray-600">
+          <label class="text-xs text-gray-600 dark:text-gray-300">
             {{ t("to") }}
           </label>
           <input
             v-model="to"
             type="date"
-            class="bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
+            class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm dark:text-gray-100"
           />
         </div>
         <button class="ml-auto btn btn-primary" @click="load">
@@ -31,18 +33,18 @@
       </div>
     </div>
     <div
-      class="bg-white border border-gray-200 rounded-md p-3 space-y-6 overflow-auto"
+      class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-3 space-y-6 overflow-auto"
     >
       <div
         v-for="(day, idx) in days"
         :key="idx"
-        class="border border-gray-200 rounded-md"
+        class="border border-gray-200 dark:border-gray-700 rounded-md"
       >
         <div
-          class="flex items-center justify-between bg-gray-50 px-3 py-2 border-b border-gray-200"
+          class="flex items-center justify-between bg-gray-50 dark:bg-gray-800 px-3 py-2 border-b border-gray-200 dark:border-gray-700"
         >
           <div class="font-semibold">{{ t("date") }}: {{ day.date }}</div>
-          <div class="text-sm text-gray-700 flex gap-4">
+          <div class="text-sm text-gray-700 dark:text-gray-300 flex gap-4">
             <span>
               {{ t("bill") }}: <strong>{{ fmt(day.totals.bill) }}</strong>
             </span>
@@ -64,29 +66,47 @@
         <div class="overflow-auto">
           <table class="w-full text-sm">
             <thead>
-              <tr class="text-left border-b border-gray-200">
-                <th class="p-2 sticky top-0 bg-white z-10">
+              <tr
+                class="text-left border-b border-gray-200 dark:border-gray-700"
+              >
+                <th
+                  class="p-2 sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+                >
                   {{ t("customer") }}
                 </th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                <th
+                  class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+                >
                   {{ t("bill") }}
                 </th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                <th
+                  class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+                >
                   {{ t("discount") }}
                 </th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                <th
+                  class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+                >
                   {{ t("net_bill") }}
                 </th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                <th
+                  class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+                >
                   {{ t("paid") }}
                 </th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                <th
+                  class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+                >
                   {{ t("due") }}
                 </th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                <th
+                  class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+                >
                   {{ t("previous_due") }}
                 </th>
-                <th class="p-2 text-right sticky top-0 bg-white z-10">
+                <th
+                  class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+                >
                   {{ t("total_due") }}
                 </th>
               </tr>
@@ -95,7 +115,7 @@
               <tr
                 v-for="(r, i) in day.rows"
                 :key="i"
-                class="border-b border-gray-100"
+                class="border-b border-gray-100 dark:border-gray-800"
               >
                 <td class="p-2">
                   {{ r.customerName ?? r.customerId }}
@@ -123,7 +143,10 @@
                 </td>
               </tr>
               <tr v-if="day.rows.length === 0">
-                <td class="p-2 text-center text-gray-500" colspan="8">
+                <td
+                  class="p-2 text-center text-gray-500 dark:text-gray-400"
+                  colspan="8"
+                >
                   {{ t("no_records") }}
                 </td>
               </tr>
@@ -131,7 +154,10 @@
           </table>
         </div>
       </div>
-      <div v-if="days.length === 0" class="text-center text-sm text-gray-500">
+      <div
+        v-if="days.length === 0"
+        class="text-center text-sm text-gray-500 dark:text-gray-400"
+      >
         {{ t("no_days_found") }}
       </div>
     </div>

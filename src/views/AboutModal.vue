@@ -1,12 +1,14 @@
 <template>
-  <div class="p-4 text-sm">
+  <div
+    class="p-4 text-sm bg-white dark:bg-gray-900 dark:text-gray-100 rounded-md border border-gray-200 dark:border-gray-700"
+  >
     <div class="space-y-2">
       <div class="flex items-center justify-between">
-        <span class="text-gray-600">{{ t("name") }}</span>
+        <span class="text-gray-600 dark:text-gray-300">{{ t("name") }}</span>
         <span class="font-medium">{{ appName }}</span>
       </div>
       <div class="flex items-center justify-between">
-        <span class="text-gray-600">{{ t("version") }}</span>
+        <span class="text-gray-600 dark:text-gray-300">{{ t("version") }}</span>
         <span class="font-medium">{{ version }}</span>
       </div>
       <!-- <div class="flex items-center justify-between">
@@ -23,7 +25,9 @@
       </div> -->
       <!-- eslint-disable-next-line vue/max-attributes-per-line -->
       <div v-if="runtime.buildDate" class="flex items-center justify-between">
-        <span class="text-gray-600">{{ t("build_date") }}</span>
+        <span class="text-gray-600 dark:text-gray-300">{{
+          t("build_date")
+        }}</span>
         <span class="font-medium">{{ buildDateText }}</span>
       </div>
       <!-- eslint-disable-next-line vue/max-attributes-per-line -->
@@ -33,9 +37,11 @@
       </div> -->
     </div>
     <div class="mt-5 flex items-center justify-between">
-      <p class="text-gray-500">© {{ todayText }} Abdul Hamid & Brothers</p>
+      <p class="text-gray-500 dark:text-gray-400">
+        © {{ todayText }} Abdul Hamid & Brothers
+      </p>
       <button
-        class="bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1 text-sm"
+        class="bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1 text-sm dark:bg-blue-700 dark:hover:bg-blue-600"
         @click="onCheckForUpdates"
       >
         {{ t("check_updates") }}

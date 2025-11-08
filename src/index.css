@@ -36,6 +36,14 @@
   --ahb-accent: #06b6d4; /* cyan-500 */
 }
 
+/* Base backgrounds for light/dark */
+html {
+  color-scheme: light dark;
+}
+body {
+  @apply transition-colors;
+}
+
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;

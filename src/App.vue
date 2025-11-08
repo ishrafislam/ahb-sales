@@ -1,6 +1,8 @@
 <template>
   <!-- eslint-disable -->
-  <div class="min-h-screen">
+  <div
+    class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors"
+  >
     <div v-if="!loaded" class="min-h-screen grid place-items-center">
       <div class="text-center space-y-4 px-4">
         <h2 class="text-4xl font-bold">ABDUL HAMID & BROTHERS</h2>
@@ -115,7 +117,7 @@
     <!-- Update toast -->
     <div
       v-if="showUpdateToast"
-      class="fixed bottom-4 right-4 bg-gray-900 text-white px-4 py-2 rounded shadow-lg flex items-center gap-3"
+      class="fixed bottom-4 right-4 bg-gray-900 text-white dark:bg-gray-800 px-4 py-2 rounded shadow-lg flex items-center gap-3"
     >
       <span>{{ updateToastText }}</span>
       <button

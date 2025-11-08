@@ -6,6 +6,7 @@ import {
   Menu,
   type MenuItemConstructorOptions,
   autoUpdater,
+  nativeTheme,
 } from "electron";
 import { updateElectronApp } from "update-electron-app";
 // Load environment variables from .env (dev convenience)
@@ -95,6 +96,13 @@ app.on("ready", () => {
 
   // Initialize auto-updates (no-op in dev unless forced)
   initAutoUpdates();
+  // Apply persisted theme source
+  try {
+    const s = loadAppSettings();
+    if (s.themeSource) nativeTheme.themeSource = s.themeSource;
+  } catch {
+    // ignore
+  }
   createWindow();
   buildMenu();
 });
@@ -244,7 +252,7 @@ ipcMain.handle("app:set-language", async (_e, lang: "bn" | "en") => {
 });
 
 // -----------------------
-// App settings (printing presets)
+// App settings (printing presets + theme)
 // -----------------------
 type PrintSettings = {
   paperSize: "A4" | "A5" | "Letter";
@@ -260,50 +268,106 @@ const defaultPrintSettings: PrintSettings = {
   marginMm: 12,
 };
 
+type ThemeSource = "system" | "light" | "dark";
+type AppSettings = {
+  print: PrintSettings;
+  language?: "bn" | "en";
+  themeSource?: ThemeSource;
+};
+
 function getSettingsPath() {
   // Store under userData directory
   const dir = app.getPath("userData");
   return path.join(dir, "settings.json");
 }
 
-function loadPrintSettings(): PrintSettings {
+function loadAppSettings(): AppSettings {
   try {
     const p = getSettingsPath();
-    if (!fs.existsSync(p)) return defaultPrintSettings;
+    if (!fs.existsSync(p))
+      return { print: defaultPrintSettings, themeSource: "system" };
     const raw = fs.readFileSync(p, "utf-8");
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(raw) as Partial<AppSettings>;
     return {
-      ...defaultPrintSettings,
-      ...parsed.print,
-    } as PrintSettings;
+      print: { ...defaultPrintSettings, ...(parsed.print ?? {}) },
+      language: parsed.language,
+      themeSource: parsed.themeSource ?? "system",
+    } as AppSettings;
   } catch {
-    return defaultPrintSettings;
+    return { print: defaultPrintSettings, themeSource: "system" };
   }
 }
 
-function savePrintSettings(next: PrintSettings) {
+function saveAppSettings(next: Partial<AppSettings>) {
   try {
     const p = getSettingsPath();
-    const payload = { print: next };
+    const existing = loadAppSettings();
+    const merged: AppSettings = {
+      ...existing,
+      ...next,
+      print: next.print ? { ...existing.print, ...next.print } : existing.print,
+    } as AppSettings;
     fs.mkdirSync(path.dirname(p), { recursive: true });
-    fs.writeFileSync(p, JSON.stringify(payload, null, 2), "utf-8");
+    fs.writeFileSync(p, JSON.stringify(merged, null, 2), "utf-8");
   } catch (e) {
     console.error("Failed to save settings:", e);
   }
 }
 
 ipcMain.handle("settings:get-print", async () => {
-  return loadPrintSettings();
+  return loadAppSettings().print;
 });
 ipcMain.handle(
   "settings:set-print",
   async (_e, settings: Partial<PrintSettings>) => {
-    const cur = loadPrintSettings();
+    const cur = loadAppSettings().print;
     const next = { ...cur, ...settings } as PrintSettings;
-    savePrintSettings(next);
+    saveAppSettings({ print: next });
     return next;
   }
 );
+
+// Theme IPC
+function effectiveTheme(source: ThemeSource): "light" | "dark" {
+  if (source === "system")
+    return nativeTheme.shouldUseDarkColors ? "dark" : "light";
+  return source;
+}
+
+function setThemeSource(source: ThemeSource) {
+  try {
+    nativeTheme.themeSource = source;
+  } catch (e) {
+    console.debug("nativeTheme.themeSource set failed", (e as Error).message);
+  }
+  saveAppSettings({ themeSource: source });
+  const eff = effectiveTheme(source);
+  notifyAll("app:theme-changed", { source, effective: eff });
+  // Rebuild menu to reflect checked radio state
+  buildMenu();
+  return { source, effective: eff } as const;
+}
+
+ipcMain.handle("settings:get-theme", async () => {
+  const s = loadAppSettings();
+  const source = s.themeSource ?? "system";
+  return { source, effective: effectiveTheme(source) } as const;
+});
+
+ipcMain.handle("settings:set-theme", async (_e, source: ThemeSource) => {
+  return setThemeSource(source);
+});
+
+nativeTheme.on("updated", () => {
+  const s = loadAppSettings();
+  const source = s.themeSource ?? "system";
+  if (source === "system") {
+    notifyAll("app:theme-changed", {
+      source,
+      effective: effectiveTheme(source),
+    });
+  }
+});
 
 // Phase 1: IPC for products/customers
 ipcMain.handle(
@@ -418,6 +482,7 @@ ipcMain.handle("report:daily-payment", async (_e, date: string) => {
 function buildMenu() {
   const lang = getLanguage();
   const d = dict[lang];
+  const themeSource = loadAppSettings().themeSource ?? "system";
   const template: MenuItemConstructorOptions[] = [
     {
       label: d.menu_file,
@@ -496,6 +561,35 @@ function buildMenu() {
                 setLanguage("en");
                 notifyAll("app:language-changed", "en");
                 buildMenu();
+              },
+            },
+          ],
+        },
+        {
+          label: d.menu_theme ?? "Theme",
+          submenu: [
+            {
+              label: d.theme_system ?? "System",
+              type: "radio",
+              checked: themeSource === "system",
+              click: (): void => {
+                void setThemeSource("system");
+              },
+            },
+            {
+              label: d.theme_light ?? "Light",
+              type: "radio",
+              checked: themeSource === "light",
+              click: (): void => {
+                void setThemeSource("light");
+              },
+            },
+            {
+              label: d.theme_dark ?? "Dark",
+              type: "radio",
+              checked: themeSource === "dark",
+              click: (): void => {
+                void setThemeSource("dark");
               },
             },
           ],
