@@ -7,6 +7,12 @@ import { MakerRpm } from "@electron-forge/maker-rpm";
 import { VitePlugin } from "@electron-forge/plugin-vite";
 import { FusesPlugin } from "@electron-forge/plugin-fuses";
 import { FuseV1Options, FuseVersion } from "@electron/fuses";
+import path from "node:path";
+import fs from "node:fs";
+type Pkg = { version: string };
+const pkg: Pkg = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "package.json"), "utf-8")
+);
 
 const config: ForgeConfig = {
   packagerConfig: {
@@ -24,7 +30,13 @@ const config: ForgeConfig = {
     }),
   ],
   makers: [
-    new MakerSquirrel({}),
+    new MakerSquirrel({
+      // Keep internal Squirrel package ID stable (from package.json name)
+      // and only customize the Setup.exe filename.
+      setupExe: `Abdul_Hamid_and_Brothers_Sales_v${pkg.version}_x86.exe`,
+      // To simplify renaming, disable delta packages.
+      noDelta: true,
+    }),
     new MakerZIP({}, ["darwin"]),
     new MakerRpm({}),
     new MakerDeb({}),
@@ -65,6 +77,50 @@ const config: ForgeConfig = {
       [FuseV1Options.OnlyLoadAppFromAsar]: true,
     }),
   ],
+  // Rename Windows full nupkg and update RELEASES after make, before publish
+  hooks: {
+    async postMake(
+      _cfg: unknown,
+      makeResults: { platform: string; artifacts: string[] }[]
+    ) {
+      const version: string = pkg.version;
+      const desiredNupkgName = `Abdul_Hamid_and_Brothers_Sales_v${version}-full.nupkg`;
+
+      for (const res of makeResults) {
+        if (res.platform !== "win32") continue;
+
+        const releasesPath: string | undefined = res.artifacts.find(
+          (a: string) => path.basename(a) === "RELEASES"
+        );
+        const fullIdx = res.artifacts.findIndex((a: string) =>
+          /-full\.nupkg$/i.test(a)
+        );
+        if (fullIdx === -1) continue;
+
+        const oldFullPath = res.artifacts[fullIdx];
+        const dir = path.dirname(oldFullPath);
+        const newFullPath = path.join(dir, desiredNupkgName);
+        const oldBase = path.basename(oldFullPath);
+
+        if (oldBase !== desiredNupkgName) {
+          // Rename the full nupkg file
+          fs.renameSync(oldFullPath, newFullPath);
+          res.artifacts[fullIdx] = newFullPath;
+
+          // Rewrite RELEASES to reference the new filename
+          if (releasesPath && fs.existsSync(releasesPath)) {
+            let content = fs.readFileSync(releasesPath, "utf-8");
+            const escaped = oldBase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            content = content.replace(
+              new RegExp(escaped, "g"),
+              desiredNupkgName
+            );
+            fs.writeFileSync(releasesPath, content, "utf-8");
+          }
+        }
+      }
+    },
+  },
 };
 
 export default config;
