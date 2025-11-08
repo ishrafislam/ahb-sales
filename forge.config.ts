@@ -14,9 +14,25 @@ const pkg: Pkg = JSON.parse(
   fs.readFileSync(path.join(__dirname, "package.json"), "utf-8")
 );
 
+// Icon paths (optional). Place your icons under assets/icons/... to enable.
+const ICONS_DIR = path.join(__dirname, "assets", "icons");
+const WIN_ICON = path.join(ICONS_DIR, "win", "icon.ico");
+const MAC_ICON = path.join(ICONS_DIR, "mac", "icon.icns");
+const LINUX_ICON = path.join(ICONS_DIR, "png", "512x512.png");
+
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    // Use platform-appropriate icon if present
+    icon:
+      process.platform === "win32" && fs.existsSync(WIN_ICON)
+        ? WIN_ICON
+        : process.platform === "darwin" && fs.existsSync(MAC_ICON)
+          ? MAC_ICON
+          : process.platform === "linux" && fs.existsSync(LINUX_ICON)
+            ? LINUX_ICON
+            : undefined,
+    extraResource: fs.existsSync(ICONS_DIR) ? [ICONS_DIR] : [],
   },
   rebuildConfig: {},
   publishers: [
@@ -36,6 +52,8 @@ const config: ForgeConfig = {
       setupExe: `Abdul_Hamid_and_Brothers_Sales_v${pkg.version}_x86.exe`,
       // To simplify renaming, disable delta packages.
       noDelta: true,
+      // Set installer icon if available
+      setupIcon: fs.existsSync(WIN_ICON) ? WIN_ICON : undefined,
     }),
     new MakerZIP({}, ["darwin"]),
     new MakerRpm({}),

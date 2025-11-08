@@ -124,7 +124,7 @@ dist-renderer/
 .LSOverride
 Thumbs.db
 ehthumbs.db
-Icon?
+#Icon?
 Desktop.ini
 .Spotlight-V100
 .Trashes
