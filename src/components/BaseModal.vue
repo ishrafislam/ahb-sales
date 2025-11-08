@@ -3,15 +3,17 @@
     <div class="absolute inset-0 bg-black/40" @click="onClose" />
     <div class="relative h-full w-full flex items-center justify-center p-4">
       <div
-        class="w-full bg-white rounded shadow-lg border"
+        class="w-full bg-white dark:bg-gray-900 dark:text-gray-100 rounded shadow-lg border dark:border-gray-700"
         :class="maxWidthClass"
       >
-        <div class="flex items-center justify-between p-3 border-b">
+        <div
+          class="flex items-center justify-between p-3 border-b dark:border-gray-700"
+        >
           <h3 class="text-lg font-semibold">
             {{ title }}
           </h3>
           <button
-            class="px-2 py-1 rounded hover:bg-gray-100"
+            class="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
             aria-label="Close"
             @click="onClose"
           >

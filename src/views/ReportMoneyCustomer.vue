@@ -1,25 +1,27 @@
 <template>
   <div class="flex-1">
-    <div class="bg-white border border-gray-200 rounded-md p-3 mb-3">
+    <div
+      class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-3 mb-3"
+    >
       <div class="flex flex-wrap items-end gap-2">
         <div class="flex flex-col">
-          <label class="text-xs text-gray-600">
+          <label class="text-xs text-gray-600 dark:text-gray-300">
             {{ t("from") }}
           </label>
           <input
             v-model="from"
             type="date"
-            class="bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
+            class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm dark:text-gray-100"
           />
         </div>
         <div class="flex flex-col">
-          <label class="text-xs text-gray-600">
+          <label class="text-xs text-gray-600 dark:text-gray-300">
             {{ t("to") }}
           </label>
           <input
             v-model="to"
             type="date"
-            class="bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
+            class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm dark:text-gray-100"
           />
         </div>
         <button class="ml-auto btn btn-primary" @click="load">
@@ -30,35 +32,55 @@
         </button>
       </div>
     </div>
-    <div class="bg-white border border-gray-200 rounded-md p-3 overflow-auto">
+    <div
+      class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md p-3 overflow-auto"
+    >
       <table class="w-full text-sm">
         <thead>
-          <tr class="text-left border-b border-gray-200">
-            <th class="p-2 sticky top-0 bg-white z-10">
+          <tr class="text-left border-b border-gray-200 dark:border-gray-700">
+            <th
+              class="p-2 sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+            >
               {{ t("date") }}
             </th>
-            <th class="p-2 sticky top-0 bg-white z-10">
+            <th
+              class="p-2 sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+            >
               {{ t("customer_name") }}
             </th>
-            <th class="p-2 text-right sticky top-0 bg-white z-10">
+            <th
+              class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+            >
               {{ t("net_bill") }}
             </th>
-            <th class="p-2 text-right sticky top-0 bg-white z-10">
+            <th
+              class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+            >
               {{ t("paid") }}
             </th>
-            <th class="p-2 text-right sticky top-0 bg-white z-10">
+            <th
+              class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+            >
               {{ t("due") }}
             </th>
-            <th class="p-2 text-right sticky top-0 bg-white z-10">
+            <th
+              class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+            >
               {{ t("previous_due") }}
             </th>
-            <th class="p-2 text-right sticky top-0 bg-white z-10">
+            <th
+              class="p-2 text-right sticky top-0 bg-white dark:bg-gray-900 z-10 dark:text-gray-100"
+            >
               {{ t("total_due") }}
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(r, i) in rows" :key="i" class="border-b border-gray-100">
+          <tr
+            v-for="(r, i) in rows"
+            :key="i"
+            class="border-b border-gray-100 dark:border-gray-800"
+          >
             <td class="p-2">
               {{ r.date }}
             </td>
@@ -82,23 +104,26 @@
             </td>
           </tr>
           <tr v-if="rows.length === 0">
-            <td class="p-2 text-center text-gray-500" colspan="7">
+            <td
+              class="p-2 text-center text-gray-500 dark:text-gray-400"
+              colspan="7"
+            >
               {{ t("no_records") }}
             </td>
           </tr>
         </tbody>
         <tfoot>
           <tr>
-            <td class="p-2 font-semibold" colspan="2">
+            <td class="p-2 font-semibold dark:text-gray-100" colspan="2">
               {{ t("totals") }}
             </td>
-            <td class="p-2 text-right font-semibold">
+            <td class="p-2 text-right font-semibold dark:text-gray-100">
               {{ fmt(totals.netBill) }}
             </td>
-            <td class="p-2 text-right font-semibold">
+            <td class="p-2 text-right font-semibold dark:text-gray-100">
               {{ fmt(totals.paid) }}
             </td>
-            <td class="p-2 text-right font-semibold">
+            <td class="p-2 text-right font-semibold dark:text-gray-100">
               {{ fmt(totals.due) }}
             </td>
             <td class="p-2" colspan="2" />
@@ -110,7 +135,7 @@
     <!-- Error toast -->
     <div
       v-if="showError"
-      class="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded shadow-lg"
+      class="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded shadow-lg dark:shadow-black/40"
     >
       {{ errorMessage }}
     </div>

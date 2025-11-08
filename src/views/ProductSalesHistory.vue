@@ -1,22 +1,26 @@
 <template>
   <div class="flex flex-1 min-h-0">
     <!-- Left list: products 1..1000 -->
-    <div class="w-[30%] border-r border-gray-200 flex flex-col">
+    <div
+      class="w-[30%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
+    >
       <div ref="leftListRef" class="flex-grow overflow-y-auto">
         <ul>
           <li
             v-for="id in idList"
             :key="id"
-            class="px-4 py-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100"
-            :class="{ 'bg-blue-100': selectedId === id }"
+            class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+            :class="{ 'bg-blue-100 dark:bg-blue-950': selectedId === id }"
             :data-id="id"
             @click="onSelectProduct(id)"
           >
             <div class="flex items-center">
-              <div class="font-medium text-sm w-10">
+              <div
+                class="font-medium text-sm w-10 text-gray-700 dark:text-gray-100"
+              >
                 {{ id }}
               </div>
-              <div class="text-sm text-gray-600 ml-4">
+              <div class="text-sm text-gray-600 dark:text-gray-300 ml-4">
                 {{ productsById.get(id)?.nameBn || "" }}
               </div>
             </div>
@@ -28,25 +32,29 @@
     <!-- Right table: sales lines -->
     <div class="w-[70%] p-6 flex flex-col overflow-hidden">
       <div class="flex-grow overflow-x-auto">
-        <table class="w-full text-left text-sm">
-          <thead>
+        <table
+          class="w-full text-left text-sm text-gray-900 dark:text-gray-100"
+        >
+          <thead
+            class="bg-gray-50 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700"
+          >
             <tr>
-              <th class="p-2">
+              <th class="p-2 text-gray-700 dark:text-gray-200">
                 {{ t("date") }}
               </th>
-              <th class="p-2">
+              <th class="p-2 text-gray-700 dark:text-gray-200">
                 {{ t("invoice_no") }}
               </th>
-              <th class="p-2">
+              <th class="p-2 text-gray-700 dark:text-gray-200">
                 {{ t("customer") }}
               </th>
-              <th class="p-2 text-center">
+              <th class="p-2 text-center text-gray-700 dark:text-gray-200">
                 {{ t("quantity") }}
               </th>
-              <th class="p-2 text-right">
+              <th class="p-2 text-right text-gray-700 dark:text-gray-200">
                 {{ t("unit_price") }}
               </th>
-              <th class="p-2 text-right">
+              <th class="p-2 text-right text-gray-700 dark:text-gray-200">
                 {{ t("total") }}
               </th>
             </tr>
@@ -55,7 +63,7 @@
             <tr
               v-for="row in rows"
               :key="row.invoiceNo + '-' + row.productId"
-              class="border-t"
+              class="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               <td class="p-2">
                 {{ formatDate(row.date) }}
@@ -75,7 +83,10 @@
               </td>
             </tr>
             <tr v-if="!rows.length">
-              <td class="p-2 text-center text-gray-500" colspan="6">
+              <td
+                class="p-2 text-center text-gray-500 dark:text-gray-400"
+                colspan="6"
+              >
                 {{ t("no_sales") }}
               </td>
             </tr>

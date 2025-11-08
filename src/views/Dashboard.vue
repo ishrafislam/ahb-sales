@@ -17,7 +17,9 @@
         class="lg:col-span-1 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-y-auto"
       >
         <!-- File info (current file name + saved/unsaved icon) -->
-        <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200">
+        <div
+          class="bg-white dark:bg-gray-900 dark:text-gray-100 p-3 rounded-md shadow-sm border border-gray-200 dark:border-gray-700"
+        >
           <div class="flex items-center justify-between text-sm">
             <span class="truncate" :title="fileNameDisplay">{{
               fileNameDisplay
@@ -50,7 +52,7 @@
 
         <!-- Search Customer -->
         <div
-          class="bg-white p-4 rounded-md shadow-sm border border-gray-200 relative"
+          class="bg-white dark:bg-gray-900 dark:text-gray-100 p-4 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 relative"
         >
           <!-- <h3 class="text-base font-semibold mb-3">
             {{ t("search_customer") }}
@@ -62,7 +64,7 @@
               name="search-customer"
               type="text"
               :placeholder="t('search_customer_placeholder')"
-              class="w-full bg-gray-50 border border-gray-300 rounded-md pl-3 pr-8 py-1.5 text-sm"
+              class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md pl-3 pr-8 py-1.5 text-sm dark:text-gray-100"
               @focus="customerDropdownOpen = true"
               @input="customerDropdownOpen = true"
               @keydown.down.prevent="moveCustomerHighlight(1)"
@@ -73,7 +75,7 @@
             <button
               v-if="selectedCustomer || customerQuery"
               type="button"
-              class="absolute inset-y-0 right-2 my-auto flex items-center text-gray-500 hover:text-gray-700"
+              class="absolute inset-y-0 right-2 my-auto flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               :aria-label="t('clear')"
               @click="clearCustomerSelection"
             >
@@ -83,21 +85,25 @@
           </div>
           <div
             v-if="customerDropdownOpen && filteredCustomers.length"
-            class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-10 max-h-64 overflow-auto"
+            class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg z-10 max-h-64 overflow-auto"
           >
-            <ul class="divide-y divide-gray-200">
+            <ul class="divide-y divide-gray-200 dark:divide-gray-700">
               <li
                 v-for="(c, idx) in filteredCustomers"
                 :key="c.id"
-                class="p-3 cursor-pointer"
+                class="p-3 cursor-pointer dark:hover:bg-gray-800"
                 :class="
-                  idx === customerHighlight ? 'bg-gray-100' : 'hover:bg-gray-50'
+                  idx === customerHighlight
+                    ? 'bg-gray-100 dark:bg-gray-700'
+                    : 'hover:bg-gray-50'
                 "
                 @click="onSelectCustomer(c)"
               >
                 <div class="flex justify-between items-center">
                   <span class="font-medium text-sm">{{ c.nameBn }}</span>
-                  <span class="text-xs text-gray-500">{{ c.id }}</span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{
+                    c.id
+                  }}</span>
                 </div>
               </li>
             </ul>
@@ -105,33 +111,43 @@
         </div>
 
         <!-- Summary card -->
-        <div class="bg-white p-3 rounded-md shadow-sm border border-gray-200">
+        <div
+          class="bg-white dark:bg-gray-900 dark:text-gray-100 p-3 rounded-md shadow-sm border border-gray-200 dark:border-gray-700"
+        >
           <template v-if="receipt.length > 0">
             <div class="space-y-1.5 text-sm">
               <div class="flex justify-between items-center pr-1">
-                <span class="text-gray-600"> {{ t("total_price") }} </span>
+                <span class="text-gray-600 dark:text-gray-300">
+                  {{ t("total_price") }}
+                </span>
                 <span class="font-semibold"> {{ subtotalText }} </span>
               </div>
               <div class="flex justify-between items-center">
-                <span class="text-gray-600"> {{ t("discount") }} </span>
+                <span class="text-gray-600 dark:text-gray-300">
+                  {{ t("discount") }}
+                </span>
                 <input
                   v-model.number="discount"
                   type="number"
                   min="0"
-                  class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner"
+                  class="w-20 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner dark:text-gray-100"
                 />
               </div>
               <div class="flex justify-between items-center pr-1">
-                <span class="text-gray-600"> {{ t("bill") }} </span>
+                <span class="text-gray-600 dark:text-gray-300">
+                  {{ t("bill") }}
+                </span>
                 <span class="font-semibold"> {{ netText }} </span>
               </div>
               <div
-                class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200"
+                class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200 dark:border-gray-700"
               >
-                <span class="text-gray-600"> {{ t("paid") }} </span>
+                <span class="text-gray-600 dark:text-gray-300">
+                  {{ t("paid") }}
+                </span>
                 <input
                   v-model.number="paid"
-                  class="w-20 bg-gray-50 border border-gray-300 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner"
+                  class="w-20 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner dark:text-gray-100"
                   type="number"
                   min="0"
                 />
@@ -143,7 +159,9 @@
               <div
                 class="flex justify-between items-center mt-2 pt-2 border-t border-gray-200 pr-1"
               >
-                <span class="text-gray-600"> {{ t("previous_due") }} </span>
+                <span class="text-gray-600 dark:text-gray-300">
+                  {{ t("previous_due") }}
+                </span>
                 <span class="font-semibold"> {{ previousDueText }} </span>
               </div>
               <div class="flex justify-between items-center pr-1">
@@ -159,7 +177,7 @@
                   v-model="notes"
                   :placeholder="t('comment')"
                   rows="2"
-                  class="flex-grow bg-gray-50 border border-gray-300 rounded-md px-2 py-1 text-sm"
+                  class="flex-grow bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm dark:text-gray-100"
                 />
               </div>
               <div class="mt-2 flex items-end gap-2">
@@ -195,59 +213,59 @@
 
         <!-- Quick Actions -->
         <div
-          class="bg-white p-4 rounded-md shadow-sm border border-gray-200 mt-auto"
+          class="bg-white dark:bg-gray-900 dark:text-gray-100 p-4 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 mt-auto"
         >
           <div class="grid grid-cols-2 gap-2">
             <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              class="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors"
               @click="navigate('customer-history')"
             >
               {{ t("customer_history_title") }}
             </button>
             <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              class="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors"
               @click="navigate('purchase-entry')"
             >
               {{ t("product_purchase_title") }}
             </button>
             <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              class="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors"
               @click="navigate('customers')"
             >
               {{ t("customers_title") }}
             </button>
             <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              class="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors"
               @click="navigate('products')"
             >
               {{ t("products_title") }}
             </button>
             <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              class="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors"
               @click="navigate('product-sales-history')"
             >
               {{ t("product_sales_history_title") }}
             </button>
             <button
-              class="bg-blue-100 text-blue-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 transition-colors"
+              class="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-blue-200 dark:hover:bg-blue-900 transition-colors"
               @click="navigate('product-purchase-history')"
             >
               {{ t("product_purchase_history_title") }}
             </button>
             <button
-              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
+              class="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 dark:hover:bg-purple-900 transition-colors"
               @click="navigate('report-money-customer')"
             >
               {{ t("report_money_customer_title") }}
             </button>
             <button
-              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
+              class="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 dark:hover:bg-purple-900 transition-colors"
               @click="navigate('report-money-daywise')"
             >
               {{ t("report_money_daywise_title") }}
             </button>
             <button
-              class="bg-purple-100 text-purple-700 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 transition-colors"
+              class="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 dark:hover:bg-purple-900 transition-colors"
               @click="navigate('report-daily-payment')"
             >
               {{ t("report_daily_payment_title") }}
@@ -258,12 +276,12 @@
 
       <!-- Right column -->
       <div
-        class="lg:col-span-3 bg-white p-4 rounded-md shadow-sm border border-gray-200 flex flex-col min-h-0"
+        class="lg:col-span-3 bg-white dark:bg-gray-900 dark:text-gray-100 p-4 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col min-h-0"
       >
         <!-- Empty state when no customer is selected -->
         <div
           v-if="!selectedCustomer"
-          class="flex flex-1 items-center justify-center text-gray-600"
+          class="flex flex-1 items-center justify-center text-gray-600 dark:text-gray-300"
         >
           <div class="text-center">
             <div class="text-lg font-semibold">
@@ -274,31 +292,41 @@
         </div>
 
         <template v-else>
-          <div class="bg-blue-50 p-3 rounded-lg mb-4">
-            <h3 class="text-base font-semibold mb-2 text-blue-700">
+          <div class="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg mb-4">
+            <h3
+              class="text-base font-semibold mb-2 text-blue-700 dark:text-blue-300"
+            >
               {{ t("customer_info") }}
             </h3>
             <div
               class="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 text-sm"
             >
               <div>
-                <span class="text-gray-600"> {{ t("id") }}: </span>
+                <span class="text-gray-600 dark:text-gray-300">
+                  {{ t("id") }}:
+                </span>
                 <span class="font-medium ml-1">
                   {{ selectedCustomer?.id ?? "—" }}
                 </span>
               </div>
               <div>
-                <span class="text-gray-600"> {{ t("name") }}: </span>
+                <span class="text-gray-600 dark:text-gray-300">
+                  {{ t("name") }}:
+                </span>
                 <span class="font-medium ml-1">
                   {{ selectedCustomer?.nameBn ?? "—" }}
                 </span>
               </div>
               <div>
-                <span class="text-gray-600"> {{ t("last_bill") }}: </span>
+                <span class="text-gray-600 dark:text-gray-300">
+                  {{ t("last_bill") }}:
+                </span>
                 <span class="font-medium ml-1"> {{ lastBillText }} </span>
               </div>
               <div>
-                <span class="text-gray-600"> {{ t("due") }}: </span>
+                <span class="text-gray-600 dark:text-gray-300">
+                  {{ t("due") }}:
+                </span>
                 <span class="font-medium text-red-600 ml-1">
                   {{ formatMoney(Number(selectedCustomer?.outstanding || 0)) }}
                 </span>
@@ -308,38 +336,40 @@
 
           <div class="flex-grow min-h-0 overflow-auto">
             <table class="w-full text-left text-sm">
-              <thead class="border-b border-gray-200">
+              <thead class="border-b border-gray-200 dark:border-gray-700">
                 <tr>
                   <th
-                    class="p-2 text-xs font-semibold text-gray-600 text-center"
+                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
                   >
                     #
                   </th>
-                  <th class="p-2 text-xs font-semibold text-gray-600">
+                  <th
+                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300"
+                  >
                     {{ t("product_name") }}
                   </th>
                   <th
-                    class="p-2 text-xs font-semibold text-gray-600 text-center"
+                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
                   >
                     {{ t("quantity") }}
                   </th>
                   <th
-                    class="p-2 text-xs font-semibold text-gray-600 text-center"
+                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
                   >
                     {{ t("unit") }}
                   </th>
                   <th
-                    class="p-2 text-xs font-semibold text-gray-600 text-right"
+                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-right"
                   >
                     {{ t("unit_price") }}
                   </th>
                   <th
-                    class="p-2 text-xs font-semibold text-gray-600 text-right"
+                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-right"
                   >
                     {{ t("total") }}
                   </th>
                   <th
-                    class="p-2 text-xs font-semibold text-gray-600 text-center"
+                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
                   >
                     {{ t("actions") }}
                   </th>
@@ -349,8 +379,8 @@
                 <tr
                   v-for="(row, idx) in receipt"
                   :key="row.productId"
-                  class="border-b border-gray-200"
-                  :class="{ 'bg-red-50': isOversell(row) }"
+                  class="border-b border-gray-200 dark:border-gray-700"
+                  :class="{ 'bg-red-50 dark:bg-red-950': isOversell(row) }"
                 >
                   <td class="p-2 text-center">
                     {{ idx + 1 }}
@@ -373,7 +403,7 @@
                     <div class="inline-flex items-center gap-1">
                       <button
                         type="button"
-                        class="inline-flex items-center justify-center w-6 h-6 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                        class="inline-flex items-center justify-center w-6 h-6 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                         :aria-label="t('decrease')"
                         :title="t('decrease')"
                         @click="adjustQuantity(idx, -1)"
@@ -382,7 +412,7 @@
                         <span class="sr-only">{{ t("decrease") }}</span>
                       </button>
                       <input
-                        class="w-16 bg-gray-50 border border-gray-300 rounded-md px-1 py-0.5 text-center text-sm no-spinner"
+                        class="w-16 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-1 py-0.5 text-center text-sm no-spinner dark:text-gray-100"
                         type="number"
                         min="1"
                         :value="row.quantity"
@@ -390,7 +420,7 @@
                       />
                       <button
                         type="button"
-                        class="inline-flex items-center justify-center w-6 h-6 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+                        class="inline-flex items-center justify-center w-6 h-6 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                         :aria-label="t('increase')"
                         :title="t('increase')"
                         @click="adjustQuantity(idx, 1)"
@@ -412,7 +442,7 @@
                   <td class="p-2 text-center">
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
+                      class="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                       :aria-label="t('remove')"
                       :title="t('remove')"
                       @click="removeReceiptRow(idx)"
@@ -423,7 +453,10 @@
                   </td>
                 </tr>
                 <tr v-if="receipt.length === 0">
-                  <td class="p-2 text-center text-gray-500" colspan="7">
+                  <td
+                    class="p-2 text-center text-gray-500 dark:text-gray-400"
+                    colspan="7"
+                  >
                     {{ t("no_items") }}
                   </td>
                 </tr>
@@ -432,7 +465,7 @@
           </div>
 
           <div
-            class="border-t border-gray-200 mt-4 pt-4 flex items-center gap-2"
+            class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4 flex items-center gap-2"
           >
             <div class="relative flex-grow">
               <input
@@ -441,7 +474,7 @@
                 name="search-product"
                 type="text"
                 :placeholder="t('search_products_placeholder')"
-                class="w-full bg-gray-50 border border-gray-300 rounded-md pl-3 pr-2 py-2 text-sm"
+                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md pl-3 pr-2 py-2 text-sm dark:text-gray-100"
                 @focus="productDropdownOpen = true"
                 @input="productDropdownOpen = true"
                 @keydown.down.prevent="moveProductHighlight(1)"
@@ -451,23 +484,23 @@
               />
               <div
                 v-if="productDropdownOpen && filteredProducts.length"
-                class="absolute bottom-full left-0 w-full mb-1 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto"
+                class="absolute bottom-full left-0 w-full mb-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto"
               >
                 <ul class="text-sm">
                   <li
                     v-for="(p, idx) in filteredProducts"
                     :key="p.id"
-                    class="px-4 py-2 cursor-pointer"
+                    class="px-4 py-2 cursor-pointer dark:hover:bg-gray-800"
                     :class="
                       idx === productHighlight
-                        ? 'bg-gray-100'
+                        ? 'bg-gray-100 dark:bg-gray-700'
                         : 'hover:bg-gray-50'
                     "
                     @click="onSelectProduct(p)"
                   >
                     <div class="flex justify-between">
                       <span class="font-medium">{{ p.nameBn }}</span>
-                      <span class="text-gray-500"
+                      <span class="text-gray-500 dark:text-gray-400"
                         >{{ t("id") }}: {{ p.id }}</span
                       >
                     </div>
@@ -482,13 +515,13 @@
         <!-- Success toast -->
         <div
           v-if="showSuccess"
-          class="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg"
+          class="fixed bottom-4 right-4 bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded shadow-lg"
         >
           {{ successMessage }}
         </div>
         <div
           v-if="showError"
-          class="fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded shadow-lg"
+          class="fixed bottom-4 right-4 bg-red-600 dark:bg-red-700 text-white px-4 py-2 rounded shadow-lg"
         >
           {{ errorMessage }}
         </div>

@@ -1,22 +1,25 @@
 <template>
+  <!-- eslint-disable -->
   <div class="flex flex-1 min-h-0">
     <!-- Left list -->
-    <div class="w-[30%] border-r border-gray-200 flex flex-col">
+    <div
+      class="w-[30%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
+    >
       <div ref="leftListRef" class="flex-grow overflow-y-auto">
         <ul>
           <li
             v-for="id in idList"
             :key="id"
-            class="px-4 py-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100"
-            :class="{ 'bg-blue-100': id === selectedId }"
+            class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+            :class="{ 'bg-blue-100 dark:bg-blue-950': id === selectedId }"
             :data-id="id"
             @click="select(id)"
           >
             <div class="flex items-center">
-              <div class="font-medium text-sm w-10">
+              <div class="font-medium text-sm w-10 dark:text-gray-100">
                 {{ id }}
               </div>
-              <div class="text-sm text-gray-600 ml-4">
+              <div class="text-sm text-gray-600 dark:text-gray-300 ml-4">
                 {{ productsById.get(id)?.nameBn || "" }}
               </div>
             </div>
@@ -33,14 +36,14 @@
             <div>
               <label
                 for="item-id"
-                class="block text-sm font-medium text-gray-600"
+                class="block text-sm font-medium text-gray-600 dark:text-gray-300"
               >
                 {{ t("item_id") }}
               </label>
               <input
                 id="item-id"
                 :value="displayId"
-                class="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 sm:text-sm"
+                class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
                 type="text"
                 readonly
               />
@@ -48,42 +51,42 @@
             <div>
               <label
                 for="item-name"
-                class="block text-sm font-medium text-gray-600"
+                class="block text-sm font-medium text-gray-600 dark:text-gray-300"
               >
                 {{ t("item_name") }}
               </label>
               <input
                 id="item-name"
                 v-model="form.nameBn"
-                class="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 sm:text-sm"
+                class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
                 type="text"
               />
             </div>
             <div>
               <label
                 for="description"
-                class="block text-sm font-medium text-gray-600"
+                class="block text-sm font-medium text-gray-600 dark:text-gray-300"
               >
                 {{ t("description") }}
               </label>
               <textarea
                 id="description"
                 v-model="form.description"
-                class="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 sm:text-sm"
+                class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
                 rows="2"
-              />
+              ></textarea>
             </div>
             <div>
               <label
                 for="unit-price"
-                class="block text-sm font-medium text-gray-600"
+                class="block text-sm font-medium text-gray-600 dark:text-gray-300"
               >
                 {{ t("unit_price") }}
               </label>
               <input
                 id="unit-price"
                 v-model.number="form.price"
-                class="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 sm:text-sm"
+                class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
                 type="number"
               />
             </div>
@@ -91,34 +94,36 @@
               <div>
                 <label
                   for="stock"
-                  class="block text-sm font-medium text-gray-600"
+                  class="block text-sm font-medium text-gray-600 dark:text-gray-300"
                 >
                   {{ t("stock") }}
                 </label>
                 <input
                   id="stock"
                   v-model.number="form.stock"
-                  class="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 sm:text-sm"
+                  class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
                   type="number"
                 />
               </div>
               <div>
                 <label
                   for="unit"
-                  class="block text-sm font-medium text-gray-600"
+                  class="block text-sm font-medium text-gray-600 dark:text-gray-300"
                 >
                   {{ t("unit") }}
                 </label>
                 <input
                   id="unit"
                   v-model="form.unit"
-                  class="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 sm:text-sm"
+                  class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
                   type="text"
                 />
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-600">
+              <label
+                class="block text-sm font-medium text-gray-600 dark:text-gray-300"
+              >
                 {{ t("status") }}
               </label>
               <div class="mt-2 flex items-center space-x-4">
@@ -145,25 +150,25 @@
           </div>
           <div class="flex flex-col space-y-2 justify-start pt-6">
             <button
-              class="w-full text-center bg-gray-200 text-gray-900 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300"
+              class="w-full text-center bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-600"
               @click="first"
             >
               {{ t("first") }}
             </button>
             <button
-              class="w-full text-center bg-gray-200 text-gray-900 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300"
+              class="w-full text-center bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-600"
               @click="previous"
             >
               {{ t("previous") }}
             </button>
             <button
-              class="w-full text-center bg-gray-200 text-gray-900 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300"
+              class="w-full text-center bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-600"
               @click="next"
             >
               {{ t("next") }}
             </button>
             <button
-              class="w-full text-center bg-gray-200 text-gray-900 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300"
+              class="w-full text-center bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100 py-2 px-4 rounded-md text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-600"
               @click="last"
             >
               {{ t("last") }}
