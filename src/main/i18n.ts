@@ -26,8 +26,18 @@ function loadSettings(): Settings {
 
 function saveSettings(s: Settings) {
   try {
-    fs.mkdirSync(path.dirname(settingsPath()), { recursive: true });
-    fs.writeFileSync(settingsPath(), JSON.stringify(s, null, 2), "utf8");
+    const p = settingsPath();
+    let existing: Record<string, unknown> = {};
+    try {
+      if (fs.existsSync(p)) {
+        existing = JSON.parse(fs.readFileSync(p, "utf8"));
+      }
+    } catch {
+      existing = {};
+    }
+    const merged = { ...existing, language: s.language };
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, JSON.stringify(merged, null, 2), "utf8");
   } catch (err) {
     // Log failure instead of failing silently; could be enhanced to notify renderer via IPC.
     console.error("Failed to save settings:", err);

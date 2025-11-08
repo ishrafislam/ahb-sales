@@ -2,22 +2,26 @@
   <!-- eslint-disable -->
   <div class="flex flex-1 min-h-0">
     <!-- Left list -->
-    <div class="w-[30%] border-r border-gray-200 flex flex-col">
+    <div
+      class="w-[30%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
+    >
       <div ref="leftListRef" class="flex-grow overflow-y-auto">
         <ul>
           <li
             v-for="id in idList"
             :key="id"
-            class="px-4 py-3 border-b border-gray-200 cursor-pointer hover:bg-gray-100"
-            :class="{ 'bg-blue-100': id === selectedId }"
+            class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
+            :class="{ 'bg-blue-100 dark:bg-blue-950': id === selectedId }"
             :data-id="id"
             @click="select(id)"
           >
             <div class="flex items-center">
-              <div class="font-medium text-sm text-right w-10">
+              <div
+                class="font-medium text-sm text-right w-10 text-gray-700 dark:text-gray-100"
+              >
                 {{ id }}
               </div>
-              <div class="text-sm text-gray-600 ml-4">
+              <div class="text-sm text-gray-600 dark:text-gray-300 ml-4">
                 {{ productsById.get(id)?.nameBn || "" }}
               </div>
             </div>
@@ -31,23 +35,27 @@
       <form class="space-y-4" @submit.prevent="submit">
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-600">
+            <label
+              class="block text-sm font-medium text-gray-600 dark:text-gray-300"
+            >
               {{ t("product_id") }}
             </label>
             <input
               :value="String(selectedId)"
-              class="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 sm:text-sm"
+              class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
               type="text"
               readonly
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600">
+            <label
+              class="block text-sm font-medium text-gray-600 dark:text-gray-300"
+            >
               {{ t("product_name") }}
             </label>
             <input
               :value="selected?.nameBn || ''"
-              class="mt-1 block w-full bg-gray-50 border border-gray-300 rounded-md py-2 px-3 sm:text-sm"
+              class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
               type="text"
               readonly
             />
@@ -55,12 +63,14 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-600">
+          <label
+            class="block text-sm font-medium text-gray-600 dark:text-gray-300"
+          >
             {{ t("quantity") }} - ({{ unitLabel }})
           </label>
           <input
             v-model.number="quantity"
-            class="w-full bg-gray-50 border border-gray-300 rounded-md px-3 py-2 text-sm no-spinner"
+            class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm no-spinner dark:text-gray-100"
             type="number"
             min="1"
             :disabled="!exists"
@@ -69,7 +79,7 @@
 
         <div class="flex justify-end gap-2">
           <button
-            class="bg-green-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-green-700 disabled:opacity-50"
+            class="bg-green-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-green-700 dark:hover:bg-green-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400"
             :disabled="!canSubmit"
             type="submit"
           >
@@ -86,7 +96,7 @@
   <!-- Success toast -->
   <div
     v-if="showSuccess"
-    class="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg"
+    class="fixed bottom-4 right-4 bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded shadow-lg"
   >
     {{ successMessage }}
   </div>

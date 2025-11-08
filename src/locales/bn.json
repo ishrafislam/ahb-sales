@@ -124,5 +124,10 @@
   "update_downloading": "আপডেট ডাউনলোড হচ্ছে…",
   "update_current": "আপনি সর্বশেষ সংস্করণে আছেন।",
   "update_downloaded": "আপডেট ডাউনলোড সম্পন্ন।",
-  "update_failed": "আপডেট ব্যর্থ: {error}"
+  "update_failed": "আপডেট ব্যর্থ: {error}",
+  "theme": "থিম",
+  "theme_system": "সিস্টেম",
+  "theme_light": "লাইট",
+  "theme_dark": "ডার্ক",
+  "appearance": "অ্যাপিয়ারেন্স"
 }

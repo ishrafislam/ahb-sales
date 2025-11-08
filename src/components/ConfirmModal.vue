@@ -6,17 +6,19 @@
     aria-modal="true"
   >
     <div
-      class="w-full max-w-sm rounded-md bg-white shadow-lg border border-gray-200"
+      class="w-full max-w-sm rounded-md bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700"
     >
-      <div class="px-4 py-3 border-b border-gray-200">
+      <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <h3 class="text-base font-semibold">{{ title }}</h3>
       </div>
-      <div class="px-4 py-3 text-sm text-gray-700">
+      <div class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
         <slot>
           {{ message }}
         </slot>
       </div>
-      <div class="px-4 py-3 flex justify-end gap-2 border-t border-gray-200">
+      <div
+        class="px-4 py-3 flex justify-end gap-2 border-t border-gray-200 dark:border-gray-700"
+      >
         <button class="btn" @click="$emit('cancel')">
           {{ cancelLabel || "Cancel" }}
         </button>

@@ -124,5 +124,10 @@
   "update_downloading": "Downloading update…",
   "update_current": "You’re up to date.",
   "update_downloaded": "Update downloaded.",
-  "update_failed": "Update failed: {error}"
+  "update_failed": "Update failed: {error}",
+  "theme": "Theme",
+  "theme_system": "System",
+  "theme_light": "Light",
+  "theme_dark": "Dark",
+  "appearance": "Appearance"
 }
