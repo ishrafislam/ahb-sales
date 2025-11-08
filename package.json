@@ -1,7 +1,7 @@
 {
   "name": "ahb-sales",
   "productName": "Abdul Hamid & Brothers - Sales",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The Sales Application of Abdul Hamid & Brothers",
   "main": ".vite/build/main.js",
   "scripts": {
