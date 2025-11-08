@@ -85,11 +85,12 @@ const createWindow = () => {
 app.on("ready", () => {
   // Ensure app name reflects productName in dev and prod
   try {
-    app.setName("Abdul Hamid & Brothers: Sales");
+    app.setName("Abdul Hamid & Brothers - Sales");
   } catch (e) {
     // Non-fatal in environments where setName is restricted
     console.debug("setName skipped:", (e as Error).message);
   }
+
   // Initialize auto-updates (no-op in dev unless forced)
   initAutoUpdates();
   createWindow();
