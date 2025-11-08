@@ -6,7 +6,6 @@ import {
   Menu,
   type MenuItemConstructorOptions,
   autoUpdater,
-  crashReporter,
 } from "electron";
 import { updateElectronApp } from "update-electron-app";
 // Load environment variables from .env (dev convenience)
@@ -91,15 +90,7 @@ app.on("ready", () => {
     // Non-fatal in environments where setName is restricted
     console.debug("setName skipped:", (e as Error).message);
   }
-  // Initialize Crashpad early to avoid 'crashpad_client_win.cc:... not connected' noise on Windows
-  try {
-    crashReporter.start({
-      uploadToServer: false,
-      compress: true,
-    });
-  } catch (e) {
-    console.debug("crashReporter start skipped:", (e as Error).message);
-  }
+
   // Initialize auto-updates (no-op in dev unless forced)
   initAutoUpdates();
   createWindow();
