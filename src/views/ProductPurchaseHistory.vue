@@ -10,10 +10,7 @@
             v-for="id in idList"
             :key="id"
             class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-            :class="{
-              'bg-blue-100': selectedId === id,
-              'dark:bg-blue-950': selectedId === id,
-            }"
+            :class="{ 'bg-blue-100 dark:bg-blue-950': selectedId === id }"
             :data-id="id"
             @click="onSelectProduct(id)"
           >

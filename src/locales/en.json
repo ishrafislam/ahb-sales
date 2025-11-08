@@ -129,5 +129,6 @@
   "theme_system": "System",
   "theme_light": "Light",
   "theme_dark": "Dark",
-  "appearance": "Appearance"
+  "appearance": "Appearance",
+  "menu_theme": "Theme"
 }
