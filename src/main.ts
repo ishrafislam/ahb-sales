@@ -5,9 +5,9 @@ import {
   ipcMain,
   Menu,
   type MenuItemConstructorOptions,
-  autoUpdater,
   nativeTheme,
 } from "electron";
+import { autoUpdater } from "electron-updater";
 import { updateElectronApp } from "update-electron-app";
 // Load environment variables from .env (dev convenience)
 import * as dotenv from "dotenv";
@@ -643,13 +643,28 @@ function initAutoUpdates() {
   } catch (e) {
     console.error("update-electron-app init failed", e);
   }
+  // Disable auto download so we can ask the user first
+  autoUpdater.autoDownload = false; // we control when to download
   // Forward updater events to renderer for toasts
   autoUpdater.on("checking-for-update", () => notifyAll("update:checking"));
-  autoUpdater.on("update-available", () => notifyAll("update:available"));
+  autoUpdater.on("update-available", (info) => {
+    notifyAll("update:available", {
+      version: info.version,
+      releaseNotes: info.releaseNotes ?? null,
+    });
+  });
   autoUpdater.on("update-not-available", () =>
     notifyAll("update:not-available")
   );
   autoUpdater.on("error", (err) => notifyAll("update:error", String(err)));
+  autoUpdater.on("download-progress", (progress) => {
+    notifyAll("update:progress", {
+      percent: progress.percent,
+      bytesPerSecond: progress.bytesPerSecond,
+      transferred: progress.transferred,
+      total: progress.total,
+    });
+  });
   autoUpdater.on("update-downloaded", () => notifyAll("update:downloaded"));
 }
 
@@ -660,6 +675,16 @@ ipcMain.handle("app:check-for-updates", async () => {
     return true;
   } catch (e) {
     console.error("manual checkForUpdates failed", e);
+    throw e;
+  }
+});
+// IPC to start downloading the update on user confirmation
+ipcMain.handle("app:download-update", async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return true;
+  } catch (e) {
+    console.error("downloadUpdate failed", e);
     throw e;
   }
 });

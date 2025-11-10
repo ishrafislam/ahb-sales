@@ -93,6 +93,7 @@ type AppAPI = {
   onUpdateEvent: (
     cb: (payload: { kind: string; data?: unknown }) => void
   ) => () => void;
+  downloadUpdate: () => Promise<boolean>;
   // Theme
   getTheme: () => Promise<{ source: string; effective: string }>;
   setTheme: (
@@ -176,15 +177,18 @@ const api: AppAPI = {
   getRuntimeInfo: () => ipcRenderer.invoke("app:get-runtime-info"),
   checkForUpdates: () => ipcRenderer.invoke("app:check-for-updates"),
   restartAndInstall: () => ipcRenderer.invoke("app:restart-and-install"),
+  downloadUpdate: () => ipcRenderer.invoke("app:download-update"),
   onUpdateEvent: (cb) => {
     const wrap = (kind: string) => (_: unknown, data?: unknown) =>
       cb({ kind, data });
     const pairs: Array<[string, ReturnType<typeof wrap>]> = [
       ["update:checking", wrap("checking")],
       ["update:available", wrap("available")],
+      ["update:available", wrap("available")],
       ["update:not-available", wrap("not-available")],
       ["update:error", wrap("error")],
       ["update:downloaded", wrap("downloaded")],
+      ["update:progress", wrap("progress")],
     ];
     for (const [ch, fn] of pairs) ipcRenderer.on(ch, fn);
     return () => {

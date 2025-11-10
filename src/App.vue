@@ -127,7 +127,44 @@
       >
         {{ t("restart_to_update") }}
       </button>
+      <button
+        v-if="showDownloadCancel"
+        class="bg-gray-600 hover:bg-gray-700 text-white rounded px-3 py-1 text-sm"
+        @click="cancelDownload"
+      >
+        {{ t("cancel") }}
+      </button>
     </div>
+
+    <!-- Update available modal -->
+    <BaseModal
+      v-if="showUpdatePrompt"
+      :title="t('update_available_title')"
+      @close="dismissUpdatePrompt"
+    >
+      <div class="space-y-4 text-sm">
+        <p>{{ t('update_available_message') }}</p>
+        <div v-if="updateAvailableVersion" class="text-xs text-gray-600 dark:text-gray-400">
+          {{ t('version') }}: {{ updateAvailableVersion }}
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            class="bg-gray-200 dark:bg-gray-700 dark:text-gray-100 text-gray-800 px-3 py-1.5 rounded text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-600"
+            @click="deferUpdate"
+          >
+            {{ t('update_download_later') }}
+          </button>
+          <button
+            type="button"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-semibold"
+            @click="startDownload"
+          >
+            {{ t('update_download_now') }}
+          </button>
+        </div>
+      </div>
+    </BaseModal>
   </div>
 </template>
 
@@ -166,6 +203,10 @@ const loaded = ref(false);
 const showUpdateToast = ref(false);
 const updateToastText = ref("");
 const canRestartForUpdate = ref(false);
+const showUpdatePrompt = ref(false);
+const updateAvailableVersion = ref<string | null>(null);
+const showDownloadCancel = ref(false);
+let downloadInProgress = false;
 
 // simple i18n removed from template usage; kept title only
 
@@ -212,27 +253,37 @@ onMounted(() => {
           updateToastText.value = t("update_checking");
           canRestartForUpdate.value = false;
           showUpdateToast.value = true;
-          setTimeout(() => (showUpdateToast.value = false), 2000);
+          setTimeout(() => (showUpdateToast.value = false), 6000);
         } else if (ev.kind === "available") {
-          updateToastText.value = t("update_downloading");
-          canRestartForUpdate.value = false;
-          showUpdateToast.value = true;
+          const info = ev.data as { version?: string } | undefined;
+          updateAvailableVersion.value = info?.version || null;
+          showUpdatePrompt.value = true;
         } else if (ev.kind === "not-available") {
           updateToastText.value = t("update_current");
           canRestartForUpdate.value = false;
           showUpdateToast.value = true;
-          setTimeout(() => (showUpdateToast.value = false), 2000);
+          setTimeout(() => (showUpdateToast.value = false), 6000);
         } else if (ev.kind === "downloaded") {
           updateToastText.value = t("update_downloaded");
           canRestartForUpdate.value = true;
           showUpdateToast.value = true;
+          showDownloadCancel.value = false;
+          downloadInProgress = false;
         } else if (ev.kind === "error") {
           updateToastText.value = t("update_failed", {
             error: String(ev.data || ""),
           });
           canRestartForUpdate.value = false;
           showUpdateToast.value = true;
-          setTimeout(() => (showUpdateToast.value = false), 4000);
+          showDownloadCancel.value = false;
+          setTimeout(() => (showUpdateToast.value = false), 8000);
+          downloadInProgress = false;
+        } else if (ev.kind === "progress") {
+          if (downloadInProgress) {
+            const p = ev.data as { percent?: number } | null;
+            const pct = p?.percent ? Math.round(p.percent) : 0;
+            updateToastText.value = t("update_downloading") + ` (${pct}%)`;
+          }
         }
       }
     );
@@ -328,6 +379,36 @@ function restartForUpdate() {
   if (typeof (window.ahb as any).restartAndInstall === "function") {
     (window.ahb as any).restartAndInstall();
   }
+}
+
+function startDownload() {
+  if (downloadInProgress) return;
+  showUpdatePrompt.value = false;
+  downloadInProgress = true;
+  updateToastText.value = t("update_downloading");
+  showUpdateToast.value = true;
+  showDownloadCancel.value = true;
+  if (typeof (window.ahb as any).downloadUpdate === "function") {
+    (window.ahb as any).downloadUpdate().catch((err: unknown) => {
+      updateToastText.value = t("update_failed", { error: String(err || "") });
+      showDownloadCancel.value = false;
+      downloadInProgress = false;
+      setTimeout(() => (showUpdateToast.value = false), 8000);
+    });
+  }
+}
+
+function deferUpdate() {
+  showUpdatePrompt.value = false;
+  updateAvailableVersion.value = null;
+}
+
+function dismissUpdatePrompt() {
+  deferUpdate();
+}
+
+function cancelDownload() {
+  showDownloadCancel.value = false;
 }
 
 // Title is derived from lang via computed
