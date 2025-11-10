@@ -143,9 +143,12 @@
       @close="dismissUpdatePrompt"
     >
       <div class="space-y-4 text-sm">
-        <p>{{ t('update_available_message') }}</p>
-        <div v-if="updateAvailableVersion" class="text-xs text-gray-600 dark:text-gray-400">
-          {{ t('version') }}: {{ updateAvailableVersion }}
+        <p>{{ t("update_available_message") }}</p>
+        <div
+          v-if="updateAvailableVersion"
+          class="text-xs text-gray-600 dark:text-gray-400"
+        >
+          {{ t("version") }}: {{ updateAvailableVersion }}
         </div>
         <div class="flex justify-end gap-2 pt-2">
           <button
@@ -153,14 +156,14 @@
             class="bg-gray-200 dark:bg-gray-700 dark:text-gray-100 text-gray-800 px-3 py-1.5 rounded text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-600"
             @click="deferUpdate"
           >
-            {{ t('update_download_later') }}
+            {{ t("update_download_later") }}
           </button>
           <button
             type="button"
             class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-semibold"
             @click="startDownload"
           >
-            {{ t('update_download_now') }}
+            {{ t("update_download_now") }}
           </button>
         </div>
       </div>
