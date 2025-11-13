@@ -118,7 +118,10 @@
                 class="border-b border-gray-100 dark:border-gray-800"
               >
                 <td class="p-2">
-                  {{ r.customerName ?? r.customerId }}
+                  {{
+                    r.customerName ??
+                    (r.customerId === 0 ? t("walk_in") : r.customerId)
+                  }}
                 </td>
                 <td class="p-2 text-right">
                   {{ fmt(r.bill) }}
@@ -248,7 +251,7 @@ async function printReport() {
         .map(
           (r) => `
       <tr>
-        <td>${r.customerName ?? r.customerId}</td>
+        <td>${r.customerName ?? (r.customerId === 0 ? t("walk_in") : String(r.customerId))}</td>
         <td style="text-align:right">${fmt(r.bill)}</td>
         <td style="text-align:right">${fmt(r.discount)}</td>
         <td style="text-align:right">${fmt(r.netBill)}</td>

@@ -150,6 +150,7 @@
                   class="w-20 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner dark:text-gray-100"
                   type="number"
                   min="0"
+                  :disabled="!selectedCustomer"
                 />
               </div>
               <div class="flex justify-between items-center pr-1">
@@ -265,7 +266,7 @@
               {{ t("report_money_daywise_title") }}
             </button>
             <button
-              class="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 dark:hover:bg-purple-900 transition-colors"
+              class="col-span-2 w-full bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 py-1.5 px-3 rounded-md text-sm font-semibold hover:bg-purple-200 dark:hover:bg-purple-900 transition-colors"
               @click="navigate('report-daily-payment')"
             >
               {{ t("report_daily_payment_title") }}
@@ -278,20 +279,8 @@
       <div
         class="lg:col-span-3 bg-white dark:bg-gray-900 dark:text-gray-100 p-4 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col min-h-0"
       >
-        <!-- Empty state when no customer is selected -->
-        <div
-          v-if="!selectedCustomer"
-          class="flex flex-1 items-center justify-center text-gray-600 dark:text-gray-300"
-        >
-          <div class="text-center">
-            <div class="text-lg font-semibold">
-              {{ t("select_customer_prompt_title") }}
-            </div>
-            <div class="text-sm mt-1">{{ t("select_customer_prompt") }}</div>
-          </div>
-        </div>
-
-        <template v-else>
+        <!-- Customer info or Walk-in badge -->
+        <template v-if="selectedCustomer">
           <div class="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg mb-4">
             <h3
               class="text-base font-semibold mb-2 text-blue-700 dark:text-blue-300"
@@ -333,184 +322,195 @@
               </div>
             </div>
           </div>
-
-          <div class="flex-grow min-h-0 overflow-auto">
-            <table class="w-full text-left text-sm">
-              <thead class="border-b border-gray-200 dark:border-gray-700">
-                <tr>
-                  <th
-                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
-                  >
-                    #
-                  </th>
-                  <th
-                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300"
-                  >
-                    {{ t("product_name") }}
-                  </th>
-                  <th
-                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
-                  >
-                    {{ t("quantity") }}
-                  </th>
-                  <th
-                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
-                  >
-                    {{ t("unit") }}
-                  </th>
-                  <th
-                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-right"
-                  >
-                    {{ t("unit_price") }}
-                  </th>
-                  <th
-                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-right"
-                  >
-                    {{ t("total") }}
-                  </th>
-                  <th
-                    class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
-                  >
-                    {{ t("actions") }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(row, idx) in receipt"
-                  :key="row.productId"
-                  class="border-b border-gray-200 dark:border-gray-700"
-                  :class="{ 'bg-red-50 dark:bg-red-950': isOversell(row) }"
-                >
-                  <td class="p-2 text-center">
-                    {{ idx + 1 }}
-                  </td>
-                  <td class="p-2">
-                    <div class="flex items-center gap-2">
-                      <span>{{ row.nameBn }}</span>
-                      <span
-                        v-if="isOversell(row)"
-                        class="inline-flex items-center gap-1 text-red-700 text-xs font-medium"
-                        :title="t('oversell_warning')"
-                        aria-live="polite"
-                      >
-                        <span aria-hidden="true">⚠️</span>
-                        <span class="sr-only">{{ t("oversell_warning") }}</span>
-                      </span>
-                    </div>
-                  </td>
-                  <td class="p-2 text-center">
-                    <div class="inline-flex items-center gap-1">
-                      <button
-                        type="button"
-                        class="inline-flex items-center justify-center w-6 h-6 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        :aria-label="t('decrease')"
-                        :title="t('decrease')"
-                        @click="adjustQuantity(idx, -1)"
-                      >
-                        <span aria-hidden="true">−</span>
-                        <span class="sr-only">{{ t("decrease") }}</span>
-                      </button>
-                      <input
-                        class="w-16 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-1 py-0.5 text-center text-sm no-spinner dark:text-gray-100"
-                        type="number"
-                        min="1"
-                        :value="row.quantity"
-                        @input="onQuantityInput(idx, $event)"
-                      />
-                      <button
-                        type="button"
-                        class="inline-flex items-center justify-center w-6 h-6 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        :aria-label="t('increase')"
-                        :title="t('increase')"
-                        @click="adjustQuantity(idx, 1)"
-                      >
-                        <span aria-hidden="true">+</span>
-                        <span class="sr-only">{{ t("increase") }}</span>
-                      </button>
-                    </div>
-                  </td>
-                  <td class="p-2 text-center">
-                    {{ row.unit }}
-                  </td>
-                  <td class="p-2 text-right">
-                    {{ formatMoney(row.rate) }}
-                  </td>
-                  <td class="p-2 text-right">
-                    {{ formatMoney(row.lineTotal) }}
-                  </td>
-                  <td class="p-2 text-center">
-                    <button
-                      type="button"
-                      class="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                      :aria-label="t('remove')"
-                      :title="t('remove')"
-                      @click="removeReceiptRow(idx)"
-                    >
-                      <span aria-hidden="true">×</span>
-                      <span class="sr-only">{{ t("remove") }}</span>
-                    </button>
-                  </td>
-                </tr>
-                <tr v-if="receipt.length === 0">
-                  <td
-                    class="p-2 text-center text-gray-500 dark:text-gray-400"
-                    colspan="7"
-                  >
-                    {{ t("no_items") }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div
-            class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4 flex items-center gap-2"
-          >
-            <div class="relative flex-grow">
-              <input
-                id="search-product"
-                v-model="productQuery"
-                name="search-product"
-                type="text"
-                :placeholder="t('search_products_placeholder')"
-                class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md pl-3 pr-2 py-2 text-sm dark:text-gray-100"
-                @focus="productDropdownOpen = true"
-                @input="productDropdownOpen = true"
-                @keydown.down.prevent="moveProductHighlight(1)"
-                @keydown.up.prevent="moveProductHighlight(-1)"
-                @keydown.enter.prevent="confirmProductSelection()"
-                @keydown.esc.prevent="productDropdownOpen = false"
-              />
-              <div
-                v-if="productDropdownOpen && filteredProducts.length"
-                class="absolute bottom-full left-0 w-full mb-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto"
-              >
-                <ul class="text-sm">
-                  <li
-                    v-for="(p, idx) in filteredProducts"
-                    :key="p.id"
-                    class="px-4 py-2 cursor-pointer dark:hover:bg-gray-800"
-                    :class="
-                      idx === productHighlight
-                        ? 'bg-gray-100 dark:bg-gray-700'
-                        : 'hover:bg-gray-50'
-                    "
-                    @click="onSelectProduct(p)"
-                  >
-                    <div class="flex justify-between">
-                      <span class="font-medium">{{ p.nameBn }}</span>
-                      <span class="text-gray-500 dark:text-gray-400"
-                        >{{ t("id") }}: {{ p.id }}</span
-                      >
-                    </div>
-                  </li>
-                </ul>
-              </div>
+        </template>
+        <template v-else>
+          <div class="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg mb-4">
+            <div class="text-sm text-blue-700 dark:text-blue-300 font-medium">
+              {{ t("walk_in") }}
             </div>
-            <!-- Add button removed: selecting a dropdown item adds it to the invoice -->
+            <div class="text-xs text-blue-700/80 dark:text-blue-300/80 mt-1">
+              {{ t("walk_in_hint") }}
+            </div>
           </div>
         </template>
+
+        <!-- Product table and entry always available -->
+        <div class="flex-grow min-h-0 overflow-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="border-b border-gray-200 dark:border-gray-700">
+              <tr>
+                <th
+                  class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
+                >
+                  #
+                </th>
+                <th
+                  class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300"
+                >
+                  {{ t("product_name") }}
+                </th>
+                <th
+                  class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
+                >
+                  {{ t("quantity") }}
+                </th>
+                <th
+                  class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
+                >
+                  {{ t("unit") }}
+                </th>
+                <th
+                  class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-right"
+                >
+                  {{ t("unit_price") }}
+                </th>
+                <th
+                  class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-right"
+                >
+                  {{ t("total") }}
+                </th>
+                <th
+                  class="p-2 text-xs font-semibold text-gray-600 dark:text-gray-300 text-center"
+                >
+                  {{ t("actions") }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(row, idx) in receipt"
+                :key="row.productId"
+                class="border-b border-gray-200 dark:border-gray-700"
+                :class="{ 'bg-red-50 dark:bg-red-950': isOversell(row) }"
+              >
+                <td class="p-2 text-center">
+                  {{ idx + 1 }}
+                </td>
+                <td class="p-2">
+                  <div class="flex items-center gap-2">
+                    <span>{{ row.nameBn }}</span>
+                    <span
+                      v-if="isOversell(row)"
+                      class="inline-flex items-center gap-1 text-red-700 text-xs font-medium"
+                      :title="t('oversell_warning')"
+                      aria-live="polite"
+                    >
+                      <span aria-hidden="true">⚠️</span>
+                      <span class="sr-only">{{ t("oversell_warning") }}</span>
+                    </span>
+                  </div>
+                </td>
+                <td class="p-2 text-center">
+                  <div class="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      class="inline-flex items-center justify-center w-6 h-6 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      :aria-label="t('decrease')"
+                      :title="t('decrease')"
+                      @click="adjustQuantity(idx, -1)"
+                    >
+                      <span aria-hidden="true">−</span>
+                      <span class="sr-only">{{ t("decrease") }}</span>
+                    </button>
+                    <input
+                      class="w-16 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-1 py-0.5 text-center text-sm no-spinner dark:text-gray-100"
+                      type="number"
+                      min="1"
+                      :value="row.quantity"
+                      @input="onQuantityInput(idx, $event)"
+                    />
+                    <button
+                      type="button"
+                      class="inline-flex items-center justify-center w-6 h-6 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      :aria-label="t('increase')"
+                      :title="t('increase')"
+                      @click="adjustQuantity(idx, 1)"
+                    >
+                      <span aria-hidden="true">+</span>
+                      <span class="sr-only">{{ t("increase") }}</span>
+                    </button>
+                  </div>
+                </td>
+                <td class="p-2 text-center">
+                  {{ row.unit }}
+                </td>
+                <td class="p-2 text-right">
+                  {{ formatMoney(row.rate) }}
+                </td>
+                <td class="p-2 text-right">
+                  {{ formatMoney(row.lineTotal) }}
+                </td>
+                <td class="p-2 text-center">
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                    :aria-label="t('remove')"
+                    :title="t('remove')"
+                    @click="removeReceiptRow(idx)"
+                  >
+                    <span aria-hidden="true">×</span>
+                    <span class="sr-only">{{ t("remove") }}</span>
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="receipt.length === 0">
+                <td
+                  class="p-2 text-center text-gray-500 dark:text-gray-400"
+                  colspan="7"
+                >
+                  {{ t("no_items") }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div
+          class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4 flex items-center gap-2"
+        >
+          <div class="relative flex-grow">
+            <input
+              id="search-product"
+              v-model="productQuery"
+              name="search-product"
+              type="text"
+              :placeholder="t('search_products_placeholder')"
+              class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md pl-3 pr-2 py-2 text-sm dark:text-gray-100"
+              @focus="productDropdownOpen = true"
+              @input="productDropdownOpen = true"
+              @keydown.down.prevent="moveProductHighlight(1)"
+              @keydown.up.prevent="moveProductHighlight(-1)"
+              @keydown.enter.prevent="confirmProductSelection()"
+              @keydown.esc.prevent="productDropdownOpen = false"
+            />
+            <div
+              v-if="productDropdownOpen && filteredProducts.length"
+              class="absolute bottom-full left-0 w-full mb-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto"
+            >
+              <ul class="text-sm">
+                <li
+                  v-for="(p, idx) in filteredProducts"
+                  :key="p.id"
+                  class="px-4 py-2 cursor-pointer dark:hover:bg-gray-800"
+                  :class="
+                    idx === productHighlight
+                      ? 'bg-gray-100 dark:bg-gray-700'
+                      : 'hover:bg-gray-50'
+                  "
+                  @click="onSelectProduct(p)"
+                >
+                  <div class="flex justify-between">
+                    <span class="font-medium">{{ p.nameBn }}</span>
+                    <span class="text-gray-500 dark:text-gray-400"
+                      >{{ t("id") }}: {{ p.id }}</span
+                    >
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <!-- Add button removed: selecting a dropdown item adds it to the invoice -->
+        </div>
 
         <!-- Success toast -->
         <div
@@ -599,6 +599,7 @@ const customerQuery = ref("");
 const productQuery = ref("");
 const customerDropdownOpen = ref(false);
 const productDropdownOpen = ref(false);
+// Walk-in is implied when no customer is selected; no toggle needed.
 
 const filteredCustomers = computed(() => {
   const q = customerQuery.value.trim().toLowerCase();
@@ -671,17 +672,20 @@ const dueText = computed(() => formatMoney(due.value));
 const netDue = computed(() => ceil2(previousDue.value + due.value));
 const netDueText = computed(() => formatMoney(netDue.value));
 
-const canComplete = computed(
-  () =>
-    !!selectedCustomer.value &&
-    receipt.value.length > 0 &&
-    discount.value <= subtotal.value &&
-    paid.value >= 0 &&
-    paid.value <= previousDue.value + net.value
-);
+const canComplete = computed(() => {
+  if (receipt.value.length === 0) return false;
+  if (discount.value > subtotal.value) return false;
+  if (paid.value < 0) return false;
+  // Anonymous: must be fully paid (no due)
+  if (!selectedCustomer.value) {
+    return Math.abs(net.value - paid.value) < 0.005; // float-safe equality
+  }
+  // Customer selected: original constraints
+  return paid.value <= previousDue.value + net.value;
+});
 
 async function complete() {
-  if (!selectedCustomer.value || receipt.value.length === 0) return;
+  if (receipt.value.length === 0) return;
   // If any line exceeds current stock, show non-blocking confirm modal
   const overs = receipt.value.filter((r) => isOversell(r)).length;
   if (overs > 0) {
@@ -696,7 +700,7 @@ async function doPostInvoice() {
   try {
     const payload = {
       date: new Date().toISOString(),
-      customerId: selectedCustomer.value!.id,
+      customerId: selectedCustomer.value ? selectedCustomer.value.id : null,
       discount: Number(discount.value || 0),
       paid: Number(paid.value || 0),
       notes: notes.value,
@@ -717,7 +721,9 @@ async function doPostInvoice() {
       }
       printInvoice(inv as unknown as import("../main/data").Invoice, {
         businessName: BUSINESS_NAME,
-        customerName: selectedCustomer.value!.nameBn,
+        customerName: selectedCustomer.value
+          ? selectedCustomer.value.nameBn
+          : t("walk_in"),
         products: productsMap,
       });
     } catch (err) {
@@ -924,6 +930,16 @@ function onConfirmNegative() {
 function onCancelNegative() {
   showConfirmNegative.value = false;
 }
+
+// Auto-fill paid in Walk-in mode to enforce full payment UX
+watch(
+  () => [selectedCustomer.value, net.value],
+  () => {
+    if (!selectedCustomer.value) {
+      paid.value = net.value;
+    }
+  }
+);
 
 async function loadLastBillForCustomer(customerId: number) {
   try {

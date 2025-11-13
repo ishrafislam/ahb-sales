@@ -101,9 +101,16 @@
                 <input
                   id="stock"
                   v-model.number="form.stock"
-                  class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
+                  class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
                   type="number"
+                  :disabled="exists"
                 />
+                <p
+                  v-if="exists"
+                  class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+                >
+                  {{ t("stock_managed_note") }}
+                </p>
               </div>
               <div>
                 <label
@@ -174,14 +181,14 @@
               {{ t("last") }}
             </button>
             <button
-              class="w-full text-center bg-green-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-green-700 mt-4"
+              class="w-full text-center bg-green-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-green-700 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="exists || !canAdd"
               @click="add"
             >
               {{ t("add") }}
             </button>
             <button
-              class="w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-blue-700"
+              class="w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="!exists || !isDirty"
               @click="update"
             >
@@ -201,6 +208,7 @@ import { t } from "../i18n";
 interface ProductRow {
   id: number;
   nameBn: string;
+  description?: string;
   unit: string;
   price: number;
   stock: number;
@@ -244,7 +252,7 @@ function syncFromSelected() {
     form.value.price = Number(p.price || 0);
     form.value.stock = Number(p.stock || 0);
     form.value.active = !!p.active;
-    form.value.description = "";
+    form.value.description = p.description || "";
   } else {
     form.value.nameBn = "";
     form.value.unit = "unit";
@@ -262,20 +270,24 @@ function select(id: number) {
 }
 
 async function load() {
+  const prevSelected = selectedId.value;
   const list = await window.ahb.listProducts({ activeOnly: false });
   products.value = list.map((p) => ({
     id: p.id,
     nameBn: p.nameBn,
+    description: p.description,
     unit: p.unit,
     price: Number(p.price || 0),
     stock: Number(p.stock || 0),
     active: p.active !== false,
   }));
-  // Initialize selection to first existing or 1
-  if (products.value.length) {
-    selectedId.value = Math.min(1000, Math.max(1, products.value[0].id));
-  } else {
-    selectedId.value = 1;
+  // Preserve selection if still valid; otherwise, fall back to first existing (if any)
+  if (!productsById.value.has(prevSelected)) {
+    if (products.value.length) {
+      selectedId.value = Math.min(1000, Math.max(1, products.value[0].id));
+    } else {
+      selectedId.value = prevSelected;
+    }
   }
   syncFromSelected();
   await scrollSelectedIntoView();
@@ -300,9 +312,10 @@ const isDirty = computed(() => {
   if (!p) return false;
   return (
     (p.nameBn || "") !== form.value.nameBn ||
+    (p.description || "") !== form.value.description ||
     (p.unit || "unit") !== form.value.unit ||
     Number(p.price || 0) !== Number(form.value.price || 0) ||
-    Number(p.stock || 0) !== Number(form.value.stock || 0) ||
+    // Stock is not editable for existing products; ignore in dirty check
     !!p.active !== !!form.value.active
   );
 });
@@ -328,7 +341,6 @@ async function update() {
     description: form.value.description,
     unit: form.value.unit,
     price: form.value.price,
-    stock: form.value.stock,
     active: form.value.active,
   });
   await load();
