@@ -120,6 +120,8 @@
   "increase": "বাড়ান",
   "decrease": "কমান",
   "summary_add_products_prompt": "প্রথমে ইনভয়েসে পণ্য যোগ করুন।",
+  "walk_in": "ওয়াক-ইন",
+  "walk_in_hint": "কাস্টমার নির্বাচন করা নেই। এই ইনভয়েসটি সম্পূর্ণ পরিশোধ করতে হবে।",
   "restart_to_update": "আপডেট করতে রিস্টার্ট করুন",
   "update_checking": "আপডেট খোঁজা হচ্ছে…",
   "update_downloading": "আপডেট ডাউনলোড হচ্ছে…",

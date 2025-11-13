@@ -73,13 +73,13 @@ describe("DashboardView.vue", () => {
     } as unknown as AhbStub;
   });
 
-  it("renders prompt to select customer and hides summary until products added", async () => {
+  it("shows Walk-in banner when no customer and hides totals until products are added", async () => {
     const wrapper = mount(DashboardView);
     await Promise.resolve();
     await nextTick();
-    expect(wrapper.text()).toContain("Select a customer");
+    expect(wrapper.text()).toContain("Walk-in");
     expect(wrapper.text()).toContain(
-      "Start by searching and selecting a customer on the left."
+      "No customer selected. This invoice must be fully paid."
     );
     // Summary should show prompt instead of totals when no products
     expect(wrapper.text()).toContain("Add products to the invoice first.");
@@ -255,7 +255,10 @@ describe("DashboardView.vue", () => {
     expect(args.discount).toBe(10);
     expect(Array.isArray(args.lines) && args.lines.length).toBe(1);
 
-    // After complete, draft and selection reset -> prompt to select customer
-    expect(wrapper.text()).toContain("Select a customer");
+    // After complete, draft resets and selection cleared -> Walk-in banner shown
+    expect(wrapper.text()).toContain("Walk-in");
+    expect(wrapper.text()).toContain(
+      "No customer selected. This invoice must be fully paid."
+    );
   });
 });

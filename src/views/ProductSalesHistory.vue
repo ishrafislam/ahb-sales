@@ -72,7 +72,10 @@
                 {{ row.invoiceNo }}
               </td>
               <td class="p-2">
-                {{ row.customerNameBn || row.customerId }}
+                {{
+                  row.customerNameBn ||
+                  (row.customerId === 0 ? t("walk_in") : row.customerId)
+                }}
               </td>
               <td class="p-2 text-center">{{ row.quantity }} {{ row.unit }}</td>
               <td class="p-2 text-right">
