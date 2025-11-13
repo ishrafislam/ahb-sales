@@ -174,7 +174,12 @@
               class="border-b border-gray-100 dark:border-gray-800"
             >
               <td class="p-2">{{ r.date }}</td>
-              <td class="p-2">{{ r.customerName ?? r.customerId }}</td>
+              <td class="p-2">
+                {{
+                  r.customerName ??
+                  (r.customerId === 0 ? t("walk_in") : r.customerId)
+                }}
+              </td>
               <td class="p-2 text-right">{{ fmt(r.netBill) }}</td>
               <td class="p-2 text-right">{{ fmt(r.paid) }}</td>
               <td class="p-2 text-right">{{ fmt(r.due) }}</td>
@@ -266,7 +271,12 @@
                   :key="i"
                   class="border-b border-gray-100 dark:border-gray-800"
                 >
-                  <td class="p-2">{{ r.customerName ?? r.customerId }}</td>
+                  <td class="p-2">
+                    {{
+                      r.customerName ??
+                      (r.customerId === 0 ? t("walk_in") : r.customerId)
+                    }}
+                  </td>
                   <td class="p-2 text-right">{{ fmt(r.bill) }}</td>
                   <td class="p-2 text-right">{{ fmt(r.discount) }}</td>
                   <td class="p-2 text-right">{{ fmt(r.netBill) }}</td>
@@ -313,7 +323,12 @@
               :key="i"
               class="border-b border-gray-100 dark:border-gray-800"
             >
-              <td class="p-2">{{ r.customerName ?? r.customerId }}</td>
+              <td class="p-2">
+                {{
+                  r.customerName ??
+                  (r.customerId === 0 ? t("walk_in") : r.customerId)
+                }}
+              </td>
               <td class="p-2 text-right">{{ fmt(r.paid) }}</td>
             </tr>
             <tr v-if="dailyRows.length === 0">
@@ -347,6 +362,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { t } from "../i18n";
 
 // Selection state
 const selected = ref<"money-customer" | "money-daywise" | "daily-payment">(
@@ -473,10 +489,12 @@ function printMoneyCustomer() {
   const style = `<style>*{box-sizing:border-box;}body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,"Apple Color Emoji","Segoe UI Emoji";padding:16px;}h1{font-size:18px;margin:0 0 8px}.meta{font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f8fafc;text-align:left}tfoot td{font-weight:600}@media print{body{padding:0}}</style>`;
   const head = `<head><meta charset="utf-8"/>${style}<title>Money Transaction — Customer Based</title></head>`;
   const rowsHtml = rows.value
-    .map(
-      (r) =>
-        `<tr><td>${r.date}</td><td>${r.customerName ?? r.customerId}</td><td style="text-align:right">${fmt(r.netBill)}</td><td style="text-align:right">${fmt(r.paid)}</td><td style="text-align:right">${fmt(r.due)}</td><td style="text-align:right">${fmt(r.previousDue)}</td><td style="text-align:right">${fmt(r.totalDue)}</td></tr>`
-    )
+    .map((r) => {
+      const name =
+        r.customerName ??
+        (r.customerId === 0 ? t("walk_in") : String(r.customerId));
+      return `<tr><td>${r.date}</td><td>${name}</td><td style="text-align:right">${fmt(r.netBill)}</td><td style="text-align:right">${fmt(r.paid)}</td><td style="text-align:right">${fmt(r.due)}</td><td style="text-align:right">${fmt(r.previousDue)}</td><td style="text-align:right">${fmt(r.totalDue)}</td></tr>`;
+    })
     .join("");
   const body = `<body><h1>Money Transaction — Customer Based</h1><div class="meta">From ${from.value} To ${to.value}</div><table><thead><tr><th>Date</th><th>Customer Name</th><th style="text-align:right">Net Bill</th><th style="text-align:right">Paid</th><th style="text-align:right">Due</th><th style="text-align:right">Previous Due</th><th style="text-align:right">Total Due</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="7" style="text-align:center;color:#6b7280">No records</td></tr>`}</tbody><tfoot><tr><td colspan="2">Totals</td><td style="text-align:right">${fmt(totals.value.netBill)}</td><td style="text-align:right">${fmt(totals.value.paid)}</td><td style="text-align:right">${fmt(totals.value.due)}</td><td colspan="2"></td></tr></tfoot></table></body>`;
   w.document.open();
@@ -496,10 +514,12 @@ function printMoneyDayWise() {
   const daySections = days.value
     .map((day) => {
       const rowsHtml = day.rows
-        .map(
-          (r) =>
-            `<tr><td>${r.customerName ?? r.customerId}</td><td style="text-align:right">${fmt(r.bill)}</td><td style="text-align:right">${fmt(r.discount)}</td><td style="text-align:right">${fmt(r.netBill)}</td><td style="text-align:right">${fmt(r.paid)}</td><td style="text-align:right">${fmt(r.due)}</td><td style="text-align:right">${fmt(r.previousDue)}</td><td style="text-align:right">${fmt(r.totalDue)}</td></tr>`
-        )
+        .map((r) => {
+          const name =
+            r.customerName ??
+            (r.customerId === 0 ? t("walk_in") : String(r.customerId));
+          return `<tr><td>${name}</td><td style="text-align:right">${fmt(r.bill)}</td><td style="text-align:right">${fmt(r.discount)}</td><td style="text-align:right">${fmt(r.netBill)}</td><td style="text-align:right">${fmt(r.paid)}</td><td style="text-align:right">${fmt(r.due)}</td><td style="text-align:right">${fmt(r.previousDue)}</td><td style="text-align:right">${fmt(r.totalDue)}</td></tr>`;
+        })
         .join("");
       return `<div class="day"><div class="day-header"><div><strong>Date:</strong> ${day.date}</div><div class="totals"><span>Bill: <strong>${fmt(day.totals.bill)}</strong></span><span>Discount: <strong>${fmt(day.totals.discount)}</strong></span><span>Net: <strong>${fmt(day.totals.netBill)}</strong></span><span>Paid: <strong>${fmt(day.totals.paid)}</strong></span><span>Due: <strong>${fmt(day.totals.due)}</strong></span></div></div><table><thead><tr><th>Customer</th><th style="text-align:right">Bill</th><th style="text-align:right">Discount</th><th style="text-align:right">Net Bill</th><th style="text-align:right">Paid</th><th style="text-align:right">Due</th><th style="text-align:right">Previous Due</th><th style="text-align:right">Total Due</th></tr></thead><tbody>${rowsHtml || `<tr><td class="no-records" colspan="8">No records</td></tr>`}</tbody></table></div>`;
     })
@@ -520,10 +540,12 @@ function printDailyPayments() {
   const style = `<style>*{box-sizing:border-box;}body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,"Apple Color Emoji","Segoe UI Emoji";padding:16px;}h1{font-size:18px;margin:0 0 8px}.meta{font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f8fafc;text-align:left}tfoot td{font-weight:600}@media print{body{padding:0}}</style>`;
   const head = `<head><meta charset="utf-8"/>${style}<title>Daily Payment Report</title></head>`;
   const rowsHtml = dailyRows.value
-    .map(
-      (r) =>
-        `<tr><td>${r.customerName ?? r.customerId}</td><td style="text-align:right">${fmt(r.paid)}</td></tr>`
-    )
+    .map((r) => {
+      const name =
+        r.customerName ??
+        (r.customerId === 0 ? t("walk_in") : String(r.customerId));
+      return `<tr><td>${name}</td><td style="text-align:right">${fmt(r.paid)}</td></tr>`;
+    })
     .join("");
   const body = `<body><h1>Daily Payment Report</h1><div class="meta">Date ${dailyDate.value}</div><table><thead><tr><th>Customer</th><th style="text-align:right">Paid</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="2" style="text-align:center;color:#6b7280">No records</td></tr>`}</tbody><tfoot><tr><td>Totals</td><td style="text-align:right">${fmt(dailyTotals.value.paid)}</td></tr></tfoot></table></body>`;
   w.document.open();

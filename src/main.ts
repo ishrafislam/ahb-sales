@@ -406,11 +406,13 @@ ipcMain.handle(
       })
     );
     // Notify customer outstanding update
-    notifyAll("data:changed", {
-      kind: "customer",
-      action: "update",
-      id: inv.customerId,
-    });
+    if (inv.customerId != null) {
+      notifyAll("data:changed", {
+        kind: "customer",
+        action: "update",
+        id: inv.customerId,
+      });
+    }
     isDirty = true;
     broadcastFileInfo();
     return inv;

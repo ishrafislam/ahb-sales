@@ -104,6 +104,8 @@
   "last_bill": "Last Bill",
   "net_due": "Net Due",
   "no_items": "No items",
+  "walk_in": "Walk-in",
+  "walk_in_hint": "No customer selected. This invoice must be fully paid.",
   "search_products_placeholder": "Search for products to add...",
   "complete": "Complete",
   "receipt_saved": "Receipt saved successfully (Invoice #{no})",

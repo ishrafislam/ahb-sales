@@ -85,7 +85,10 @@
               {{ r.date }}
             </td>
             <td class="p-2">
-              {{ r.customerName ?? r.customerId }}
+              {{
+                r.customerName ??
+                (r.customerId === 0 ? t("walk_in") : r.customerId)
+              }}
             </td>
             <td class="p-2 text-right">
               {{ fmt(r.netBill) }}
@@ -205,17 +208,20 @@ async function printReport() {
   `;
   const head = `<head><meta charset="utf-8" />${style}<title>Money Transaction — Customer Based</title></head>`;
   const rowsHtml = rows.value
-    .map(
-      (r) => `<tr>
+    .map((r) => {
+      const name =
+        r.customerName ??
+        (r.customerId === 0 ? t("walk_in") : String(r.customerId));
+      return `<tr>
     <td>${r.date}</td>
-    <td>${r.customerName ?? r.customerId}</td>
+    <td>${name}</td>
     <td style="text-align:right">${fmt(r.netBill)}</td>
     <td style="text-align:right">${fmt(r.paid)}</td>
     <td style="text-align:right">${fmt(r.due)}</td>
     <td style="text-align:right">${fmt(r.previousDue)}</td>
     <td style="text-align:right">${fmt(r.totalDue)}</td>
-  </tr>`
-    )
+  </tr>`;
+    })
     .join("");
   const body = `
   <body>

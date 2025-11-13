@@ -84,7 +84,7 @@ export type Invoice = {
   id: string;
   no: number; // human-friendly invoice number
   date: string; // ISO
-  customerId: number;
+  customerId: number | null;
   lines: InvoiceLine[];
   discount: number;
   notes?: string;
@@ -100,7 +100,7 @@ export type Invoice = {
 
 export type PostInvoiceInput = {
   date?: string;
-  customerId: number;
+  customerId: number | null;
   lines: Array<{
     productId: number;
     quantity: number;
@@ -116,8 +116,12 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
   ensurePhase2(data);
   const date = input.date ? new Date(input.date) : new Date();
   if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
-  const customer = data.customers.find((c) => c.id === input.customerId);
-  if (!customer) throw new Error("Customer not found");
+  const hasCustomer =
+    input.customerId !== null && input.customerId !== undefined;
+  const customer = hasCustomer
+    ? data.customers.find((c) => c.id === (input.customerId as number))
+    : undefined;
+  if (hasCustomer && !customer) throw new Error("Customer not found");
   if (!Array.isArray(input.lines) || input.lines.length === 0)
     throw new Error("At least one line item is required");
 
@@ -149,15 +153,20 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
     throw new Error("Discount must be a non-negative number");
   if (discount > subtotal) throw new Error("Discount cannot exceed subtotal");
   const net = ceil2(subtotal - discount);
-  const previousDue = ceil2(Number(customer.outstanding || 0));
+  const previousDue = hasCustomer
+    ? ceil2(Number(customer!.outstanding || 0))
+    : 0;
   const paid = Number(input.paid ?? 0);
   if (!Number.isFinite(paid) || paid < 0)
     throw new Error("Paid must be a non-negative number");
   const maxPayable = ceil2(previousDue + net);
   if (paid > maxPayable)
     throw new Error("Paid amount cannot exceed previous due plus net bill");
+  // Anonymous invoices must be fully paid: enforce no due
+  if (!hasCustomer && paid !== net)
+    throw new Error("Anonymous invoice must be fully paid");
   const invoiceDue = Math.max(0, ceil2(net - paid));
-  const currentDue = ceil2(previousDue + invoiceDue);
+  const currentDue = hasCustomer ? ceil2(previousDue + invoiceDue) : 0;
 
   // Stock check removed: allow negative stock (policy change)
 
@@ -167,7 +176,7 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
     id: genId(),
     no: invoiceNo,
     date: date.toISOString(),
-    customerId: customer.id,
+    customerId: hasCustomer ? customer!.id : null,
     lines,
     discount,
     notes: input.notes?.trim() || undefined,
@@ -192,13 +201,15 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
     };
   }
   // Update customer outstanding (currentDue)
-  const custIdx = data.customers.findIndex((c) => c.id === customer.id);
-  if (custIdx !== -1) {
-    data.customers[custIdx] = {
-      ...customer,
-      outstanding: currentDue,
-      updatedAt: nowIso(),
-    };
+  if (hasCustomer && customer) {
+    const custIdx = data.customers.findIndex((c) => c.id === customer.id);
+    if (custIdx !== -1) {
+      data.customers[custIdx] = {
+        ...customer,
+        outstanding: currentDue,
+        updatedAt: nowIso(),
+      };
+    }
   }
 
   return inv;
@@ -404,7 +415,7 @@ export type ProductSaleLine = {
   quantity: number;
   rate: number;
   lineTotal: number;
-  customerId: number;
+  customerId: number; // 0 indicates anonymous (no customer)
   customerNameBn?: string;
 };
 
@@ -430,8 +441,9 @@ export function listProductSales(
           quantity: ln.quantity,
           rate: ln.rate,
           lineTotal: ln.lineTotal,
-          customerId: inv.customerId,
-          customerNameBn: mapCust.get(inv.customerId),
+          customerId: inv.customerId ?? 0,
+          customerNameBn:
+            inv.customerId != null ? mapCust.get(inv.customerId) : undefined,
         });
       }
     }
@@ -540,7 +552,7 @@ export function postPurchase(
 
 export type MoneyTxnCustomerRangeRow = {
   date: string; // DD-MM-YYYY
-  customerId: number;
+  customerId: number; // 0 indicates anonymous
   customerName?: string;
   netBill: number;
   paid: number;
@@ -577,8 +589,9 @@ export function reportMoneyTransactionsCustomerRange(
     const totalDue = ceil2(previousDue + due); // equals inv.currentDue
     rows.push({
       date: toDDMMYYYY(ymd),
-      customerId: inv.customerId,
-      customerName: nameByCustomer.get(inv.customerId),
+      customerId: inv.customerId ?? 0,
+      customerName:
+        inv.customerId != null ? nameByCustomer.get(inv.customerId) : undefined,
       netBill,
       paid,
       due,
@@ -589,7 +602,11 @@ export function reportMoneyTransactionsCustomerRange(
 
   // Sort by date desc then customer asc for stability
   rows.sort((a, b) =>
-    a.date < b.date ? 1 : a.date > b.date ? -1 : a.customerId - b.customerId
+    a.date < b.date
+      ? 1
+      : a.date > b.date
+        ? -1
+        : (a.customerId || 0) - (b.customerId || 0)
   );
 
   const totals = rows.reduce(
@@ -605,7 +622,7 @@ export function reportMoneyTransactionsCustomerRange(
 }
 
 export type MoneyTxnDayWiseRow = {
-  customerId: number;
+  customerId: number; // 0 indicates anonymous
   customerName?: string;
   bill: number; // sum of subtotals
   discount: number; // sum of discounts
@@ -654,7 +671,7 @@ export function reportMoneyTransactionsDayWise(
     earliestPrevDue: number;
   };
 
-  const dayMap = new Map<string, Map<number, Acc>>(); // ymd -> customerId -> Acc
+  const dayMap = new Map<string, Map<number, Acc>>(); // ymd -> customerId (0=anon) -> Acc
   for (const inv of data.invoices ?? []) {
     const ymd = isoToYmd(inv.date);
     if (ymd < start || ymd > end) continue;
@@ -675,7 +692,8 @@ export function reportMoneyTransactionsDayWise(
       custMap = new Map();
       dayMap.set(ymd, custMap);
     }
-    let acc = custMap.get(inv.customerId);
+    const cid = inv.customerId ?? 0;
+    let acc = custMap.get(cid);
     if (!acc) {
       acc = {
         bill: 0,
@@ -686,7 +704,7 @@ export function reportMoneyTransactionsDayWise(
         earliestIso: inv.date,
         earliestPrevDue: ceil2(inv.previousDue || 0),
       };
-      custMap.set(inv.customerId, acc);
+      custMap.set(cid, acc);
     }
     acc.bill = ceil2(acc.bill + subtotal);
     acc.discount = ceil2(acc.discount + discount);
@@ -707,7 +725,7 @@ export function reportMoneyTransactionsDayWise(
       const totalDue = ceil2(previousDue + acc.due);
       rows.push({
         customerId: custId,
-        customerName: nameByCustomer.get(custId),
+        customerName: custId ? nameByCustomer.get(custId) : undefined,
         bill: acc.bill,
         discount: acc.discount,
         netBill: acc.netBill,
@@ -719,8 +737,10 @@ export function reportMoneyTransactionsDayWise(
     }
     // Sort rows by customer name/id for consistency
     rows.sort((a, b) => {
-      const an = a.customerName ?? String(a.customerId);
-      const bn = b.customerName ?? String(b.customerId);
+      const an =
+        a.customerName ?? (a.customerId ? String(a.customerId) : "Walk-in");
+      const bn =
+        b.customerName ?? (b.customerId ? String(b.customerId) : "Walk-in");
       return an.localeCompare(bn, "bn");
     });
     const totals = rows.reduce(
@@ -751,7 +771,7 @@ export function reportMoneyTransactionsDayWise(
 // -----------------------
 
 export type DailyPaymentRow = {
-  customerId: number;
+  customerId: number; // 0 indicates anonymous
   customerName?: string;
   paid: number;
 };
@@ -779,8 +799,9 @@ export function reportDailyPayments(
     const paid = ceil2(inv.paid || 0);
     if (paid <= 0) continue; // omit zero payments
     rows.push({
-      customerId: inv.customerId,
-      customerName: nameByCustomer.get(inv.customerId),
+      customerId: inv.customerId ?? 0,
+      customerName:
+        inv.customerId != null ? nameByCustomer.get(inv.customerId) : undefined,
       paid,
     });
   }
