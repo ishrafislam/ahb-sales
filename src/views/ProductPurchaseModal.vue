@@ -30,9 +30,9 @@
       </div>
     </div>
 
-    <!-- Right form -->
+    <!-- Right form / empty state -->
     <div class="w-[70%] p-6 flex flex-col overflow-hidden">
-      <form class="space-y-4" @submit.prevent="submit">
+      <form v-if="exists" class="space-y-4" @submit.prevent="submit">
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label
@@ -86,11 +86,12 @@
             {{ t("add_to_stock") }}
           </button>
         </div>
-
-        <p v-if="!exists" class="text-red-600 text-sm">
-          {{ t("no_product_found") }}
-        </p>
       </form>
+      <div v-else class="flex-1 grid place-items-center">
+        <div class="text-center text-gray-600 dark:text-gray-300">
+          {{ t("no_product_found") }}
+        </div>
+      </div>
     </div>
   </div>
   <!-- Success toast -->

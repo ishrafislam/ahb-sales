@@ -145,14 +145,14 @@
               {{ t("last") }}
             </button>
             <button
-              class="w-full text-center bg-green-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-green-700 mt-2"
+              class="w-full text-center bg-green-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-green-700 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="exists || !canAdd"
               @click="add"
             >
               {{ t("add") }}
             </button>
             <button
-              class="w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-blue-700"
+              class="w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="!exists || !isDirty"
               @click="update"
             >
@@ -226,6 +226,7 @@ function select(id: number) {
 }
 
 async function load() {
+  const prevSelected = selectedId.value;
   const list = await window.ahb.listCustomers({ activeOnly: false });
   customers.value = list.map((c) => ({
     id: c.id,
@@ -234,11 +235,13 @@ async function load() {
     phone: c.phone,
     active: c.active !== false,
   }));
-  // Initialize selection to first existing or 1
-  if (customers.value.length) {
-    selectedId.value = Math.min(1000, Math.max(1, customers.value[0].id));
-  } else {
-    selectedId.value = 1;
+  // Preserve selection if still valid; otherwise, fall back to first existing (if any)
+  if (!customersById.value.has(prevSelected)) {
+    if (customers.value.length) {
+      selectedId.value = Math.min(1000, Math.max(1, customers.value[0].id));
+    } else {
+      selectedId.value = prevSelected;
+    }
   }
   syncFromSelected();
   await scrollSelectedIntoView();
