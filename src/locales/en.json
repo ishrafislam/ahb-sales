@@ -67,6 +67,7 @@
   "product_id": "Product ID",
   "product_name": "Product Name",
   "quantity": "Quantity",
+  "stock_managed_note": "For existing products, stock is managed via sales (decrease) and product purchases (increase).",
   "add_to_stock": "Add to Stock",
   "no_product_found": "No product found for this ID. Please select an existing product.",
   "invoice_no": "Invoice #",
