@@ -191,6 +191,23 @@ onMounted(() => {
   window.ahb.onDocumentChanged(() => {
     loaded.value = true;
   });
+  // Ensure we reflect an already-open file after reload (e.g., wake/HMR)
+  void (async () => {
+    try {
+      const info = await window.ahb.getFileInfo();
+      loaded.value = Boolean(info?.path);
+    } catch {
+      // ignore
+    }
+  })();
+  // Track file open/close to keep `loaded` in sync
+  if (typeof (window.ahb as any).onFileInfo === "function") {
+    (window.ahb as any).onFileInfo(
+      (info: { path: string | null; isDirty: boolean }) => {
+        loaded.value = Boolean(info?.path);
+      }
+    );
+  }
   // Open settings when triggered from application menu (guard for tests)
   if (typeof (window.ahb as any).onOpenSettings === "function") {
     (window.ahb as any).onOpenSettings(() => {
