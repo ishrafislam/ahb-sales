@@ -12,27 +12,11 @@ try {
 import path from "node:path";
 import started from "electron-squirrel-startup";
 import { getLanguage, setLanguage } from "./main/i18n";
-import {
-  addProduct,
-  updateProduct,
-  listProducts,
-  addCustomer,
-  updateCustomer,
-  listCustomers,
-  type AhbDataV1,
-  postInvoice,
-  listInvoicesByCustomer,
-  listProductSales,
-  listProductPurchases,
-  postPurchase,
-  reportMoneyTransactionsCustomerRange,
-  reportMoneyTransactionsDayWise,
-  reportDailyPayments,
-} from "./main/data";
 import { FileService } from "./main/services/FileService";
 import { SettingsService } from "./main/services/SettingsService";
 import { MenuService } from "./main/services/MenuService";
 import { UpdateService } from "./main/services/UpdateService";
+import { DataService } from "./main/services/DataService";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -44,6 +28,7 @@ const fileService = new FileService();
 const settingsService = new SettingsService();
 const menuService = new MenuService(fileService, settingsService);
 const updateService = new UpdateService();
+const dataService = new DataService(fileService);
 
 const createWindow = () => {
   // Create the browser window.
@@ -167,163 +152,67 @@ ipcMain.handle("settings:set-theme", async (_e, source) => {
 ipcMain.handle(
   "data:list-products",
   async (_e, opts?: boolean | { activeOnly?: boolean }) => {
-    const data = fileService.getCurrentDoc().data as AhbDataV1;
-    const activeOnly = typeof opts === "boolean" ? opts : opts?.activeOnly;
-    return listProducts(data, { activeOnly });
+    return dataService.listProducts(opts);
   }
 );
-ipcMain.handle(
-  "data:add-product",
-  async (_e, p: Parameters<typeof addProduct>[1]) => {
-    const data = fileService.getCurrentDoc().data as AhbDataV1;
-    const prod = addProduct(data, p);
-    fileService.notifyDataChanged({
-      kind: "product",
-      action: "add",
-      id: prod.id,
-    });
-    fileService.setDirty(true);
-    fileService.broadcastFileInfo();
-    return prod;
-  }
-);
-ipcMain.handle(
-  "data:update-product",
-  async (_e, id: number, patch: Parameters<typeof updateProduct>[2]) => {
-    const data = fileService.getCurrentDoc().data as AhbDataV1;
-    const prod = updateProduct(data, id, patch);
-    fileService.notifyDataChanged({ kind: "product", action: "update", id });
-    fileService.setDirty(true);
-    fileService.broadcastFileInfo();
-    return prod;
-  }
-);
+ipcMain.handle("data:add-product", async (_e, p) => {
+  return dataService.addProduct(p);
+});
+ipcMain.handle("data:update-product", async (_e, id, patch) => {
+  return dataService.updateProduct(id, patch);
+});
 
 // Data operations - Customers
 ipcMain.handle(
   "data:list-customers",
   async (_e, opts?: boolean | { activeOnly?: boolean }) => {
-    const data = fileService.getCurrentDoc().data as AhbDataV1;
-    const activeOnly = typeof opts === "boolean" ? opts : opts?.activeOnly;
-    return listCustomers(data, { activeOnly });
+    return dataService.listCustomers(opts);
   }
 );
-ipcMain.handle(
-  "data:add-customer",
-  async (_e, c: Parameters<typeof addCustomer>[1]) => {
-    const data = fileService.getCurrentDoc().data as AhbDataV1;
-    const cust = addCustomer(data, c);
-    fileService.notifyDataChanged({
-      kind: "customer",
-      action: "add",
-      id: cust.id,
-    });
-    fileService.setDirty(true);
-    fileService.broadcastFileInfo();
-    return cust;
-  }
-);
-ipcMain.handle(
-  "data:update-customer",
-  async (_e, id: number, patch: Parameters<typeof updateCustomer>[2]) => {
-    const data = fileService.getCurrentDoc().data as AhbDataV1;
-    const cust = updateCustomer(data, id, patch);
-    fileService.notifyDataChanged({ kind: "customer", action: "update", id });
-    fileService.setDirty(true);
-    fileService.broadcastFileInfo();
-    return cust;
-  }
-);
+ipcMain.handle("data:add-customer", async (_e, c) => {
+  return dataService.addCustomer(c);
+});
+ipcMain.handle("data:update-customer", async (_e, id, patch) => {
+  return dataService.updateCustomer(id, patch);
+});
 
 // Data operations - Invoices
-ipcMain.handle(
-  "data:post-invoice",
-  async (_e, payload: Parameters<typeof postInvoice>[1]) => {
-    const data = fileService.getCurrentDoc().data as AhbDataV1;
-    const inv = postInvoice(data, payload);
-    fileService.notifyDataChanged({
-      kind: "invoice",
-      action: "post",
-      id: inv.no,
-    });
-    // Notify product stock changes
-    inv.lines.forEach((ln) =>
-      fileService.notifyDataChanged({
-        kind: "product",
-        action: "stock-updated",
-        id: ln.productId,
-      })
-    );
-    // Notify customer outstanding update
-    if (inv.customerId != null) {
-      fileService.notifyDataChanged({
-        kind: "customer",
-        action: "update",
-        id: inv.customerId,
-      });
-    }
-    fileService.setDirty(true);
-    fileService.broadcastFileInfo();
-    return inv;
-  }
-);
+ipcMain.handle("data:post-invoice", async (_e, payload) => {
+  return dataService.postInvoice(payload);
+});
 
 ipcMain.handle(
   "data:list-invoices-by-customer",
   async (_e, customerId: number) => {
-    const data = fileService.getCurrentDoc().data as AhbDataV1;
-    return listInvoicesByCustomer(data, customerId);
+    return dataService.listInvoicesByCustomer(customerId);
   }
 );
 ipcMain.handle("data:list-product-sales", async (_e, productId: number) => {
-  const data = fileService.getCurrentDoc().data as AhbDataV1;
-  return listProductSales(data, productId);
+  return dataService.listProductSales(productId);
 });
 ipcMain.handle("data:list-product-purchases", async (_e, productId: number) => {
-  const data = fileService.getCurrentDoc().data as AhbDataV1;
-  return listProductPurchases(data, productId);
+  return dataService.listProductPurchases(productId);
 });
 
 // Data operations - Purchases
-ipcMain.handle(
-  "data:post-purchase",
-  async (_e, payload: Parameters<typeof postPurchase>[1]) => {
-    const data = fileService.getCurrentDoc().data as AhbDataV1;
-    const purchase = postPurchase(data, payload);
-    fileService.notifyDataChanged({
-      kind: "purchase",
-      action: "post",
-      id: purchase.productId,
-    });
-    // notify product stock update
-    fileService.notifyDataChanged({
-      kind: "product",
-      action: "stock-updated",
-      id: purchase.productId,
-    });
-    fileService.setDirty(true);
-    fileService.broadcastFileInfo();
-    return purchase;
-  }
-);
+ipcMain.handle("data:post-purchase", async (_e, payload) => {
+  return dataService.postPurchase(payload);
+});
 
 // Reports
 ipcMain.handle(
   "report:money-customer-range",
   async (_e, from: string, to: string) => {
-    const data = fileService.getCurrentDoc().data as AhbDataV1;
-    return reportMoneyTransactionsCustomerRange(data, from, to);
+    return dataService.reportMoneyTransactionsCustomerRange(from, to);
   }
 );
 
 ipcMain.handle("report:money-daywise", async (_e, from: string, to: string) => {
-  const data = fileService.getCurrentDoc().data as AhbDataV1;
-  return reportMoneyTransactionsDayWise(data, from, to);
+  return dataService.reportMoneyTransactionsDayWise(from, to);
 });
 
 ipcMain.handle("report:daily-payment", async (_e, date: string) => {
-  const data = fileService.getCurrentDoc().data as AhbDataV1;
-  return reportDailyPayments(data, date);
+  return dataService.reportDailyPayments(date);
 });
 
 // Updates

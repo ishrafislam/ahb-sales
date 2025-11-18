@@ -6,8 +6,8 @@ This document tracks potential improvements for the AHB Sales application. Mark 
 
 ## Architecture
 
-- [ ] **1. Extract business logic from main.ts** - Refactor 817-line main.ts into separate service modules (FileService, InvoiceService, etc.)
-- [ ] **2. Separate data layer from IPC handlers** - Create clean separation between business logic and Electron IPC communication
+- [x] **1. Extract business logic from main.ts** - ✅ Refactored 817-line main.ts into service modules (FileService, SettingsService, MenuService, UpdateService, DataService). Reduced to 237 lines (71% reduction).
+- [x] **2. Separate data layer from IPC handlers** - ✅ Created DataService to handle all data operations, IPC handlers now delegate to services.
 - [ ] **3. Implement Pinia state management** - Replace scattered Vue refs with centralized Pinia store for better state management
 
 ## Code Quality
