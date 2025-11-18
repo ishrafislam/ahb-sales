@@ -12,7 +12,7 @@
           class="mt-1 w-full border rounded px-2 py-1"
           type="number"
           min="1"
-          max="1000"
+          :max="MAX_PRODUCT_ID"
           required
         />
       </label>
@@ -118,6 +118,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 import { t } from "../i18n";
+import { MAX_PRODUCT_ID } from "../constants/business";
 
 type Product = {
   id: number;

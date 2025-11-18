@@ -166,8 +166,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
+import BaseModal from "../components/BaseModal.vue";
+import { MAX_CUSTOMER_ID } from "../constants/business";
 
 interface CustomerRow {
   id: number;
@@ -187,7 +189,9 @@ const form = ref({
   active: true,
 });
 
-const idList = computed(() => Array.from({ length: 1000 }, (_, i) => i + 1));
+const idList = computed(() =>
+  Array.from({ length: MAX_CUSTOMER_ID }, (_, i) => i + 1)
+);
 const customersById = computed(() => {
   const m = new Map<number, CustomerRow>();
   for (const c of customers.value) m.set(c.id, c);
@@ -238,7 +242,10 @@ async function load() {
   // Preserve selection if still valid; otherwise, fall back to first existing (if any)
   if (!customersById.value.has(prevSelected)) {
     if (customers.value.length) {
-      selectedId.value = Math.min(1000, Math.max(1, customers.value[0].id));
+      selectedId.value = Math.min(
+        MAX_CUSTOMER_ID,
+        Math.max(1, customers.value[0].id)
+      );
     } else {
       selectedId.value = prevSelected;
     }
@@ -251,13 +258,13 @@ function first() {
   select(1);
 }
 function last() {
-  select(1000);
+  select(MAX_CUSTOMER_ID);
 }
 function previous() {
   select(Math.max(1, selectedId.value - 1));
 }
 function next() {
-  select(Math.min(1000, selectedId.value + 1));
+  select(Math.min(MAX_CUSTOMER_ID, selectedId.value + 1));
 }
 
 const canAdd = computed(() => form.value.nameBn.trim().length > 0);

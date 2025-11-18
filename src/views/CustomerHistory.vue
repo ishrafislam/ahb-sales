@@ -123,7 +123,7 @@ defineOptions({ name: "AhbCustomerHistoryView" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { t } from "../i18n";
 import { printInvoice } from "../print/invoice";
-import { BUSINESS_NAME } from "../constants/business";
+import { BUSINESS_NAME, MAX_CUSTOMER_ID } from "../constants/business";
 
 type Cust = { id: number; nameBn: string };
 
@@ -170,7 +170,7 @@ function onSelectCustomer(id: number) {
   void scrollSelectedIntoView();
 }
 
-const idList = computed(() => Array.from({ length: 1000 }, (_, i) => i + 1));
+const idList = computed(() => Array.from({ length: MAX_CUSTOMER_ID }, (_, i) => i + 1));
 const customersById = computed(() => {
   const m = new Map<number, Cust>();
   for (const c of customers.value) m.set(c.id, c);

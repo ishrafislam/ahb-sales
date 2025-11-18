@@ -147,6 +147,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { t } from "../i18n";
+import {
+  TOAST_DURATION_ERROR,
+  PRINT_WINDOW_DELAY,
+} from "../constants/business";
 
 const todayYmd = () => {
   const d = new Date();
@@ -189,7 +193,7 @@ async function load() {
     const msg = err instanceof Error ? err.message : String(err);
     showError.value = true;
     errorMessage.value = msg;
-    setTimeout(() => (showError.value = false), 3000);
+    setTimeout(() => (showError.value = false), TOAST_DURATION_ERROR);
   }
 }
 async function printReport() {
@@ -263,7 +267,7 @@ async function printReport() {
   setTimeout(() => {
     w.print();
     w.close();
-  }, 100);
+  }, PRINT_WINDOW_DELAY);
 }
 
 onMounted(() => {

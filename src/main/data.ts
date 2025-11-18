@@ -1,3 +1,5 @@
+import { MIN_PRODUCT_ID, MAX_PRODUCT_ID } from "../constants/business";
+
 export type Lang = "bn" | "en";
 
 export type Product = {
@@ -216,8 +218,8 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
 }
 
 export function assertProductId(id: number) {
-  if (!Number.isInteger(id) || id < 1 || id > 1000) {
-    throw new Error("Product ID must be an integer between 1 and 1000");
+  if (!Number.isInteger(id) || id < MIN_PRODUCT_ID || id > MAX_PRODUCT_ID) {
+    throw new Error(`Product ID must be an integer between ${MIN_PRODUCT_ID} and ${MAX_PRODUCT_ID}`);
   }
 }
 

@@ -85,20 +85,23 @@
 defineOptions({ name: "AhbProductPurchaseHistoryView" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { t } from "../i18n";
+import { MAX_PRODUCT_ID } from "../constants/business";
 
 type Prod = { id: number; nameBn: string };
 
 const products = ref<Prod[]>([]);
 const selectedId = ref<number>(1);
-const idList = computed(() => Array.from({ length: 1000 }, (_, i) => i + 1));
+const rows = ref<Awaited<ReturnType<typeof window.ahb.listProductPurchases>>>(
+  []
+);
+
+const idList = computed(() => Array.from({ length: MAX_PRODUCT_ID }, (_, i) => i + 1));
 const productsById = computed(() => {
   const m = new Map<number, Prod>();
   for (const p of products.value) m.set(p.id, p);
   return m;
 });
-const rows = ref<Awaited<ReturnType<typeof window.ahb.listProductPurchases>>>(
-  []
-);
+
 function formatDate(iso: string) {
   try {
     return new Date(iso).toLocaleDateString("en-GB");

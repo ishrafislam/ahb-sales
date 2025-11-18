@@ -14,7 +14,7 @@ This document tracks potential improvements for the AHB Sales application. Mark 
 
 - [x] **4. Replace `any` types with `unknown`** - ✅ Fixed 3 error handlers using proper type guards (instanceof Error)
 - [x] **5. Implement logger utility** - ✅ Created centralized Logger service with context & timestamp. Replaced console.\* calls across all main process services.
-- [ ] **6. Remove magic numbers** - Extract hardcoded values (e.g., Product ID range 1-1000) to constants
+- [x] **6. Remove magic numbers** - ✅ Extracted constants (MIN/MAX_PRODUCT_ID, MIN/MAX_CUSTOMER_ID, toast durations, print delays) to src/constants/business.ts. Updated 15+ files to use constants.
 - [ ] **7. Centralize date handling** - Unify date format conversions (ISO/YMD/DD-MM-YYYY) into date utility module
 - [ ] **8. Decompose Dashboard.vue** - Break down 962-line component into smaller, focused components
 

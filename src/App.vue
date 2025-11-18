@@ -132,8 +132,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { initI18n, t } from "./i18n";
+import { ref, onMounted, watch } from "vue";
+import { t, currentLocale } from "./i18n";
+import {
+  TOAST_DURATION_UPDATE_SHORT,
+  TOAST_DURATION_UPDATE_LONG,
+} from "./constants/business";
 import ProductsModal from "./views/ProductsModal.vue";
 import CustomersModal from "./views/CustomersModal.vue";
 import Dashboard from "./views/Dashboard.vue";

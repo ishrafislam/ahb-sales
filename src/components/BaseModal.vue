@@ -1,6 +1,13 @@
 <template>
-  <div class="fixed inset-0 z-50" role="dialog" aria-modal="true">
-    <div class="absolute inset-0 bg-black/40" @click="onClose" />
+  <div
+    class="fixed inset-0 z-50"
+    role="dialog"
+    aria-modal="true"
+  >
+    <div
+      class="absolute inset-0 bg-black/40"
+      @click="onClose"
+    />
     <div class="relative h-full w-full flex items-center justify-center p-4">
       <div
         class="w-full bg-white dark:bg-gray-900 dark:text-gray-100 rounded shadow-lg border dark:border-gray-700"

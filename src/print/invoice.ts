@@ -1,5 +1,6 @@
 import type { Invoice } from "../main/data";
-import { BUSINESS_NAME } from "../constants/business";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { BUSINESS_NAME, PRINT_WINDOW_DELAY } from "../constants/business";
 
 function fmt(n: number): string {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
@@ -108,5 +109,5 @@ export function printInvoice(
   setTimeout(() => {
     w.print();
     w.close();
-  }, 100);
+  }, PRINT_WINDOW_DELAY);
 }
