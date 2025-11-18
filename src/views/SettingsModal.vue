@@ -83,10 +83,16 @@
       </div>
     </div>
     <div class="pt-2 flex gap-2 justify-end">
-      <button class="btn" @click="resetDefaults">
+      <button
+        class="btn"
+        @click="resetDefaults"
+      >
         {{ t("reset") }}
       </button>
-      <button class="btn btn-primary" @click="save">
+      <button
+        class="btn btn-primary"
+        @click="save"
+      >
         {{ t("save") }}
       </button>
     </div>

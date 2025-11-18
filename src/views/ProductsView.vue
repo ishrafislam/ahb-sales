@@ -4,7 +4,10 @@
       {{ t("products_title") }}
     </h3>
 
-    <form class="grid grid-cols-7 gap-2 items-end" @submit.prevent="onAdd">
+    <form
+      class="grid grid-cols-7 gap-2 items-end"
+      @submit.prevent="onAdd"
+    >
       <label class="col-span-1 text-sm">
         {{ t("id") }}
         <input
@@ -55,7 +58,10 @@
         >
           {{ t("add") }}
         </button>
-        <span v-if="error" class="text-sm text-red-600 ml-2">
+        <span
+          v-if="error"
+          class="text-sm text-red-600 ml-2"
+        >
           {{ error }}
         </span>
       </div>
@@ -85,7 +91,10 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="p in products" :key="p.id">
+        <tr
+          v-for="p in products"
+          :key="p.id"
+        >
           <td class="border px-2 py-1">
             {{ p.id }}
           </td>
@@ -106,7 +115,10 @@
           </td>
         </tr>
         <tr v-if="products.length === 0">
-          <td class="border px-2 py-2 text-center" colspan="6">
+          <td
+            class="border px-2 py-2 text-center"
+            colspan="6"
+          >
             {{ t("no_products") }}
           </td>
         </tr>

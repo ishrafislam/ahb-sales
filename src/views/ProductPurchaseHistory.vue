@@ -4,7 +4,10 @@
     <div
       class="w-[30%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
     >
-      <div ref="leftListRef" class="flex-grow overflow-y-auto">
+      <div
+        ref="leftListRef"
+        class="flex-grow overflow-y-auto"
+      >
         <ul>
           <li
             v-for="id in idList"
@@ -95,7 +98,9 @@ const rows = ref<Awaited<ReturnType<typeof window.ahb.listProductPurchases>>>(
   []
 );
 
-const idList = computed(() => Array.from({ length: MAX_PRODUCT_ID }, (_, i) => i + 1));
+const idList = computed(() =>
+  Array.from({ length: MAX_PRODUCT_ID }, (_, i) => i + 1)
+);
 const productsById = computed(() => {
   const m = new Map<number, Prod>();
   for (const p of products.value) m.set(p.id, p);

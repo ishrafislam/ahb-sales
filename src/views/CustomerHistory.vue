@@ -4,7 +4,10 @@
     <div
       class="w-[25%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
     >
-      <div ref="leftListRef" class="flex-grow overflow-y-auto">
+      <div
+        ref="leftListRef"
+        class="flex-grow overflow-y-auto"
+      >
         <ul>
           <li
             v-for="id in idList"
@@ -170,7 +173,9 @@ function onSelectCustomer(id: number) {
   void scrollSelectedIntoView();
 }
 
-const idList = computed(() => Array.from({ length: MAX_CUSTOMER_ID }, (_, i) => i + 1));
+const idList = computed(() =>
+  Array.from({ length: MAX_CUSTOMER_ID }, (_, i) => i + 1)
+);
 const customersById = computed(() => {
   const m = new Map<number, Cust>();
   for (const c of customers.value) m.set(c.id, c);
