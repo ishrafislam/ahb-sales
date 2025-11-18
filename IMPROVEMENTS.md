@@ -55,7 +55,7 @@ items with `[x]` to implement or `[-]` to skip.
 ## Performance
 
 - [ ] **15. Add pagination/virtualization** - Implement virtual scrolling for
-      large product/customer lists
+      large product/customer lists (Modal views use ID navigation)
 - [ ] **16. Optimize memory usage** - Consider streaming or chunked loading for
       large .ahbs files
 - [ ] **17. Optimize search algorithms** - Replace linear array searches with

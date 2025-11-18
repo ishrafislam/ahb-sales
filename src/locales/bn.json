@@ -132,6 +132,9 @@
   "theme_system": "সিস্টেম",
   "theme_light": "লাইট",
   "theme_dark": "ডার্ক",
-  "appearance": "অ্যাপিয়ারেন্স",
-  "menu_theme": "থিম"
+  "appearance": "চেহারা",
+  "menu_theme": "থিম",
+  "of": "এর",
+  "per_page": "পাতা প্রতি",
+  "active_only": "শুধুমাত্র সক্রিয়"
 }

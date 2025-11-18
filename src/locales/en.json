@@ -133,5 +133,8 @@
   "theme_light": "Light",
   "theme_dark": "Dark",
   "appearance": "Appearance",
-  "menu_theme": "Theme"
+  "menu_theme": "Theme",
+  "of": "of",
+  "per_page": "Per page",
+  "active_only": "Active only"
 }
