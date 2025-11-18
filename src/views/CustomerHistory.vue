@@ -127,6 +127,7 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { t } from "../i18n";
 import { printInvoice } from "../print/invoice";
 import { BUSINESS_NAME, MAX_CUSTOMER_ID } from "../constants/business";
+import { formatDate } from "../utils/date";
 
 type Cust = { id: number; nameBn: string };
 
@@ -152,13 +153,6 @@ const rows = computed(() =>
   }))
 );
 
-function formatDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString("en-GB");
-  } catch {
-    return iso;
-  }
-}
 function money(n: number) {
   if (!Number.isFinite(n)) return "0.00";
   return n.toLocaleString("en-US", {

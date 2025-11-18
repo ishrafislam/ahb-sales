@@ -171,7 +171,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
-import BaseModal from "../components/BaseModal.vue";
 import { MAX_CUSTOMER_ID } from "../constants/business";
 
 interface CustomerRow {

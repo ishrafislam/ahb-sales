@@ -31,14 +31,23 @@ export function t(
   if (!params) {
     if (/\{\w+\}/.test(raw)) {
       try {
-        // Use Vite's import.meta.env when available; guard for safety
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        const mode =
-          typeof import.meta !== "undefined"
-            ? import.meta.env?.MODE
-            : undefined;
-        if (mode !== "production") {
+        // Detect environment without using import.meta to keep TS module config flexible
+        const nodeEnv =
+          (
+            globalThis as unknown as {
+              process?: { env?: { NODE_ENV?: string } };
+              NODE_ENV?: string;
+            }
+          )?.process?.env?.NODE_ENV ??
+          (
+            globalThis as unknown as {
+              process?: { env?: { NODE_ENV?: string } };
+              NODE_ENV?: string;
+            }
+          )?.NODE_ENV ??
+          "production";
+        const isProduction = nodeEnv === "production";
+        if (!isProduction) {
           // eslint-disable-next-line no-console
           console.warn(`[i18n] Missing params for key "${key}": ${raw}`);
         }

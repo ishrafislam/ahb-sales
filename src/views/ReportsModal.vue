@@ -78,7 +78,10 @@
               class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm dark:text-gray-100"
             />
           </div>
-          <button class="ml-auto btn btn-primary" @click="loadMoneyCustomer">
+          <button
+            class="ml-auto btn btn-primary"
+            @click="loadMoneyCustomer"
+          >
             Fetch
           </button>
           <button
@@ -110,7 +113,10 @@
               class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm dark:text-gray-100"
             />
           </div>
-          <button class="ml-auto btn btn-primary" @click="loadMoneyDayWise">
+          <button
+            class="ml-auto btn btn-primary"
+            @click="loadMoneyDayWise"
+          >
             Fetch
           </button>
           <button
@@ -134,7 +140,10 @@
               class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm dark:text-gray-100"
             />
           </div>
-          <button class="ml-auto btn btn-primary" @click="loadDailyPayments">
+          <button
+            class="ml-auto btn btn-primary"
+            @click="loadDailyPayments"
+          >
             Fetch
           </button>
           <button
@@ -145,7 +154,10 @@
             Print
           </button>
         </div>
-        <div v-else class="text-sm text-gray-500 dark:text-gray-400">
+        <div
+          v-else
+          class="text-sm text-gray-500 dark:text-gray-400"
+        >
           Select a report to begin.
         </div>
       </div>
@@ -197,7 +209,10 @@
           </tbody>
           <tfoot>
             <tr>
-              <td class="p-2 font-semibold dark:text-gray-100" colspan="2">
+              <td
+                class="p-2 font-semibold dark:text-gray-100"
+                colspan="2"
+              >
                 Totals
               </td>
               <td class="p-2 text-right font-semibold dark:text-gray-100">
@@ -209,7 +224,10 @@
               <td class="p-2 text-right font-semibold dark:text-gray-100">
                 {{ fmt(totals.due) }}
               </td>
-              <td class="p-2" colspan="2"></td>
+              <td
+                class="p-2"
+                colspan="2"
+              ></td>
             </tr>
           </tfoot>
         </table>
@@ -363,6 +381,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { t } from "../i18n";
+import { todayYmd } from "../utils/date";
 
 // Selection state
 const selected = ref<"money-customer" | "money-daywise" | "daily-payment">(
@@ -373,11 +392,6 @@ function select(key: "money-customer" | "money-daywise" | "daily-payment") {
 }
 
 // Date helpers
-const todayYmd = () => {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
 const from = ref<string>(todayYmd());
 const to = ref<string>(todayYmd());
 const dailyDate = ref<string>(todayYmd());

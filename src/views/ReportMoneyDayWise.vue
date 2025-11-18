@@ -24,10 +24,17 @@
             class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm dark:text-gray-100"
           />
         </div>
-        <button class="ml-auto btn btn-primary" @click="load">
+        <button
+          class="ml-auto btn btn-primary"
+          @click="load"
+        >
           {{ t("fetch") }}
         </button>
-        <button class="btn" :disabled="days.length === 0" @click="printReport">
+        <button
+          class="btn"
+          :disabled="days.length === 0"
+          @click="printReport"
+        >
           {{ t("print") }}
         </button>
       </div>
@@ -205,11 +212,8 @@ type DayWiseDay = {
   };
 };
 
-const todayYmd = () => {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
+import { todayYmd } from "../utils/date";
+
 const showError = ref(false);
 const errorMessage = ref("");
 const from = ref<string>(todayYmd());

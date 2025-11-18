@@ -21,9 +21,11 @@
           class="bg-white dark:bg-gray-900 dark:text-gray-100 p-3 rounded-md shadow-sm border border-gray-200 dark:border-gray-700"
         >
           <div class="flex items-center justify-between text-sm">
-            <span class="truncate" :title="fileNameDisplay">{{
-              fileNameDisplay
-            }}</span>
+            <span
+              class="truncate"
+              :title="fileNameDisplay"
+              >{{ fileNameDisplay }}</span
+            >
             <span
               class="inline-flex items-center gap-1"
               :class="fileDirty ? 'text-orange-500' : 'text-green-600'"
@@ -44,8 +46,16 @@
                   clip-rule="evenodd"
                 />
               </svg>
-              <span v-if="!fileDirty" class="text-xs font-medium">Saved</span>
-              <span v-if="fileDirty" class="text-xs font-medium">Unsaved</span>
+              <span
+                v-if="!fileDirty"
+                class="text-xs font-medium"
+                >Saved</span
+              >
+              <span
+                v-if="fileDirty"
+                class="text-xs font-medium"
+                >Unsaved</span
+              >
             </span>
           </div>
         </div>
@@ -544,9 +554,10 @@
 <script setup lang="ts">
 defineOptions({ name: "AhbDashboardView" });
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
-import { printInvoice } from "../print/invoice";
 import { t } from "../i18n";
+import { printInvoice } from "../print/invoice";
 import { BUSINESS_NAME } from "../constants/business";
+import { nowIso, formatDate } from "../utils/date";
 import ConfirmModal from "../components/ConfirmModal.vue";
 
 type Prod = {

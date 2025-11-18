@@ -89,6 +89,7 @@ defineOptions({ name: "AhbProductPurchaseHistoryView" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { t } from "../i18n";
 import { MAX_PRODUCT_ID } from "../constants/business";
+import { formatDate } from "../utils/date";
 
 type Prod = { id: number; nameBn: string };
 
@@ -106,14 +107,6 @@ const productsById = computed(() => {
   for (const p of products.value) m.set(p.id, p);
   return m;
 });
-
-function formatDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString("en-GB");
-  } catch {
-    return iso;
-  }
-}
 
 function onSelectProduct(id: number) {
   selectedId.value = id;

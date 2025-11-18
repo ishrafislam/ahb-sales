@@ -4,7 +4,10 @@
     <div
       class="w-[30%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
     >
-      <div ref="leftListRef" class="flex-grow overflow-y-auto">
+      <div
+        ref="leftListRef"
+        class="flex-grow overflow-y-auto"
+      >
         <ul>
           <li
             v-for="id in idList"
@@ -105,6 +108,7 @@ defineOptions({ name: "AhbProductSalesHistoryView" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { t } from "../i18n";
 import { MAX_PRODUCT_ID } from "../constants/business";
+import { formatDate } from "../utils/date";
 
 type Prod = { id: number; nameBn: string };
 
@@ -121,13 +125,6 @@ const productsById = computed(() => {
   return m;
 });
 
-function formatDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString("en-GB");
-  } catch {
-    return iso;
-  }
-}
 function money(n: number) {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
 }

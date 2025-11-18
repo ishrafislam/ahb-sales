@@ -1,15 +1,10 @@
 import type { Invoice } from "../main/data";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { BUSINESS_NAME, PRINT_WINDOW_DELAY } from "../constants/business";
+import { toDDMMYYYY } from "../utils/date";
 
 function fmt(n: number): string {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
-}
-
-function toDDMMYYYY(iso: string): string {
-  const ymd = iso.includes("T") ? iso.slice(0, 10) : iso;
-  const [y, m, d] = ymd.split("-");
-  return `${d}-${m}-${y}`;
 }
 
 export type ProductInfo = { name: string; unit: string };

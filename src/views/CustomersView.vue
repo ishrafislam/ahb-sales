@@ -4,7 +4,10 @@
       {{ t("customers_title") }}
     </h3>
 
-    <form class="grid grid-cols-6 gap-2 items-end" @submit.prevent="onAdd">
+    <form
+      class="grid grid-cols-6 gap-2 items-end"
+      @submit.prevent="onAdd"
+    >
       <label class="col-span-1 text-sm">
         {{ t("id") }}
         <input
@@ -45,7 +48,10 @@
         >
           {{ t("add") }}
         </button>
-        <span v-if="error" class="text-sm text-red-600 ml-2">
+        <span
+          v-if="error"
+          class="text-sm text-red-600 ml-2"
+        >
           {{ error }}
         </span>
       </div>
@@ -85,7 +91,10 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="c in customers" :key="c.id">
+        <tr
+          v-for="c in customers"
+          :key="c.id"
+        >
           <td class="border px-2 py-1">
             {{ c.id }}
           </td>
@@ -103,7 +112,10 @@
           </td>
         </tr>
         <tr v-if="customers.length === 0">
-          <td class="border px-2 py-2 text-center" colspan="5">
+          <td
+            class="border px-2 py-2 text-center"
+            colspan="5"
+          >
             {{ t("no_customers") }}
           </td>
         </tr>

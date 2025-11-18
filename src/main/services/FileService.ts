@@ -1,4 +1,4 @@
-import { dialog, BrowserWindow } from "electron";
+import { BrowserWindow, dialog } from "electron";
 import fs from "node:fs";
 import {
   createEmptyDocument,
@@ -8,6 +8,7 @@ import {
 } from "../crypto";
 import { initData } from "../data";
 import { logger } from "./Logger";
+import { nowIso } from "../../utils/date";
 
 export class FileService {
   private currentFilePath: string | null = null;

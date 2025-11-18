@@ -3,7 +3,10 @@
   <div
     class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors"
   >
-    <div v-if="!loaded" class="min-h-screen grid place-items-center">
+    <div
+      v-if="!loaded"
+      class="min-h-screen grid place-items-center"
+    >
       <div class="text-center space-y-4 px-4">
         <h2 class="text-4xl font-bold">ABDUL HAMID & BROTHERS</h2>
         <div class="flex flex-col gap-3 w-full max-w-xs mx-auto">
@@ -132,8 +135,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
-import { t, currentLocale } from "./i18n";
+import { ref, onMounted } from "vue";
+import { t, initI18n } from "./i18n";
 import {
   TOAST_DURATION_UPDATE_SHORT,
   TOAST_DURATION_UPDATE_LONG,

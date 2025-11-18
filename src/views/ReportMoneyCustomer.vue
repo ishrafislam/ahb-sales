@@ -24,10 +24,17 @@
             class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm dark:text-gray-100"
           />
         </div>
-        <button class="ml-auto btn btn-primary" @click="load">
+        <button
+          class="ml-auto btn btn-primary"
+          @click="load"
+        >
           {{ t("fetch") }}
         </button>
-        <button class="btn" :disabled="rows.length === 0" @click="printReport">
+        <button
+          class="btn"
+          :disabled="rows.length === 0"
+          @click="printReport"
+        >
           {{ t("print") }}
         </button>
       </div>
@@ -117,7 +124,10 @@
         </tbody>
         <tfoot>
           <tr>
-            <td class="p-2 font-semibold dark:text-gray-100" colspan="2">
+            <td
+              class="p-2 font-semibold dark:text-gray-100"
+              colspan="2"
+            >
               {{ t("totals") }}
             </td>
             <td class="p-2 text-right font-semibold dark:text-gray-100">
@@ -129,7 +139,10 @@
             <td class="p-2 text-right font-semibold dark:text-gray-100">
               {{ fmt(totals.due) }}
             </td>
-            <td class="p-2" colspan="2" />
+            <td
+              class="p-2"
+              colspan="2"
+            />
           </tr>
         </tfoot>
       </table>
@@ -152,11 +165,8 @@ import {
   PRINT_WINDOW_DELAY,
 } from "../constants/business";
 
-const todayYmd = () => {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
+import { todayYmd } from "../utils/date";
+
 const showError = ref(false);
 const errorMessage = ref("");
 const from = ref<string>(todayYmd());
