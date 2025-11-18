@@ -7,6 +7,7 @@ import {
 import { getLanguage, setLanguage, dict } from "../i18n";
 import type { FileService } from "./FileService";
 import type { SettingsService } from "./SettingsService";
+import { logger } from "./Logger";
 
 export class MenuService {
   constructor(
@@ -159,7 +160,7 @@ export class MenuService {
               try {
                 autoUpdater.checkForUpdates();
               } catch (e) {
-                console.error("checkForUpdates failed", e);
+                logger.error("checkForUpdates failed", "MenuService", e);
               }
             },
           },

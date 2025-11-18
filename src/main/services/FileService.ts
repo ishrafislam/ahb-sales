@@ -7,6 +7,7 @@ import {
   type AhbDocument,
 } from "../crypto";
 import { initData } from "../data";
+import { logger } from "./Logger";
 
 export class FileService {
   private currentFilePath: string | null = null;
@@ -108,7 +109,7 @@ export class FileService {
       this.isDirty = false;
       this.broadcastFileInfo();
     } catch (err) {
-      console.error("Failed to open/decrypt file:", err);
+      logger.error("Failed to open/decrypt file", "FileService", err);
       await dialog.showMessageBox({
         type: "error",
         title: "Cannot open file",

@@ -1,6 +1,7 @@
 import { app, nativeTheme, BrowserWindow } from "electron";
 import path from "node:path";
 import fs from "node:fs";
+import { logger } from "./Logger";
 
 export type PrintSettings = {
   paperSize: "A4" | "A5" | "Letter";
@@ -60,7 +61,7 @@ export class SettingsService {
       fs.mkdirSync(path.dirname(p), { recursive: true });
       fs.writeFileSync(p, JSON.stringify(merged, null, 2), "utf-8");
     } catch (e) {
-      console.error("Failed to save settings:", e);
+      logger.error("Failed to save settings", "SettingsService", e);
     }
   }
 
@@ -94,7 +95,11 @@ export class SettingsService {
     try {
       nativeTheme.themeSource = source;
     } catch (e) {
-      console.debug("nativeTheme.themeSource set failed", (e as Error).message);
+      logger.debug(
+        "nativeTheme.themeSource set failed",
+        "SettingsService",
+        (e as Error).message
+      );
     }
     this.saveSettings({ themeSource: source });
     const eff = this.effectiveTheme(source);

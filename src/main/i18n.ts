@@ -1,6 +1,7 @@
 import { app } from "electron";
 import path from "node:path";
 import fs from "node:fs";
+import { logger } from "./services/Logger";
 import en from "../locales/en.json";
 import bn from "../locales/bn.json";
 

@@ -206,6 +206,8 @@ const todayYmd = () => {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
+const showError = ref(false);
+const errorMessage = ref("");
 const from = ref<string>(todayYmd());
 const to = ref<string>(todayYmd());
 const days = ref<DayWiseDay[]>([]);
@@ -220,12 +222,12 @@ async function load() {
     );
     days.value = rep.days;
   } catch (err: unknown) {
-    loading.value = false;
     const msg = err instanceof Error ? err.message : String(err);
     showError.value = true;
     errorMessage.value = msg;
     setTimeout(() => (showError.value = false), 3000);
   }
+}
 async function printReport() {
   const s = await window.ahb.getPrintSettings();
   const page = `@page { size: ${s.paperSize} ${s.orientation}; margin: ${s.marginMm}mm; }`;
@@ -318,7 +320,4 @@ async function printReport() {
 onMounted(() => {
   void load();
 });
-
-const showError = ref(false);
-const errorMessage = ref("");
 </script>

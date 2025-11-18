@@ -1,5 +1,6 @@
 import { app, autoUpdater, BrowserWindow } from "electron";
 import { updateElectronApp } from "update-electron-app";
+import { logger } from "./Logger";
 
 export class UpdateService {
   private notifyAll(channel: string, ...args: unknown[]) {
@@ -17,14 +18,14 @@ export class UpdateService {
         repo: "ishrafislam/ahb-sales",
         updateInterval: "1 hour",
         logger: {
-          log: (...args: unknown[]) => console.log("[updater]", ...args),
-          info: (...args: unknown[]) => console.log("[updater]", ...args),
-          warn: (...args: unknown[]) => console.warn("[updater]", ...args),
-          error: (...args: unknown[]) => console.error("[updater]", ...args),
+          log: (...args: unknown[]) => logger.info(String(args), "updater"),
+          info: (...args: unknown[]) => logger.info(String(args), "updater"),
+          warn: (...args: unknown[]) => logger.warn(String(args), "updater"),
+          error: (...args: unknown[]) => logger.error(String(args), "updater"),
         },
       });
     } catch (e) {
-      console.error("update-electron-app init failed", e);
+      logger.error("update-electron-app init failed", "UpdateService", e);
     }
 
     // Forward updater events to renderer for toasts
@@ -50,7 +51,7 @@ export class UpdateService {
       await autoUpdater.checkForUpdates();
       return true;
     } catch (e) {
-      console.error("manual checkForUpdates failed", e);
+      logger.error("manual checkForUpdates failed", "UpdateService", e);
       throw e;
     }
   }
@@ -60,7 +61,7 @@ export class UpdateService {
       autoUpdater.quitAndInstall();
       return true;
     } catch (e) {
-      console.error("quitAndInstall failed", e);
+      logger.error("quitAndInstall failed", "UpdateService", e);
       throw e;
     }
   }

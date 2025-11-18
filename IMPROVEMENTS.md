@@ -8,12 +8,12 @@ This document tracks potential improvements for the AHB Sales application. Mark 
 
 - [x] **1. Extract business logic from main.ts** - ✅ Refactored 817-line main.ts into service modules (FileService, SettingsService, MenuService, UpdateService, DataService). Reduced to 237 lines (71% reduction).
 - [x] **2. Separate data layer from IPC handlers** - ✅ Created DataService to handle all data operations, IPC handlers now delegate to services.
-- [ ] **3. Implement Pinia state management** - Replace scattered Vue refs with centralized Pinia store for better state management
+- [-] **3. Implement Pinia state management** - Skipped. Current ref-based state management is sufficient for app size. Can revisit if complexity grows.
 
 ## Code Quality
 
 - [x] **4. Replace `any` types with `unknown`** - ✅ Fixed 3 error handlers using proper type guards (instanceof Error)
-- [ ] **5. Implement logger utility** - Create centralized logging service to replace scattered console.error calls
+- [x] **5. Implement logger utility** - ✅ Created centralized Logger service with context & timestamp. Replaced console.\* calls across all main process services.
 - [ ] **6. Remove magic numbers** - Extract hardcoded values (e.g., Product ID range 1-1000) to constants
 - [ ] **7. Centralize date handling** - Unify date format conversions (ISO/YMD/DD-MM-YYYY) into date utility module
 - [ ] **8. Decompose Dashboard.vue** - Break down 962-line component into smaller, focused components
