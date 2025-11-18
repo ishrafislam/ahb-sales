@@ -54,12 +54,14 @@ items with `[x]` to implement or `[-]` to skip.
 
 ## Performance
 
-- [ ] **15. Add pagination/virtualization** - Implement virtual scrolling for
+- [x] **15. Add pagination/virtualization** - Implemented virtual scrolling for
       large product/customer lists (Modal views use ID navigation)
-- [ ] **16. Optimize memory usage** - Consider streaming or chunked loading for
-      large .ahbs files
-- [ ] **17. Optimize search algorithms** - Replace linear array searches with
-      Map or indexed structures
+- [x] **16. Optimize memory usage** - ✅ Implemented FileCache with 50MB limit
+      for parsed documents, atomic file writes with temp files, file size
+      warnings for files >100MB, memory usage logging during encryption.
+- [x] **17. Optimize search algorithms** - ✅ Created DataIndex with Map-based
+      lookups (O(1) vs O(n)). Replaced array.find() with indexed
+      getProduct/getCustomer. Auto-rebuilds on file changes.
 
 ## Developer Experience
 

@@ -9,17 +9,35 @@ import {
 import { initData } from "../data";
 import { logger } from "./Logger";
 import { nowIso } from "../../utils/date";
+import { FileCache } from "./FileCache";
+import { logMemoryUsage } from "../utils/memory";
 
 export class FileService {
   private currentFilePath: string | null = null;
   private currentDoc: AhbDocument = createEmptyDocument();
   private isDirty = false;
+  private cache = new FileCache();
+  private dataChangedCallbacks: Array<() => void> = [];
 
   constructor() {
     // Ensure data container exists
     if (!this.currentDoc.data || typeof this.currentDoc.data !== "object") {
       (this.currentDoc as AhbDocument).data = initData();
     }
+  }
+
+  /**
+   * Register callback for when document data changes
+   */
+  onDataChanged(callback: () => void): void {
+    this.dataChangedCallbacks.push(callback);
+  }
+
+  /**
+   * Trigger all data changed callbacks
+   */
+  private triggerDataChanged(): void {
+    this.dataChangedCallbacks.forEach((cb) => cb());
   }
 
   getCurrentFilePath(): string | null {
@@ -60,8 +78,31 @@ export class FileService {
 
   private writeCurrentTo(pathToWrite: string) {
     this.currentDoc.meta.updatedAt = new Date().toISOString();
+
+    logMemoryUsage("Before encryption");
     const enc = encryptJSON(this.currentDoc);
-    fs.writeFileSync(pathToWrite, enc);
+    logMemoryUsage("After encryption");
+
+    // Write to temp file first, then rename (atomic operation)
+    const tempPath = `${pathToWrite}.tmp`;
+    try {
+      fs.writeFileSync(tempPath, enc);
+      fs.renameSync(tempPath, pathToWrite);
+
+      // Update cache
+      this.cache.set(pathToWrite, this.currentDoc);
+
+      logger.info("File saved successfully", "FileService", {
+        path: pathToWrite,
+        sizeKB: Math.round(enc.length / 1024),
+      });
+    } catch (err) {
+      // Clean up temp file if it exists
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+      }
+      throw err;
+    }
   }
 
   async handleNewFile(): Promise<void> {
@@ -85,6 +126,7 @@ export class FileService {
     this.notifyAll("app:document-changed");
     this.isDirty = false;
     this.broadcastFileInfo();
+    this.triggerDataChanged();
   }
 
   async handleOpenFile(): Promise<void> {
@@ -96,9 +138,30 @@ export class FileService {
 
     const filePath = res.filePaths[0];
     try {
-      const buf = fs.readFileSync(filePath);
-      const parsed = decryptJSON(buf) as AhbDocument;
-      this.currentDoc = parsed;
+      // Check cache first
+      const cached = this.cache.get(filePath);
+      if (cached) {
+        this.currentDoc = cached;
+        logger.info("Loaded document from cache", "FileService", { filePath });
+      } else {
+        // Check file size before loading
+        const stats = fs.statSync(filePath);
+        const sizeMB = stats.size / (1024 * 1024);
+
+        if (sizeMB > 100) {
+          logger.warn("Large file detected", "FileService", {
+            filePath,
+            sizeMB: sizeMB.toFixed(2),
+          });
+        }
+
+        const buf = fs.readFileSync(filePath);
+        const parsed = decryptJSON(buf) as AhbDocument;
+        this.currentDoc = parsed;
+
+        // Cache the parsed document
+        this.cache.set(filePath, this.currentDoc);
+      }
 
       // Backfill data container if missing
       if (!this.currentDoc.data || typeof this.currentDoc.data !== "object") {
@@ -109,6 +172,7 @@ export class FileService {
       this.notifyAll("app:document-changed");
       this.isDirty = false;
       this.broadcastFileInfo();
+      this.triggerDataChanged();
     } catch (err) {
       logger.error("Failed to open/decrypt file", "FileService", err);
       await dialog.showMessageBox({
@@ -149,6 +213,8 @@ export class FileService {
 
   async closeFile(): Promise<void> {
     if (!this.currentFilePath) return; // nothing to close
+
+    // Don't clear cache - keep for potential reopen
 
     // Reset current document and state
     this.currentFilePath = null;

@@ -30,6 +30,11 @@ const menuService = new MenuService(fileService, settingsService);
 const updateService = new UpdateService();
 const dataService = new DataService(fileService);
 
+// Rebuild indexes when document changes
+fileService.onDataChanged(() => {
+  dataService.rebuildIndex();
+});
+
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({

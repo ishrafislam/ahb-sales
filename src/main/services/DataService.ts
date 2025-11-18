@@ -16,9 +16,36 @@ import {
   reportDailyPayments,
 } from "../data";
 import type { FileService } from "./FileService";
+import { DataIndex } from "../utils/dataIndex";
 
 export class DataService {
-  constructor(private fileService: FileService) {}
+  private index = new DataIndex();
+
+  constructor(private fileService: FileService) {
+    // Build initial index
+    this.rebuildIndex();
+  }
+
+  /**
+   * Rebuild search indexes after file operations
+   */
+  rebuildIndex(): void {
+    this.index.rebuild(this.getData());
+  }
+
+  /**
+   * Get product by ID using index (O(1))
+   */
+  getProductById(id: number) {
+    return this.index.getProduct(id);
+  }
+
+  /**
+   * Get customer by ID using index (O(1))
+   */
+  getCustomerById(id: number) {
+    return this.index.getCustomer(id);
+  }
 
   private getData(): AhbDataV1 {
     return this.fileService.getCurrentDoc().data as AhbDataV1;
@@ -37,6 +64,7 @@ export class DataService {
 
   addProduct(p: Parameters<typeof addProduct>[1]) {
     const prod = addProduct(this.getData(), p);
+    this.index.updateProduct(prod);
     this.fileService.notifyDataChanged({
       kind: "product",
       action: "add",
@@ -48,6 +76,7 @@ export class DataService {
 
   updateProduct(id: number, patch: Parameters<typeof updateProduct>[2]) {
     const prod = updateProduct(this.getData(), id, patch);
+    this.index.updateProduct(prod);
     this.fileService.notifyDataChanged({
       kind: "product",
       action: "update",
@@ -65,6 +94,7 @@ export class DataService {
 
   addCustomer(c: Parameters<typeof addCustomer>[1]) {
     const cust = addCustomer(this.getData(), c);
+    this.index.updateCustomer(cust);
     this.fileService.notifyDataChanged({
       kind: "customer",
       action: "add",
@@ -76,6 +106,7 @@ export class DataService {
 
   updateCustomer(id: number, patch: Parameters<typeof updateCustomer>[2]) {
     const cust = updateCustomer(this.getData(), id, patch);
+    this.index.updateCustomer(cust);
     this.fileService.notifyDataChanged({
       kind: "customer",
       action: "update",
@@ -88,6 +119,18 @@ export class DataService {
   // Invoices
   postInvoice(payload: Parameters<typeof postInvoice>[1]) {
     const inv = postInvoice(this.getData(), payload);
+
+    // Update indexes
+    this.index.addInvoice(inv);
+    inv.lines.forEach((ln) => {
+      const prod = this.index.getProduct(ln.productId);
+      if (prod) this.index.updateProduct(prod);
+    });
+    if (inv.customerId != null) {
+      const cust = this.index.getCustomer(inv.customerId);
+      if (cust) this.index.updateCustomer(cust);
+    }
+
     this.fileService.notifyDataChanged({
       kind: "invoice",
       action: "post",
@@ -128,6 +171,11 @@ export class DataService {
   // Purchases
   postPurchase(payload: Parameters<typeof postPurchase>[1]) {
     const purchase = postPurchase(this.getData(), payload);
+
+    // Update product index
+    const prod = this.index.getProduct(purchase.productId);
+    if (prod) this.index.updateProduct(prod);
+
     this.fileService.notifyDataChanged({
       kind: "purchase",
       action: "post",
