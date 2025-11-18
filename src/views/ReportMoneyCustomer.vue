@@ -183,12 +183,13 @@ async function load() {
     );
     rows.value = rep.rows;
     totals.value = rep.totals;
-  } catch (err: any) {
+  } catch (err: unknown) {
+    loading.value = false;
+    const msg = err instanceof Error ? err.message : String(err);
     showError.value = true;
-    errorMessage.value = err && err.message ? err.message : String(err);
+    errorMessage.value = msg;
     setTimeout(() => (showError.value = false), 3000);
   }
-}
 async function printReport() {
   const s = await window.ahb.getPrintSettings();
   const page = `@page { size: ${s.paperSize} ${s.orientation}; margin: ${s.marginMm}mm; }`;

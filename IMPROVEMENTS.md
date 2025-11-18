@@ -12,7 +12,7 @@ This document tracks potential improvements for the AHB Sales application. Mark 
 
 ## Code Quality
 
-- [ ] **4. Replace `any` types with `unknown`** - Fix 3 error handlers using `any` type for better type safety
+- [x] **4. Replace `any` types with `unknown`** - ✅ Fixed 3 error handlers using proper type guards (instanceof Error)
 - [ ] **5. Implement logger utility** - Create centralized logging service to replace scattered console.error calls
 - [ ] **6. Remove magic numbers** - Extract hardcoded values (e.g., Product ID range 1-1000) to constants
 - [ ] **7. Centralize date handling** - Unify date format conversions (ISO/YMD/DD-MM-YYYY) into date utility module

@@ -97,6 +97,8 @@ const todayYmd = () => {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
+const showError = ref(false);
+const errorMessage = ref("");
 const date = ref<string>(todayYmd());
 const rows = ref<DailyRow[]>([]);
 const totals = ref<{ paid: number }>({ paid: 0 });
@@ -108,9 +110,10 @@ async function load() {
     const rep = await window.ahb.reportDailyPayments(date.value);
     rows.value = rep.rows;
     totals.value = rep.totals;
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
     showError.value = true;
-    errorMessage.value = err && err.message ? err.message : String(err);
+    errorMessage.value = msg;
     setTimeout(() => (showError.value = false), 3000);
   }
 }
@@ -178,7 +181,4 @@ async function printReport() {
 onMounted(() => {
   void load();
 });
-
-const showError = ref(false);
-const errorMessage = ref("");
 </script>
