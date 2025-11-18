@@ -29,8 +29,10 @@ items with `[x]` to implement or `[-]` to skip.
       unified date functions (nowIso, toYmd, todayYmd, formatDate,
       formatDateOnly, dateToIso). Removed duplicate date formatting logic from
       10+ components.
-- [ ] **8. Decompose Dashboard.vue** - Break down 962-line component into
-      smaller, focused components
+- [x] **8. Decompose Dashboard.vue** - ✅ Split 972-line component into 7
+      focused components: FileInfoPanel, CustomerSearch, InvoiceSummary,
+      QuickActions, CustomerInfoBanner, ReceiptTable, ProductSearch. Reduced to
+      642 lines (34% reduction).
 
 ## Testing
 
