@@ -157,7 +157,6 @@ import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { t } from "../i18n";
 import { printInvoice } from "../print/invoice";
 import { BUSINESS_NAME } from "../constants/business";
-import { nowIso, formatDate } from "../utils/date";
 import ConfirmModal from "../components/ConfirmModal.vue";
 import FileInfoPanel from "../components/dashboard/FileInfoPanel.vue";
 import CustomerSearch from "../components/dashboard/CustomerSearch.vue";
@@ -441,8 +440,11 @@ function clearCustomerSelection() {
 function onSelectProduct(p: Prod) {
   const idx = receipt.value.findIndex((r) => r.productId === p.id);
   if (idx >= 0) {
-    receipt.value[idx].quantity += 1;
-    recomputeRow(idx);
+    const item = receipt.value[idx];
+    if (item) {
+      item.quantity += 1;
+      recomputeRow(idx);
+    }
   } else {
     receipt.value.push({
       productId: p.id,
@@ -461,8 +463,11 @@ function onSelectProduct(p: Prod) {
 function onQuantityInput(idx: number, evt: Event) {
   const input = evt.target as HTMLInputElement;
   const val = Math.max(1, Math.floor(Number(input.value || 1)));
-  receipt.value[idx].quantity = val;
-  recomputeRow(idx);
+  const item = receipt.value[idx];
+  if (item) {
+    item.quantity = val;
+    recomputeRow(idx);
+  }
 }
 
 function adjustQuantity(idx: number, delta: number) {
@@ -630,6 +635,10 @@ async function loadLastBillForCustomer(customerId: number) {
       return;
     }
     let latest = invoices[0];
+    if (!latest) {
+      lastBillText.value = "—";
+      return;
+    }
     for (const inv of invoices) {
       if (inv.date > latest.date) latest = inv;
     }

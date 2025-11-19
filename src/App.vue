@@ -137,10 +137,6 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { t, initI18n } from "./i18n";
-import {
-  TOAST_DURATION_UPDATE_SHORT,
-  TOAST_DURATION_UPDATE_LONG,
-} from "./constants/business";
 import ProductsModal from "./views/ProductsModal.vue";
 import CustomersModal from "./views/CustomersModal.vue";
 import Dashboard from "./views/Dashboard.vue";

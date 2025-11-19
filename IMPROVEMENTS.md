@@ -67,16 +67,20 @@ items with `[x]` to implement or `[-]` to skip.
 
 ## Developer Experience
 
-- [ ] **18. Add IPC API documentation** - Document all Electron IPC handlers and
-      their contracts
-- [ ] **19. Enable TypeScript strict mode** - Gradually enable strict compiler
-      options for better type checking
-- [ ] **20. Standardize package manager** - Remove either bun.lock or
-      package-lock.json, use one consistently. Yes I want to use bun only.
+- [x] **18. Add IPC API documentation** - ✅ Created comprehensive IPC_API.md
+      documenting all 30+ IPC channels with parameters, return types, usage
+      examples, and event patterns. Includes file operations, data CRUD,
+      reports, settings, and update events.
+- [x] **19. Enable TypeScript strict mode** - ✅ Enabled full strict mode with
+      strictNullChecks, strictFunctionTypes, noUnusedLocals, noImplicitReturns,
+      and noUncheckedIndexedAccess. Fixed all resulting type errors.
+- [x] **20. Standardize package manager** - ✅ Removed package-lock.json, using
+      bun exclusively. bun.lock is the only lock file.
 - [-] **21. Add development tooling** - Set up pre-commit hooks (Husky),
   changelog generation, contribution guide
-- [ ] **22. Clean up gitignore** - Ensure `out/`, `.vite/`, and other build
-      artifacts are properly ignored
+- [x] **22. Clean up gitignore** - ✅ Added `.tmp-*` pattern to catch test
+      directories. Verified all build artifacts (out/, .vite/, node_modules/)
+      are properly ignored.
 
 ## User Experience
 

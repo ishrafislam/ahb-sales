@@ -1,5 +1,4 @@
 import type { AhbDocument } from "../crypto";
-import type { AhbDataV1 } from "../data";
 
 /**
  * Simple LRU-style cache to avoid re-parsing the same file repeatedly

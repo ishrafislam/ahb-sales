@@ -104,6 +104,7 @@ releases/
 make/
 out/**
 tmp/
+.tmp-*/
 
 # Vite build outputs (renderer)
 dist-renderer/
