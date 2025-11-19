@@ -12,8 +12,10 @@ items with `[x]` to implement or `[-]` to skip.
       UpdateService, DataService). Reduced to 237 lines (71% reduction).
 - [x] **2. Separate data layer from IPC handlers** - ✅ Created DataService to
       handle all data operations, IPC handlers now delegate to services.
-- [-] **3. Implement Pinia state management** - Skipped. Current ref-based state
-  management is sufficient for app size. Can revisit if complexity grows.
+- [x] **3. Implement Pinia state management** - ✅ Implemented Pinia with 3
+      stores (modalStore, fileStore, appStore). Centralized 11 modal visibility
+      flags, file state (loaded, path, isDirty), and app state (language, update
+      toast). Improved code organization and reduced prop drilling.
 
 ## Code Quality
 

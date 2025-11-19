@@ -52,9 +52,10 @@
     "vue-tsc": "^2.0.29"
   },
   "dependencies": {
-    "update-electron-app": "^3.0.0",
+    "dotenv": "^16.4.5",
     "electron-squirrel-startup": "^1.0.1",
-    "vue": "^3.5.22",
-    "dotenv": "^16.4.5"
+    "pinia": "^3.0.4",
+    "update-electron-app": "^3.0.0",
+    "vue": "^3.5.22"
   }
 }

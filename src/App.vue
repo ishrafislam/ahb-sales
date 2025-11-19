@@ -4,7 +4,7 @@
     class="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors"
   >
     <div
-      v-if="!loaded"
+      v-if="!fileStore.loaded"
       class="min-h-screen grid place-items-center"
     >
       <div class="text-center space-y-4 px-4">
@@ -26,105 +26,105 @@
       </div>
     </div>
 
-    <div v-if="loaded">
+    <div v-if="fileStore.loaded">
       <Dashboard @navigate="onNavigate" />
     </div>
 
     <!-- Modals -->
     <BaseModal
-      v-if="showCustomers"
+      v-if="modalStore.showCustomers"
       :title="t('customers_title')"
       :max-width="'4xl'"
-      @close="closeModals"
+      @close="modalStore.closeAll"
     >
       <CustomersModal />
     </BaseModal>
     <BaseModal
-      v-if="showProducts"
+      v-if="modalStore.showProducts"
       :title="t('products_title')"
       :max-width="'5xl'"
-      @close="closeModals"
+      @close="modalStore.closeAll"
     >
       <ProductsModal />
     </BaseModal>
     <BaseModal
-      v-if="showSalesHistory"
+      v-if="modalStore.showSalesHistory"
       :title="t('product_sales_history_title')"
-      @close="closeModals"
+      @close="modalStore.closeAll"
     >
       <ProductSalesHistory @navigate="onNavigate" />
     </BaseModal>
     <BaseModal
-      v-if="showPurchaseHistory"
+      v-if="modalStore.showPurchaseHistory"
       :title="t('product_purchase_history_title')"
-      @close="closeModals"
+      @close="modalStore.closeAll"
     >
       <ProductPurchaseHistory @navigate="onNavigate" />
     </BaseModal>
     <BaseModal
-      v-if="showCustomerHistory"
+      v-if="modalStore.showCustomerHistory"
       :title="t('customer_history_title')"
       :max-width="'5xl'"
-      @close="closeModals"
+      @close="modalStore.closeAll"
     >
       <CustomerHistory @navigate="onNavigate" />
     </BaseModal>
     <BaseModal
-      v-if="showPurchaseEntry"
+      v-if="modalStore.showPurchaseEntry"
       :title="t('product_purchase_title')"
-      @close="closeModals"
+      @close="modalStore.closeAll"
     >
       <ProductPurchaseModal />
     </BaseModal>
     <BaseModal
-      v-if="showReportMoneyCustomer"
+      v-if="modalStore.showReportMoneyCustomer"
       :title="t('report_money_customer_title')"
       :max-width="'5xl'"
-      @close="closeModals"
+      @close="modalStore.closeAll"
     >
       <ReportMoneyCustomer />
     </BaseModal>
     <BaseModal
-      v-if="showReportMoneyDayWise"
+      v-if="modalStore.showReportMoneyDayWise"
       :title="t('report_money_daywise_title')"
       :max-width="'5xl'"
-      @close="closeModals"
+      @close="modalStore.closeAll"
     >
       <ReportMoneyDayWise />
     </BaseModal>
     <BaseModal
-      v-if="showReportDailyPayment"
+      v-if="modalStore.showReportDailyPayment"
       :title="t('report_daily_payment_title')"
       :max-width="'4xl'"
-      @close="closeModals"
+      @close="modalStore.closeAll"
     >
       <ReportDailyPayment />
     </BaseModal>
     <BaseModal
-      v-if="showAbout"
+      v-if="modalStore.showAbout"
       :title="t('about_app')"
       :max-width="'md'"
-      @close="closeModals"
+      @close="modalStore.closeAll"
     >
       <AboutModal />
     </BaseModal>
 
     <BaseModal
-      v-if="showSettings"
+      v-if="modalStore.showSettings"
       :title="t('settings_title')"
-      @close="closeModals"
+      @close="modalStore.closeAll"
     >
       <SettingsModal />
     </BaseModal>
 
     <!-- Update toast -->
     <div
-      v-if="showUpdateToast"
+      v-if="appStore.showUpdateToast"
       class="fixed bottom-4 right-4 bg-gray-900 text-white dark:bg-gray-800 px-4 py-2 rounded shadow-lg flex items-center gap-3"
     >
-      <span>{{ updateToastText }}</span>
+      <span>{{ appStore.updateToastText }}</span>
       <button
-        v-if="canRestartForUpdate"
+        v-if="appStore.canRestartForUpdate"
         class="bg-green-600 hover:bg-green-700 text-white rounded px-3 py-1 text-sm"
         @click="restartForUpdate"
       >
@@ -135,7 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { onMounted } from "vue";
 import { t, initI18n } from "./i18n";
 import {
   TOAST_DURATION_UPDATE_SHORT,
@@ -155,31 +155,20 @@ import ReportDailyPayment from "./views/ReportDailyPayment.vue";
 import SettingsModal from "./views/SettingsModal.vue";
 import AboutModal from "./views/AboutModal.vue";
 import { useKeyboardShortcuts } from "./composables/useKeyboardShortcuts";
+import { useModalStore } from "./stores/modal";
+import { useFileStore } from "./stores/file";
+import { useAppStore } from "./stores/app";
 
-const lang = ref<"bn" | "en">("bn");
-// Modal flags
-const showCustomers = ref(false);
-const showProducts = ref(false);
-const showSalesHistory = ref(false);
-const showPurchaseHistory = ref(false);
-const showCustomerHistory = ref(false);
-const showPurchaseEntry = ref(false);
-const showReportMoneyCustomer = ref(false);
-const showReportMoneyDayWise = ref(false);
-const showReportDailyPayment = ref(false);
-const showSettings = ref(false);
-const showAbout = ref(false);
-const loaded = ref(false);
-// Update toast state
-const showUpdateToast = ref(false);
-const updateToastText = ref("");
-const canRestartForUpdate = ref(false);
+// Initialize stores
+const modalStore = useModalStore();
+const fileStore = useFileStore();
+const appStore = useAppStore();
 
 // simple i18n removed from template usage; kept title only
 
 async function syncLang() {
   const l = await window.ahb.getLanguage();
-  lang.value = l;
+  appStore.setLanguage(l);
 }
 
 function newFile() {
@@ -218,7 +207,7 @@ useKeyboardShortcuts([
     ctrl: true,
     shift: true,
     handler: () => {
-      if (loaded.value) {
+      if (fileStore.loaded) {
         saveFileAs();
       }
     },
@@ -228,7 +217,7 @@ useKeyboardShortcuts([
     key: "s",
     ctrl: true,
     handler: () => {
-      if (loaded.value) {
+      if (fileStore.loaded) {
         saveFile();
       }
     },
@@ -238,20 +227,8 @@ useKeyboardShortcuts([
     key: "Escape",
     handler: () => {
       // Close any open modal
-      if (
-        showCustomers.value ||
-        showProducts.value ||
-        showSalesHistory.value ||
-        showPurchaseHistory.value ||
-        showCustomerHistory.value ||
-        showPurchaseEntry.value ||
-        showReportMoneyCustomer.value ||
-        showReportMoneyDayWise.value ||
-        showReportDailyPayment.value ||
-        showSettings.value ||
-        showAbout.value
-      ) {
-        closeModals();
+      if (modalStore.isAnyModalOpen()) {
+        modalStore.closeAll();
       }
     },
     description: "Close Modal",
@@ -262,16 +239,16 @@ onMounted(() => {
   void initI18n();
   syncLang();
   window.ahb.onLanguageChanged((l) => {
-    lang.value = l;
+    appStore.setLanguage(l);
   });
   window.ahb.onDocumentChanged(() => {
-    loaded.value = true;
+    fileStore.setLoaded(true);
   });
   // Ensure we reflect an already-open file after reload (e.g., wake/HMR)
   void (async () => {
     try {
       const info = await window.ahb.getFileInfo();
-      loaded.value = Boolean(info?.path);
+      fileStore.updateFileInfo(info);
     } catch {
       // ignore
     }
@@ -280,21 +257,20 @@ onMounted(() => {
   if (typeof (window.ahb as any).onFileInfo === "function") {
     (window.ahb as any).onFileInfo(
       (info: { path: string | null; isDirty: boolean }) => {
-        loaded.value = Boolean(info?.path);
+        fileStore.updateFileInfo(info);
       }
     );
   }
   // Open settings when triggered from application menu (guard for tests)
   if (typeof (window.ahb as any).onOpenSettings === "function") {
     (window.ahb as any).onOpenSettings(() => {
-      closeModals();
-      showSettings.value = true;
+      modalStore.navigateTo("settings");
     });
   }
   if (typeof (window.ahb as any).onOpenAbout === "function") {
     (window.ahb as any).onOpenAbout(() => {
-      closeModals();
-      showAbout.value = true;
+      modalStore.closeAll();
+      modalStore.showAbout = true;
     });
   }
   // Subscribe to updater events if available
@@ -302,49 +278,26 @@ onMounted(() => {
     (window.ahb as any).onUpdateEvent(
       (ev: { kind: string; data?: unknown }) => {
         if (ev.kind === "checking") {
-          updateToastText.value = t("update_checking");
-          canRestartForUpdate.value = false;
-          showUpdateToast.value = true;
-          setTimeout(() => (showUpdateToast.value = false), 2000);
+          appStore.showUpdateMessage(t("update_checking"), false);
+          setTimeout(() => appStore.hideUpdateToast(), 2000);
         } else if (ev.kind === "available") {
-          updateToastText.value = t("update_downloading");
-          canRestartForUpdate.value = false;
-          showUpdateToast.value = true;
+          appStore.showUpdateMessage(t("update_downloading"), false);
         } else if (ev.kind === "not-available") {
-          updateToastText.value = t("update_current");
-          canRestartForUpdate.value = false;
-          showUpdateToast.value = true;
-          setTimeout(() => (showUpdateToast.value = false), 2000);
+          appStore.showUpdateMessage(t("update_current"), false);
+          setTimeout(() => appStore.hideUpdateToast(), 2000);
         } else if (ev.kind === "downloaded") {
-          updateToastText.value = t("update_downloaded");
-          canRestartForUpdate.value = true;
-          showUpdateToast.value = true;
+          appStore.showUpdateMessage(t("update_downloaded"), true);
         } else if (ev.kind === "error") {
-          updateToastText.value = t("update_failed", {
-            error: String(ev.data || ""),
-          });
-          canRestartForUpdate.value = false;
-          showUpdateToast.value = true;
-          setTimeout(() => (showUpdateToast.value = false), 4000);
+          appStore.showUpdateMessage(
+            t("update_failed", { error: String(ev.data || "") }),
+            false
+          );
+          setTimeout(() => appStore.hideUpdateToast(), 4000);
         }
       }
     );
   }
 });
-
-function closeModals() {
-  showCustomers.value = false;
-  showProducts.value = false;
-  showSalesHistory.value = false;
-  showPurchaseHistory.value = false;
-  showCustomerHistory.value = false;
-  showPurchaseEntry.value = false;
-  showReportMoneyCustomer.value = false;
-  showReportMoneyDayWise.value = false;
-  showReportDailyPayment.value = false;
-  showSettings.value = false;
-  showAbout.value = false;
-}
 
 function onNavigate(
   page:
@@ -363,57 +316,47 @@ function onNavigate(
     | string
 ) {
   if (page === "dashboard") {
-    closeModals();
+    modalStore.closeAll();
     return;
   }
   if (page === "products") {
-    closeModals();
-    showProducts.value = true;
+    modalStore.navigateTo("products");
     return;
   }
   if (page === "customers") {
-    closeModals();
-    showCustomers.value = true;
+    modalStore.navigateTo("customers");
     return;
   }
   if (page === "product-sales-history") {
-    closeModals();
-    showSalesHistory.value = true;
+    modalStore.navigateTo("product-sales-history");
     return;
   }
   if (page === "product-purchase-history") {
-    closeModals();
-    showPurchaseHistory.value = true;
+    modalStore.navigateTo("product-purchase-history");
     return;
   }
   if (page === "purchase-entry") {
-    closeModals();
-    showPurchaseEntry.value = true;
+    modalStore.navigateTo("purchase-entry");
     return;
   }
   if (page === "report-money-customer") {
-    closeModals();
-    showReportMoneyCustomer.value = true;
+    modalStore.navigateTo("report-money-customer");
     return;
   }
   if (page === "report-money-daywise") {
-    closeModals();
-    showReportMoneyDayWise.value = true;
+    modalStore.navigateTo("report-money-daywise");
     return;
   }
   if (page === "report-daily-payment") {
-    closeModals();
-    showReportDailyPayment.value = true;
+    modalStore.navigateTo("report-daily-payment");
     return;
   }
   if (page === "settings") {
-    closeModals();
-    showSettings.value = true;
+    modalStore.navigateTo("settings");
     return;
   }
   if (page === "customer-history") {
-    closeModals();
-    showCustomerHistory.value = true;
+    modalStore.navigateTo("customer-history");
   }
 }
 
