@@ -27,6 +27,7 @@ export class MenuService {
     const themeSource =
       this.settingsService.loadSettings().themeSource ?? "system";
     const currentFilePath = this.fileService.getCurrentFilePath();
+    const isDirty = this.fileService.getIsDirty();
 
     const template: MenuItemConstructorOptions[] = [
       {
@@ -34,19 +35,22 @@ export class MenuService {
         submenu: [
           {
             label: d.menu_new,
+            accelerator: process.platform === "darwin" ? "Cmd+N" : "Ctrl+N",
             click: (): void => {
               void this.fileService.newFileFlow();
             },
           },
           {
             label: d.menu_open,
+            accelerator: process.platform === "darwin" ? "Cmd+O" : "Ctrl+O",
             click: (): void => {
               void this.fileService.openFileFlow();
             },
           },
           {
             label: d.menu_save,
-            enabled: Boolean(currentFilePath),
+            enabled: Boolean(currentFilePath && isDirty),
+            accelerator: process.platform === "darwin" ? "Cmd+S" : "Ctrl+S",
             click: (): void => {
               void this.fileService.handleSaveFile();
             },
@@ -54,6 +58,8 @@ export class MenuService {
           {
             label: d.menu_save_as,
             enabled: Boolean(currentFilePath),
+            accelerator:
+              process.platform === "darwin" ? "Shift+Cmd+S" : "Ctrl+Shift+S",
             click: (): void => {
               void this.fileService.handleSaveFileAs();
             },

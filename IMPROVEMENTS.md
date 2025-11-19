@@ -84,8 +84,10 @@ items with `[x]` to implement or `[-]` to skip.
       .ahbs files
 - [x] **25. Add export to CSV/Excel** - Enable data export in standard formats
       beyond encrypted .ahbs
-- [ ] **26. Enhance keyboard shortcuts** - Improve accessibility with
-      comprehensive keyboard navigation
+- [x] **26. Enhance keyboard shortcuts** - ✅ Implemented global shortcuts
+      (Ctrl+N/O/S), modal navigation (Esc, Tab with focus trap), and
+      accessibility features. Created useKeyboardShortcuts composable for
+      platform-aware shortcuts (Cmd on Mac, Ctrl on Win/Linux).
 
 ## Production
 

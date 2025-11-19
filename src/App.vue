@@ -154,6 +154,7 @@ import ReportMoneyDayWise from "./views/ReportMoneyDayWise.vue";
 import ReportDailyPayment from "./views/ReportDailyPayment.vue";
 import SettingsModal from "./views/SettingsModal.vue";
 import AboutModal from "./views/AboutModal.vue";
+import { useKeyboardShortcuts } from "./composables/useKeyboardShortcuts";
 
 const lang = ref<"bn" | "en">("bn");
 // Modal flags
@@ -187,7 +188,75 @@ function newFile() {
 function openFile() {
   window.ahb.openFile();
 }
-// Save actions available within Dashboard itself
+async function saveFile() {
+  await window.ahb.saveFile();
+}
+async function saveFileAs() {
+  await window.ahb.saveFileAs();
+}
+
+// Setup global keyboard shortcuts
+useKeyboardShortcuts([
+  {
+    key: "n",
+    ctrl: true,
+    handler: () => {
+      newFile();
+    },
+    description: "New File",
+  },
+  {
+    key: "o",
+    ctrl: true,
+    handler: () => {
+      openFile();
+    },
+    description: "Open File",
+  },
+  {
+    key: "s",
+    ctrl: true,
+    shift: true,
+    handler: () => {
+      if (loaded.value) {
+        saveFileAs();
+      }
+    },
+    description: "Save File As",
+  },
+  {
+    key: "s",
+    ctrl: true,
+    handler: () => {
+      if (loaded.value) {
+        saveFile();
+      }
+    },
+    description: "Save File",
+  },
+  {
+    key: "Escape",
+    handler: () => {
+      // Close any open modal
+      if (
+        showCustomers.value ||
+        showProducts.value ||
+        showSalesHistory.value ||
+        showPurchaseHistory.value ||
+        showCustomerHistory.value ||
+        showPurchaseEntry.value ||
+        showReportMoneyCustomer.value ||
+        showReportMoneyDayWise.value ||
+        showReportDailyPayment.value ||
+        showSettings.value ||
+        showAbout.value
+      ) {
+        closeModals();
+      }
+    },
+    description: "Close Modal",
+  },
+]);
 
 onMounted(() => {
   void initI18n();

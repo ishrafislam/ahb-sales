@@ -136,5 +136,10 @@
   "menu_theme": "থিম",
   "of": "এর",
   "per_page": "পাতা প্রতি",
-  "active_only": "শুধুমাত্র সক্রিয়"
+  "active_only": "শুধুমাত্র সক্রিয়",
+  "shortcut_new_file": "নতুন ফাইল (Ctrl+N)",
+  "shortcut_open_file": "ফাইল খুলুন (Ctrl+O)",
+  "shortcut_save_file": "ফাইল সংরক্ষণ করুন (Ctrl+S)",
+  "shortcut_close_modal": "বন্ধ করতে Esc চাপুন",
+  "shortcut_navigate": "নেভিগেট করতে Tab ব্যবহার করুন"
 }

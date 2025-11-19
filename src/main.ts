@@ -28,7 +28,7 @@ const fileService = new FileService();
 const settingsService = new SettingsService();
 const menuService = new MenuService(fileService, settingsService);
 const updateService = new UpdateService();
-const dataService = new DataService(fileService);
+const dataService = new DataService(fileService, menuService);
 
 // Rebuild indexes when document changes
 fileService.onDataChanged(() => {

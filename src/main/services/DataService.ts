@@ -21,7 +21,10 @@ import { DataIndex } from "../utils/dataIndex";
 export class DataService {
   private index = new DataIndex();
 
-  constructor(private fileService: FileService) {
+  constructor(
+    private fileService: FileService,
+    private menuService?: { buildMenu: () => void }
+  ) {
     // Build initial index
     this.rebuildIndex();
   }
@@ -54,6 +57,10 @@ export class DataService {
   private markDirty(): void {
     this.fileService.setDirty(true);
     this.fileService.broadcastFileInfo();
+    // Rebuild menu to update Save button state
+    if (this.menuService) {
+      this.menuService.buildMenu();
+    }
   }
 
   // Products
