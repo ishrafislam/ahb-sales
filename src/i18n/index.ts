@@ -32,19 +32,13 @@ export function t(
     if (/\{\w+\}/.test(raw)) {
       try {
         // Detect environment without using import.meta to keep TS module config flexible
+        const envGlobal = globalThis as unknown as {
+          process?: { env?: { NODE_ENV?: string } };
+          NODE_ENV?: string;
+        };
         const nodeEnv =
-          (
-            globalThis as unknown as {
-              process?: { env?: { NODE_ENV?: string } };
-              NODE_ENV?: string;
-            }
-          )?.process?.env?.NODE_ENV ??
-          (
-            globalThis as unknown as {
-              process?: { env?: { NODE_ENV?: string } };
-              NODE_ENV?: string;
-            }
-          )?.NODE_ENV ??
+          envGlobal?.process?.env?.NODE_ENV ??
+          envGlobal?.NODE_ENV ??
           "production";
         const isProduction = nodeEnv === "production";
         if (!isProduction) {

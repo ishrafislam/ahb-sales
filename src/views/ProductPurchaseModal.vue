@@ -163,6 +163,7 @@ async function submit() {
     productId: selected.value.id,
     quantity: quantity.value,
   });
+  successMessage.value = t("purchase_added_successfully");
   showSuccess.value = true;
   setTimeout(() => (showSuccess.value = false), TOAST_DURATION_SUCCESS);
   // reset qty but keep selection

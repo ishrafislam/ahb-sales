@@ -440,11 +440,9 @@ function clearCustomerSelection() {
 function onSelectProduct(p: Prod) {
   const idx = receipt.value.findIndex((r) => r.productId === p.id);
   if (idx >= 0) {
-    const item = receipt.value[idx];
-    if (item) {
-      item.quantity += 1;
-      recomputeRow(idx);
-    }
+    const item = receipt.value[idx]!;
+    item.quantity += 1;
+    recomputeRow(idx);
   } else {
     receipt.value.push({
       productId: p.id,
@@ -634,11 +632,7 @@ async function loadLastBillForCustomer(customerId: number) {
       lastBillText.value = "—";
       return;
     }
-    let latest = invoices[0];
-    if (!latest) {
-      lastBillText.value = "—";
-      return;
-    }
+    let latest = invoices[0]!;
     for (const inv of invoices) {
       if (inv.date > latest.date) latest = inv;
     }
