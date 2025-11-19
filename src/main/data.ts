@@ -1,5 +1,5 @@
 import { MIN_PRODUCT_ID, MAX_PRODUCT_ID } from "../constants/business";
-import { nowIso, dateToIso, toDDMMYYYY } from "../utils/date";
+import { nowIso, toDDMMYYYY } from "../utils/date";
 
 export type Lang = "bn" | "en";
 

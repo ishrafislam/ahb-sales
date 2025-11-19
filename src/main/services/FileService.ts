@@ -8,7 +8,6 @@ import {
 } from "../crypto";
 import { initData } from "../data";
 import { logger } from "./Logger";
-import { nowIso } from "../../utils/date";
 import { FileCache } from "./FileCache";
 import { logMemoryUsage } from "../utils/memory";
 

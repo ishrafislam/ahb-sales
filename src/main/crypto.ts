@@ -1,5 +1,4 @@
 import * as crypto from "crypto";
-import { nowIso } from "../utils/date";
 
 // AES-256-GCM requires a 32-byte key (64 hex chars), 12-byte IV, and produces an auth tag.
 // SECURITY: AHB_KEY_HEX must be provided via environment at build/runtime.
