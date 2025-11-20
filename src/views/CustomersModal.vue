@@ -106,6 +106,8 @@
                 v-model.number="form.outstanding"
                 class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
                 type="number"
+                min="0"
+                step="1.0"
               />
             </div>
             <div>
@@ -231,6 +233,7 @@ function syncFromSelected() {
     form.value.nameBn = c.nameBn || "";
     form.value.address = c.address || "";
     form.value.phone = c.phone || "";
+    form.value.outstanding = 0;
     form.value.active = !!c.active;
   } else {
     form.value.nameBn = "";
