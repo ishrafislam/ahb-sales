@@ -141,5 +141,6 @@
   "shortcut_open_file": "ফাইল খুলুন (Ctrl+O)",
   "shortcut_save_file": "ফাইল সংরক্ষণ করুন (Ctrl+S)",
   "shortcut_close_modal": "বন্ধ করতে Esc চাপুন",
-  "shortcut_navigate": "নেভিগেট করতে Tab ব্যবহার করুন"
+  "shortcut_navigate": "নেভিগেট করতে Tab ব্যবহার করুন",
+  "initial_due": "প্রাথমিক বকেয়া"
 }

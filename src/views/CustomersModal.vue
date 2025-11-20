@@ -94,6 +94,20 @@
                 maxlength="50"
               />
             </div>
+            <div v-if="!exists">
+              <label
+                for="customer-outstanding"
+                class="block text-sm font-medium text-gray-600 dark:text-gray-300"
+              >
+                {{ t("initial_due") }}
+              </label>
+              <input
+                id="customer-outstanding"
+                v-model.number="form.outstanding"
+                class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
+                type="number"
+              />
+            </div>
             <div>
               <label
                 class="block text-sm font-medium text-gray-600 dark:text-gray-300"
@@ -188,6 +202,7 @@ const form = ref({
   nameBn: "",
   address: "",
   phone: "",
+  outstanding: 0,
   active: true,
 });
 
@@ -221,6 +236,7 @@ function syncFromSelected() {
     form.value.nameBn = "";
     form.value.address = "";
     form.value.phone = "";
+    form.value.outstanding = 0;
     form.value.active = true;
   }
 }
@@ -288,7 +304,7 @@ async function add() {
     nameBn: form.value.nameBn,
     address: form.value.address,
     phone: form.value.phone,
-    outstanding: 0,
+    outstanding: form.value.outstanding,
     active: form.value.active,
   });
   await load();

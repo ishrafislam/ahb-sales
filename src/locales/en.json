@@ -141,5 +141,6 @@
   "shortcut_open_file": "Open File (Ctrl+O)",
   "shortcut_save_file": "Save File (Ctrl+S)",
   "shortcut_close_modal": "Press Esc to close",
-  "shortcut_navigate": "Use Tab to navigate"
+  "shortcut_navigate": "Use Tab to navigate",
+  "initial_due": "Initial Due"
 }
