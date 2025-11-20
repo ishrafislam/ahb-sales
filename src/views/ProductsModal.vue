@@ -5,7 +5,10 @@
     <div
       class="w-[30%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
     >
-      <div ref="leftListRef" class="flex-grow overflow-y-auto">
+      <div
+        ref="leftListRef"
+        class="flex-grow overflow-y-auto"
+      >
         <ul>
           <li
             v-for="id in idList"
@@ -202,8 +205,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
+import BaseModal from "../components/BaseModal.vue";
+import { MAX_PRODUCT_ID } from "../constants/business";
 
 interface ProductRow {
   id: number;
@@ -227,7 +232,9 @@ const form = ref({
   active: true,
 });
 
-const idList = computed(() => Array.from({ length: 1000 }, (_, i) => i + 1));
+const idList = computed(() =>
+  Array.from({ length: MAX_PRODUCT_ID }, (_, i) => i + 1)
+);
 const productsById = computed(() => {
   const m = new Map<number, ProductRow>();
   for (const p of products.value) m.set(p.id, p);
@@ -284,7 +291,10 @@ async function load() {
   // Preserve selection if still valid; otherwise, fall back to first existing (if any)
   if (!productsById.value.has(prevSelected)) {
     if (products.value.length) {
-      selectedId.value = Math.min(1000, Math.max(1, products.value[0].id));
+      selectedId.value = Math.min(
+        MAX_PRODUCT_ID,
+        Math.max(1, products.value[0].id)
+      );
     } else {
       selectedId.value = prevSelected;
     }
@@ -297,13 +307,13 @@ function first() {
   select(1);
 }
 function last() {
-  select(1000);
+  select(MAX_PRODUCT_ID);
 }
 function previous() {
   select(Math.max(1, selectedId.value - 1));
 }
 function next() {
-  select(Math.min(1000, selectedId.value + 1));
+  select(Math.min(MAX_PRODUCT_ID, selectedId.value + 1));
 }
 
 const canAdd = computed(() => form.value.nameBn.trim().length > 0);

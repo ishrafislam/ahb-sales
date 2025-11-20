@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
+import { createPinia } from "pinia";
 import DashboardView from "../src/views/Dashboard.vue";
 import type { PostInvoiceInput } from "../src/main/data";
 import { currentLang } from "../src/i18n";
@@ -74,7 +75,12 @@ describe("DashboardView.vue", () => {
   });
 
   it("shows Walk-in banner when no customer and hides totals until products are added", async () => {
-    const wrapper = mount(DashboardView);
+    const pinia = createPinia();
+    const wrapper = mount(DashboardView, {
+      global: {
+        plugins: [pinia],
+      },
+    });
     await Promise.resolve();
     await nextTick();
     expect(wrapper.text()).toContain("Walk-in");
@@ -91,7 +97,13 @@ describe("DashboardView.vue", () => {
       { id: 101, nameBn: "Rahim" },
       { id: 202, nameBn: "Karim" },
     ];
-    const wrapper = mount(DashboardView, { attachTo: document.body });
+    const pinia = createPinia();
+    const wrapper = mount(DashboardView, {
+      global: {
+        plugins: [pinia],
+      },
+      attachTo: document.body,
+    });
     await Promise.resolve();
     await nextTick();
 
@@ -124,7 +136,13 @@ describe("DashboardView.vue", () => {
         active: true,
       },
     ];
-    const wrapper = mount(DashboardView, { attachTo: document.body });
+    const pinia = createPinia();
+    const wrapper = mount(DashboardView, {
+      global: {
+        plugins: [pinia],
+      },
+      attachTo: document.body,
+    });
     await Promise.resolve();
     await nextTick();
 
@@ -192,7 +210,13 @@ describe("DashboardView.vue", () => {
         active: true,
       },
     ];
-    const wrapper = mount(DashboardView, { attachTo: document.body });
+    const pinia = createPinia();
+    const wrapper = mount(DashboardView, {
+      global: {
+        plugins: [pinia],
+      },
+      attachTo: document.body,
+    });
     await Promise.resolve();
     await nextTick();
 

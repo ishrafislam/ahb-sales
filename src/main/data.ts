@@ -1,3 +1,6 @@
+import { MIN_PRODUCT_ID, MAX_PRODUCT_ID } from "../constants/business";
+import { nowIso, toDDMMYYYY } from "../utils/date";
+
 export type Lang = "bn" | "en";
 
 export type Product = {
@@ -43,16 +46,9 @@ export function initData(): AhbDataV1 {
 }
 
 // Helpers
-const nowIso = () => new Date().toISOString();
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const isoToYmd = (iso: string) => iso.slice(0, 10); // YYYY-MM-DD (UTC slice)
-const toDDMMYYYY = (isoOrYmd: string) => {
-  // Accept either ISO or already YYYY-MM-DD; output DD-MM-YYYY
-  const ymd = isoOrYmd.includes("T") ? isoToYmd(isoOrYmd) : isoOrYmd;
-  const [y, m, d] = ymd.split("-");
-  return `${d}-${m}-${y}`;
-};
 
 // Ensure Phase 2 fields exist on data object for older files
 export type AhbDataV2 = Required<Pick<AhbDataV1, "invoices" | "invoiceSeq">> &
@@ -216,8 +212,10 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
 }
 
 export function assertProductId(id: number) {
-  if (!Number.isInteger(id) || id < 1 || id > 1000) {
-    throw new Error("Product ID must be an integer between 1 and 1000");
+  if (!Number.isInteger(id) || id < MIN_PRODUCT_ID || id > MAX_PRODUCT_ID) {
+    throw new Error(
+      `Product ID must be an integer between ${MIN_PRODUCT_ID} and ${MAX_PRODUCT_ID}`
+    );
   }
 }
 

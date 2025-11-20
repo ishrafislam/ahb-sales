@@ -4,7 +4,10 @@
     <div
       class="w-[25%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
     >
-      <div ref="leftListRef" class="flex-grow overflow-y-auto">
+      <div
+        ref="leftListRef"
+        class="flex-grow overflow-y-auto"
+      >
         <ul>
           <li
             v-for="id in idList"
@@ -123,7 +126,8 @@ defineOptions({ name: "AhbCustomerHistoryView" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { t } from "../i18n";
 import { printInvoice } from "../print/invoice";
-import { BUSINESS_NAME } from "../constants/business";
+import { BUSINESS_NAME, MAX_CUSTOMER_ID } from "../constants/business";
+import { formatDate } from "../utils/date";
 
 type Cust = { id: number; nameBn: string };
 
@@ -149,13 +153,6 @@ const rows = computed(() =>
   }))
 );
 
-function formatDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString("en-GB");
-  } catch {
-    return iso;
-  }
-}
 function money(n: number) {
   if (!Number.isFinite(n)) return "0.00";
   return n.toLocaleString("en-US", {
@@ -170,7 +167,9 @@ function onSelectCustomer(id: number) {
   void scrollSelectedIntoView();
 }
 
-const idList = computed(() => Array.from({ length: 1000 }, (_, i) => i + 1));
+const idList = computed(() =>
+  Array.from({ length: MAX_CUSTOMER_ID }, (_, i) => i + 1)
+);
 const customersById = computed(() => {
   const m = new Map<number, Cust>();
   for (const c of customers.value) m.set(c.id, c);

@@ -29,9 +29,11 @@
 import "./index.css";
 import { initTheme } from "./theme";
 import { createApp } from "vue";
+import { createPinia } from "pinia";
 import App from "./App.vue";
 
 void initTheme();
+const pinia = createPinia();
 const mount = document.createElement("div");
 document.body.appendChild(mount);
-createApp(App).mount(mount);
+createApp(App).use(pinia).mount(mount);
