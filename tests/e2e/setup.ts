@@ -8,6 +8,7 @@ import path from "node:path";
 export const test = base.extend<{
   electronApp: ElectronApplication;
 }>({
+  // eslint-disable-next-line no-empty-pattern
   electronApp: async ({}, use) => {
     // Start Electron app
     const dotenv = await import("dotenv");
