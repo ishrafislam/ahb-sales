@@ -15,13 +15,11 @@ export const test = base.extend<{
     dotenv.config();
 
     const electronApp = await electron.launch({
-      args: [path.join(__dirname, "../../.vite/build/main.js")],
+      args: [path.join(__dirname, "../.vite/build/main.js")],
       env: {
         ...process.env,
         NODE_ENV: "test",
-        AHB_KEY_HEX:
-          process.env.AHB_KEY_HEX ||
-          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        AHB_KEY_HEX: process.env.AHB_KEY_HEX || "",
       },
     });
 

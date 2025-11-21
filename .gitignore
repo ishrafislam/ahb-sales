@@ -198,3 +198,4 @@ seeds/
 
 playwright-report/
 test-results/
+tmp-userData-tests/
