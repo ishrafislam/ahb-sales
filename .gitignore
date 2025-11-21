@@ -195,3 +195,6 @@ old_workflow/
 
 # Local seed data outputs
 seeds/
+
+playwright-report/
+test-results/

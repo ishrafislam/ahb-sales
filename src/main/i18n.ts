@@ -21,7 +21,9 @@ function loadSettings(): Settings {
   } catch {
     // ignore missing or invalid settings
   }
-  return { language: "bn" };
+  // Default to English in test environment, Bengali otherwise
+  const defaultLang = process.env.NODE_ENV === "test" ? "en" : "bn";
+  return { language: defaultLang };
 }
 
 function saveSettings(s: Settings) {
