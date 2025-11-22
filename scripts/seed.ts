@@ -44,17 +44,18 @@ function randInt(min: number, max: number): number {
 }
 
 function choice<T>(arr: T[]): T {
-  return arr[randInt(0, arr.length - 1)];
+  return arr[randInt(0, arr.length - 1)]!;
 }
 
 function parseArgs(argv: string[]) {
   const args: Record<string, string> = {};
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i].startsWith("--")) {
-      const key = argv[i].slice(2);
-      const val =
-        argv[i + 1] && !argv[i + 1].startsWith("--") ? argv[++i] : "true";
-      args[key] = val;
+    const current = argv[i];
+    if (current && current.startsWith("--")) {
+      const key = current.slice(2);
+      const next = argv[i + 1];
+      const val = next && !next.startsWith("--") ? argv[++i] : "true";
+      args[key] = val ?? "";
     }
   }
   return args;

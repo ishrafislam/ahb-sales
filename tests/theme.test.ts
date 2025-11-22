@@ -13,9 +13,9 @@ describe("theme module", () => {
     onThemeChanged: vi.fn((cb: (p: ThemePayloadTest) => void) => {
       (listeners["app:theme-changed"] ||= []).push(cb);
       return () => {
-        listeners["app:theme-changed"] = listeners["app:theme-changed"].filter(
-          (f) => f !== cb
-        );
+        listeners["app:theme-changed"] = (
+          listeners["app:theme-changed"] || []
+        ).filter((f) => f !== cb);
       };
     }),
   };

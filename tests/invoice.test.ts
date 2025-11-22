@@ -64,7 +64,7 @@ describe("postInvoice (Phase 2)", () => {
 
     // Invoice sequence increments
     expect(data.invoiceSeq).toBe(2);
-    expect(data.invoices.length).toBe(1);
+    expect(data.invoices?.length).toBe(1);
   });
 
   it("applies ceil-to-2 rounding on line totals and subtotal", () => {
@@ -83,7 +83,7 @@ describe("postInvoice (Phase 2)", () => {
       lines: [{ productId: 3, quantity: 3 }], // line: 3 * 19.331 = 57.993 -> ceil2 => 58.00
     });
 
-    expect(inv.lines[0].lineTotal).toBe(58);
+    expect(inv.lines[0]?.lineTotal).toBe(58);
     expect(inv.totals.subtotal).toBe(58);
     expect(inv.totals.net).toBe(58);
   });
@@ -227,6 +227,6 @@ describe("postInvoice (Phase 2)", () => {
     expect(inv1.no).toBe(1);
     expect(inv2.no).toBe(2);
     expect(data.invoiceSeq).toBe(3);
-    expect(data.invoices.length).toBe(2);
+    expect(data.invoices?.length).toBe(2);
   });
 });

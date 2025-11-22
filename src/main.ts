@@ -59,7 +59,9 @@ const createWindow = () => {
   }
 
   // Only open DevTools in development (Vite dev server present or not packaged)
-  if (!app.isPackaged || MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+  // Skip DevTools in test environment
+  const isTest = process.env.NODE_ENV === "test";
+  if (!isTest && (!app.isPackaged || MAIN_WINDOW_VITE_DEV_SERVER_URL)) {
     mainWindow.webContents.openDevTools();
   }
 };

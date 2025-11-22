@@ -50,7 +50,7 @@ describe("Anonymous (Walk-in) invoice", () => {
     // stock reduced
     const saleLines = listProductSales(data, 1);
     expect(saleLines.length).toBe(1);
-    expect(saleLines[0].quantity).toBe(2);
+    expect(saleLines[0]?.quantity).toBe(2);
     // no customers in data, AR unaffected
     expect(data.customers.length).toBe(0);
   });

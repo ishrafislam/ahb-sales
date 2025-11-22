@@ -116,6 +116,7 @@ const config: ForgeConfig = {
         if (fullIdx === -1) continue;
 
         const oldFullPath = res.artifacts[fullIdx];
+        if (!oldFullPath) continue;
         const dir = path.dirname(oldFullPath);
         const newFullPath = path.join(dir, desiredNupkgName);
         const oldBase = path.basename(oldFullPath);
