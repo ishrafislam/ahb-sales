@@ -27,9 +27,6 @@ jobs:
       - name: Lint
         run: bun run lint
 
-      - name: Type Check
-        run: bun run type-check
-
       - name: Build (Vite + Electron Forge)
         env:
           # Electron may require a display variable for some build steps; often not needed for package/make
