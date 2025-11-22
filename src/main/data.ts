@@ -189,12 +189,22 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
   data.invoices.push(inv);
   for (const l of lines) {
     const idx = data.products.findIndex((p) => p.id === l.productId);
+    if (idx === -1) continue; // Should not happen as validated earlier
     const prod = data.products[idx];
-    data.products[idx] = {
-      ...prod,
+    if (!prod) continue; // Additional safety check
+    const updated: Product = {
+      id: prod.id,
+      nameBn: prod.nameBn,
+      nameEn: prod.nameEn,
+      description: prod.description,
+      unit: prod.unit,
+      price: prod.price,
       stock: prod.stock - l.quantity,
+      active: prod.active,
+      createdAt: prod.createdAt,
       updatedAt: nowIso(),
     };
+    data.products[idx] = updated;
   }
   // Update customer outstanding (currentDue)
   if (hasCustomer && customer) {
@@ -272,10 +282,18 @@ export function updateProduct(
   const idx = data.products.findIndex((x) => x.id === id);
   if (idx === -1) throw new Error("Product not found");
   const old = data.products[idx];
+  if (!old) throw new Error("Product not found");
   const next: Product = {
-    ...old,
-    ...patch,
+    id: old.id,
     nameBn: patch.nameBn !== undefined ? patch.nameBn : old.nameBn,
+    nameEn: patch.nameEn !== undefined ? patch.nameEn : old.nameEn,
+    description:
+      patch.description !== undefined ? patch.description : old.description,
+    unit: patch.unit !== undefined ? patch.unit : old.unit,
+    price: patch.price !== undefined ? patch.price : old.price,
+    stock: patch.stock !== undefined ? patch.stock : old.stock,
+    active: patch.active !== undefined ? patch.active : old.active,
+    createdAt: old.createdAt,
     updatedAt: nowIso(),
   };
   data.products[idx] = next;
@@ -352,6 +370,7 @@ export function updateCustomer(
   const idx = data.customers.findIndex((x) => x.id === id);
   if (idx === -1) throw new Error("Customer not found");
   const old = data.customers[idx];
+  if (!old) throw new Error("Customer not found");
   // Policy: Outstanding can only be set during creation; editing later is not allowed
   if (Object.prototype.hasOwnProperty.call(patch, "outstanding")) {
     throw new Error("Outstanding can only be set when creating a customer");
@@ -521,6 +540,7 @@ export function postPurchase(
     throw new Error("Quantity must be > 0");
 
   const prod = data.products[prodIdx];
+  if (!prod) throw new Error("Product not found");
   const purchase: Purchase = {
     id: genId(),
     date: date.toISOString(),

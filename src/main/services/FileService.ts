@@ -136,6 +136,8 @@ export class FileService {
     if (res.canceled || res.filePaths.length === 0) return;
 
     const filePath = res.filePaths[0];
+    if (!filePath) return;
+
     try {
       // Check cache first
       const cached = this.cache.get(filePath);
