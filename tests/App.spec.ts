@@ -10,7 +10,7 @@ describe("App.vue", () => {
   it("renders initial file selection and shows dashboard after file opens", async () => {
     // Stub preload API
     let langCb: ((l: "bn" | "en") => void) | null = null;
-    let docCb: (() => void) | null = null;
+    let docCb: (() => void) | null = null as (() => void) | null;
     window.ahb = {
       getLanguage: async () => "en",
       setLanguage: async (_l: "bn" | "en") => {

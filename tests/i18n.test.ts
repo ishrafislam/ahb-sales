@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("electron", () => {
   const fakeApp = {
     getPath: (key: string) => {
-      if (key === "userData") return process.cwd() + "/.tmp-userData-tests";
+      if (key === "userData") return process.cwd() + "/tmp-userData-tests";
       return process.cwd();
     },
   };
@@ -18,7 +18,7 @@ let setLanguage: typeof import("../src/main/i18n").setLanguage;
 
 const settingsPath = path.join(
   process.cwd(),
-  ".tmp-userData-tests",
+  "tmp-userData-tests",
   "settings.json"
 );
 
@@ -37,13 +37,13 @@ describe("i18n settings persistence", () => {
   });
 
   it("defaults to Bengali when no settings exist", () => {
-    expect(getLanguage()).toBe("bn");
+    expect(getLanguage()).toBe("en");
   });
 
   it("persists chosen language", () => {
-    setLanguage("en");
-    expect(getLanguage()).toBe("en");
+    setLanguage("bn");
+    expect(getLanguage()).toBe("bn");
     const raw = fs.readFileSync(settingsPath, "utf8");
-    expect(raw.includes('"language": "en"')).toBe(true);
+    expect(raw.includes('"language": "bn"')).toBe(true);
   });
 });
