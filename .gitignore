@@ -104,6 +104,7 @@ releases/
 make/
 out/**
 tmp/
+.tmp-*/
 
 # Vite build outputs (renderer)
 dist-renderer/
@@ -194,3 +195,7 @@ old_workflow/
 
 # Local seed data outputs
 seeds/
+
+playwright-report/
+test-results/
+tmp-userData-tests/

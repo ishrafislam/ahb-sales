@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
+import { createPinia } from "pinia";
 import App from "../src/App.vue";
 
 // Minimal SFC test ensuring component renders and language switch updates title
@@ -9,7 +10,7 @@ describe("App.vue", () => {
   it("renders initial file selection and shows dashboard after file opens", async () => {
     // Stub preload API
     let langCb: ((l: "bn" | "en") => void) | null = null;
-    let docCb: (() => void) | null = null;
+    let docCb: (() => void) | null = null as (() => void) | null;
     window.ahb = {
       getLanguage: async () => "en",
       setLanguage: async (_l: "bn" | "en") => {
@@ -49,9 +50,16 @@ describe("App.vue", () => {
       updateCustomer: async (_: number, __: unknown): Promise<unknown> =>
         ({}) as unknown,
       onDataChanged: (): (() => void) => () => undefined,
+      getFileInfo: async () => ({ path: null, isDirty: false }),
     } as unknown as Window["ahb"];
 
-    const wrapper = mount(App, { attachTo: document.body });
+    const pinia = createPinia();
+    const wrapper = mount(App, {
+      global: {
+        plugins: [pinia],
+      },
+      attachTo: document.body,
+    });
     // Wait for onMounted async getLanguage to resolve and DOM to update
     await Promise.resolve();
     await nextTick();

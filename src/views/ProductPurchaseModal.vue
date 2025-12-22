@@ -5,7 +5,10 @@
     <div
       class="w-[30%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
     >
-      <div ref="leftListRef" class="flex-grow overflow-y-auto">
+      <div
+        ref="leftListRef"
+        class="flex-grow overflow-y-auto"
+      >
         <ul>
           <li
             v-for="id in idList"
@@ -32,7 +35,11 @@
 
     <!-- Right form / empty state -->
     <div class="w-[70%] p-6 flex flex-col overflow-hidden">
-      <form v-if="exists" class="space-y-4" @submit.prevent="submit">
+      <form
+        v-if="exists"
+        class="space-y-4"
+        @submit.prevent="submit"
+      >
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label
@@ -87,7 +94,10 @@
           </button>
         </div>
       </form>
-      <div v-else class="flex-1 grid place-items-center">
+      <div
+        v-else
+        class="flex-1 grid place-items-center"
+      >
         <div class="text-center text-gray-600 dark:text-gray-300">
           {{ t("no_product_found") }}
         </div>
@@ -107,6 +117,7 @@
 defineOptions({ name: "AhbProductPurchaseModal" });
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { t } from "../i18n";
+import { MAX_PRODUCT_ID, TOAST_DURATION_SUCCESS } from "../constants/business";
 
 type Prod = { id: number; nameBn: string; unit: string };
 
@@ -114,7 +125,9 @@ const products = ref<Prod[]>([]);
 const selectedId = ref<number>(1);
 const quantity = ref<number>(1);
 
-const idList = computed(() => Array.from({ length: 1000 }, (_, i) => i + 1));
+const idList = computed(() =>
+  Array.from({ length: MAX_PRODUCT_ID }, (_, i) => i + 1)
+);
 const productsById = computed(() => {
   const m = new Map<number, Prod>();
   for (const p of products.value) m.set(p.id, p);
@@ -150,14 +163,9 @@ async function submit() {
     productId: selected.value.id,
     quantity: quantity.value,
   });
-  // Success toast
+  successMessage.value = t("purchase_added_successfully");
   showSuccess.value = true;
-  successMessage.value = t("added_to_stock", {
-    qty: quantity.value,
-    unit: unitLabel.value,
-    id: selected.value.id,
-  });
-  setTimeout(() => (showSuccess.value = false), 2500);
+  setTimeout(() => (showSuccess.value = false), TOAST_DURATION_SUCCESS);
   // reset qty but keep selection
   quantity.value = 1;
 }

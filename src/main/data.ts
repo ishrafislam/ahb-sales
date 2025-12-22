@@ -1,3 +1,6 @@
+import { MIN_PRODUCT_ID, MAX_PRODUCT_ID } from "../constants/business";
+import { nowIso, toDDMMYYYY } from "../utils/date";
+
 export type Lang = "bn" | "en";
 
 export type Product = {
@@ -43,16 +46,9 @@ export function initData(): AhbDataV1 {
 }
 
 // Helpers
-const nowIso = () => new Date().toISOString();
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const isoToYmd = (iso: string) => iso.slice(0, 10); // YYYY-MM-DD (UTC slice)
-const toDDMMYYYY = (isoOrYmd: string) => {
-  // Accept either ISO or already YYYY-MM-DD; output DD-MM-YYYY
-  const ymd = isoOrYmd.includes("T") ? isoToYmd(isoOrYmd) : isoOrYmd;
-  const [y, m, d] = ymd.split("-");
-  return `${d}-${m}-${y}`;
-};
 
 // Ensure Phase 2 fields exist on data object for older files
 export type AhbDataV2 = Required<Pick<AhbDataV1, "invoices" | "invoiceSeq">> &
@@ -193,12 +189,22 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
   data.invoices.push(inv);
   for (const l of lines) {
     const idx = data.products.findIndex((p) => p.id === l.productId);
+    if (idx === -1) continue; // Should not happen as validated earlier
     const prod = data.products[idx];
-    data.products[idx] = {
-      ...prod,
+    if (!prod) continue; // Additional safety check
+    const updated: Product = {
+      id: prod.id,
+      nameBn: prod.nameBn,
+      nameEn: prod.nameEn,
+      description: prod.description,
+      unit: prod.unit,
+      price: prod.price,
       stock: prod.stock - l.quantity,
+      active: prod.active,
+      createdAt: prod.createdAt,
       updatedAt: nowIso(),
     };
+    data.products[idx] = updated;
   }
   // Update customer outstanding (currentDue)
   if (hasCustomer && customer) {
@@ -216,8 +222,10 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
 }
 
 export function assertProductId(id: number) {
-  if (!Number.isInteger(id) || id < 1 || id > 1000) {
-    throw new Error("Product ID must be an integer between 1 and 1000");
+  if (!Number.isInteger(id) || id < MIN_PRODUCT_ID || id > MAX_PRODUCT_ID) {
+    throw new Error(
+      `Product ID must be an integer between ${MIN_PRODUCT_ID} and ${MAX_PRODUCT_ID}`
+    );
   }
 }
 
@@ -274,10 +282,18 @@ export function updateProduct(
   const idx = data.products.findIndex((x) => x.id === id);
   if (idx === -1) throw new Error("Product not found");
   const old = data.products[idx];
+  if (!old) throw new Error("Product not found");
   const next: Product = {
-    ...old,
-    ...patch,
+    id: old.id,
     nameBn: patch.nameBn !== undefined ? patch.nameBn : old.nameBn,
+    nameEn: patch.nameEn !== undefined ? patch.nameEn : old.nameEn,
+    description:
+      patch.description !== undefined ? patch.description : old.description,
+    unit: patch.unit !== undefined ? patch.unit : old.unit,
+    price: patch.price !== undefined ? patch.price : old.price,
+    stock: patch.stock !== undefined ? patch.stock : old.stock,
+    active: patch.active !== undefined ? patch.active : old.active,
+    createdAt: old.createdAt,
     updatedAt: nowIso(),
   };
   data.products[idx] = next;
@@ -354,6 +370,7 @@ export function updateCustomer(
   const idx = data.customers.findIndex((x) => x.id === id);
   if (idx === -1) throw new Error("Customer not found");
   const old = data.customers[idx];
+  if (!old) throw new Error("Customer not found");
   // Policy: Outstanding can only be set during creation; editing later is not allowed
   if (Object.prototype.hasOwnProperty.call(patch, "outstanding")) {
     throw new Error("Outstanding can only be set when creating a customer");
@@ -523,6 +540,7 @@ export function postPurchase(
     throw new Error("Quantity must be > 0");
 
   const prod = data.products[prodIdx];
+  if (!prod) throw new Error("Product not found");
   const purchase: Purchase = {
     id: genId(),
     date: date.toISOString(),

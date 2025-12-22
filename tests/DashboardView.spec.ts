@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
+import { createPinia } from "pinia";
 import DashboardView from "../src/views/Dashboard.vue";
 import type { PostInvoiceInput } from "../src/main/data";
 import { currentLang } from "../src/i18n";
@@ -35,7 +36,7 @@ describe("DashboardView.vue", () => {
           unit: "unit",
           quantity: l.quantity,
           rate: l.rate,
-          lineTotal: l.quantity * l.rate,
+          lineTotal: l.quantity * (l.rate ?? 0),
         })),
         discount: payload.discount || 0,
         totals: { subtotal: 0, net: 0 },
@@ -74,7 +75,12 @@ describe("DashboardView.vue", () => {
   });
 
   it("shows Walk-in banner when no customer and hides totals until products are added", async () => {
-    const wrapper = mount(DashboardView);
+    const pinia = createPinia();
+    const wrapper = mount(DashboardView, {
+      global: {
+        plugins: [pinia],
+      },
+    });
     await Promise.resolve();
     await nextTick();
     expect(wrapper.text()).toContain("Walk-in");
@@ -91,7 +97,13 @@ describe("DashboardView.vue", () => {
       { id: 101, nameBn: "Rahim" },
       { id: 202, nameBn: "Karim" },
     ];
-    const wrapper = mount(DashboardView, { attachTo: document.body });
+    const pinia = createPinia();
+    const wrapper = mount(DashboardView, {
+      global: {
+        plugins: [pinia],
+      },
+      attachTo: document.body,
+    });
     await Promise.resolve();
     await nextTick();
 
@@ -105,7 +117,8 @@ describe("DashboardView.vue", () => {
       .findAll("li")
       .filter((li) => li.text().includes("Rahim"));
     expect(items.length).toBeGreaterThan(0);
-    await items[0].trigger("click");
+    expect(items[0]).toBeDefined();
+    await items[0]!.trigger("click");
     await nextTick();
 
     expect(wrapper.text()).toContain("Customer Information");
@@ -124,7 +137,13 @@ describe("DashboardView.vue", () => {
         active: true,
       },
     ];
-    const wrapper = mount(DashboardView, { attachTo: document.body });
+    const pinia = createPinia();
+    const wrapper = mount(DashboardView, {
+      global: {
+        plugins: [pinia],
+      },
+      attachTo: document.body,
+    });
     await Promise.resolve();
     await nextTick();
 
@@ -171,7 +190,7 @@ describe("DashboardView.vue", () => {
     expect(wrapper.text()).toContain("kg");
 
     // Edit quantity to 3
-    const qtyInput = rows[0].find("input[type='number']");
+    const qtyInput = rows[0]!.find("input[type='number']");
     await qtyInput.setValue("3");
     await qtyInput.trigger("input");
     await nextTick();
@@ -192,7 +211,13 @@ describe("DashboardView.vue", () => {
         active: true,
       },
     ];
-    const wrapper = mount(DashboardView, { attachTo: document.body });
+    const pinia = createPinia();
+    const wrapper = mount(DashboardView, {
+      global: {
+        plugins: [pinia],
+      },
+      attachTo: document.body,
+    });
     await Promise.resolve();
     await nextTick();
 
@@ -204,7 +229,8 @@ describe("DashboardView.vue", () => {
     const cItems = wrapper
       .findAll("li")
       .filter((li) => li.text().includes("Buyer"));
-    await cItems[0].trigger("click");
+    expect(cItems.length).toBeGreaterThan(0);
+    await cItems[0]!.trigger("click");
     await nextTick();
 
     // Add product by selecting from dropdown
@@ -216,7 +242,7 @@ describe("DashboardView.vue", () => {
       .findAll("li")
       .filter((li) => li.text().includes("Soap"));
     expect(pItems.length).toBeGreaterThan(0);
-    await pItems[0].trigger("click");
+    await pItems[0]!.trigger("click");
     await nextTick();
 
     // Set discount higher than subtotal (50)
@@ -250,7 +276,7 @@ describe("DashboardView.vue", () => {
     await nextTick();
 
     expect(postInvoice).toHaveBeenCalledTimes(1);
-    const args = postInvoice.mock.calls[0][0];
+    const args = postInvoice.mock.calls[0]![0];
     expect(args.customerId).toBe(1);
     expect(args.discount).toBe(10);
     expect(Array.isArray(args.lines) && args.lines.length).toBe(1);

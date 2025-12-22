@@ -19,10 +19,16 @@
       <div
         class="px-4 py-3 flex justify-end gap-2 border-t border-gray-200 dark:border-gray-700"
       >
-        <button class="btn" @click="$emit('cancel')">
+        <button
+          class="btn"
+          @click="$emit('cancel')"
+        >
           {{ cancelLabel || "Cancel" }}
         </button>
-        <button class="btn btn-primary" @click="$emit('confirm')">
+        <button
+          class="btn btn-primary"
+          @click="$emit('confirm')"
+        >
           {{ confirmLabel || "Confirm" }}
         </button>
       </div>

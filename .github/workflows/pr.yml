@@ -36,3 +36,6 @@ jobs:
 
       - name: Run unit tests (if present)
         run: bun run test
+
+      - name: Run E2E tests
+        run: bun run test:e2e

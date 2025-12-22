@@ -14,10 +14,17 @@
             class="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm dark:text-gray-100"
           />
         </div>
-        <button class="ml-auto btn btn-primary" @click="load">
+        <button
+          class="ml-auto btn btn-primary"
+          @click="load"
+        >
           {{ t("fetch") }}
         </button>
-        <button class="btn" :disabled="rows.length === 0" @click="printReport">
+        <button
+          class="btn"
+          :disabled="rows.length === 0"
+          @click="printReport"
+        >
           {{ t("print") }}
         </button>
       </div>
@@ -89,14 +96,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { t } from "../i18n";
+import {
+  TOAST_DURATION_ERROR,
+  PRINT_WINDOW_DELAY,
+} from "../constants/business";
 
 type DailyRow = { customerId: number; customerName?: string; paid: number };
 
-const todayYmd = () => {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
+import { todayYmd } from "../utils/date";
+
+const showError = ref(false);
+const errorMessage = ref("");
 const date = ref<string>(todayYmd());
 const rows = ref<DailyRow[]>([]);
 const totals = ref<{ paid: number }>({ paid: 0 });
@@ -108,10 +118,11 @@ async function load() {
     const rep = await window.ahb.reportDailyPayments(date.value);
     rows.value = rep.rows;
     totals.value = rep.totals;
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
     showError.value = true;
-    errorMessage.value = err && err.message ? err.message : String(err);
-    setTimeout(() => (showError.value = false), 3000);
+    errorMessage.value = msg;
+    setTimeout(() => (showError.value = false), TOAST_DURATION_ERROR);
   }
 }
 async function printReport() {
@@ -172,13 +183,10 @@ async function printReport() {
   setTimeout(() => {
     w.print();
     w.close();
-  }, 100);
+  }, PRINT_WINDOW_DELAY);
 }
 
 onMounted(() => {
   void load();
 });
-
-const showError = ref(false);
-const errorMessage = ref("");
 </script>

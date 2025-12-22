@@ -5,7 +5,10 @@
     <div
       class="w-[30%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
     >
-      <div ref="leftListRef" class="flex-grow overflow-y-auto">
+      <div
+        ref="leftListRef"
+        class="flex-grow overflow-y-auto"
+      >
         <ul>
           <li
             v-for="id in idList"
@@ -91,6 +94,22 @@
                 maxlength="50"
               />
             </div>
+            <div v-if="!exists">
+              <label
+                for="customer-outstanding"
+                class="block text-sm font-medium text-gray-600 dark:text-gray-300"
+              >
+                {{ t("initial_due") }}
+              </label>
+              <input
+                id="customer-outstanding"
+                v-model.number="form.outstanding"
+                class="mt-1 block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 sm:text-sm dark:text-gray-100"
+                type="number"
+                min="0"
+                step="1.0"
+              />
+            </div>
             <div>
               <label
                 class="block text-sm font-medium text-gray-600 dark:text-gray-300"
@@ -166,8 +185,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
+import { MAX_CUSTOMER_ID } from "../constants/business";
 
 interface CustomerRow {
   id: number;
@@ -184,10 +204,13 @@ const form = ref({
   nameBn: "",
   address: "",
   phone: "",
+  outstanding: 0,
   active: true,
 });
 
-const idList = computed(() => Array.from({ length: 1000 }, (_, i) => i + 1));
+const idList = computed(() =>
+  Array.from({ length: MAX_CUSTOMER_ID }, (_, i) => i + 1)
+);
 const customersById = computed(() => {
   const m = new Map<number, CustomerRow>();
   for (const c of customers.value) m.set(c.id, c);
@@ -210,11 +233,13 @@ function syncFromSelected() {
     form.value.nameBn = c.nameBn || "";
     form.value.address = c.address || "";
     form.value.phone = c.phone || "";
+    form.value.outstanding = 0;
     form.value.active = !!c.active;
   } else {
     form.value.nameBn = "";
     form.value.address = "";
     form.value.phone = "";
+    form.value.outstanding = 0;
     form.value.active = true;
   }
 }
@@ -238,7 +263,10 @@ async function load() {
   // Preserve selection if still valid; otherwise, fall back to first existing (if any)
   if (!customersById.value.has(prevSelected)) {
     if (customers.value.length) {
-      selectedId.value = Math.min(1000, Math.max(1, customers.value[0].id));
+      selectedId.value = Math.min(
+        MAX_CUSTOMER_ID,
+        Math.max(1, customers.value[0].id)
+      );
     } else {
       selectedId.value = prevSelected;
     }
@@ -251,13 +279,13 @@ function first() {
   select(1);
 }
 function last() {
-  select(1000);
+  select(MAX_CUSTOMER_ID);
 }
 function previous() {
   select(Math.max(1, selectedId.value - 1));
 }
 function next() {
-  select(Math.min(1000, selectedId.value + 1));
+  select(Math.min(MAX_CUSTOMER_ID, selectedId.value + 1));
 }
 
 const canAdd = computed(() => form.value.nameBn.trim().length > 0);
@@ -279,7 +307,7 @@ async function add() {
     nameBn: form.value.nameBn,
     address: form.value.address,
     phone: form.value.phone,
-    outstanding: 0,
+    outstanding: form.value.outstanding,
     active: form.value.active,
   });
   await load();

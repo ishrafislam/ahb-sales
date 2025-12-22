@@ -11,30 +11,15 @@
         <span class="text-gray-600 dark:text-gray-300">{{ t("version") }}</span>
         <span class="font-medium">{{ version }}</span>
       </div>
-      <!-- <div class="flex items-center justify-between">
-        <span class="text-gray-600">{{ t('electron') }}</span>
-        <span class="font-medium">{{ runtime.versions.electron }}</span>
-      </div>
-      <div class="flex items-center justify-between">
-        <span class="text-gray-600">{{ t('chrome') }}</span>
-        <span class="font-medium">{{ runtime.versions.chrome }}</span>
-      </div>
-      <div class="flex items-center justify-between">
-        <span class="text-gray-600">{{ t('node') }}</span>
-        <span class="font-medium">{{ runtime.versions.node }}</span>
-      </div> -->
-      <!-- eslint-disable-next-line vue/max-attributes-per-line -->
-      <div v-if="runtime.buildDate" class="flex items-center justify-between">
+      <div
+        v-if="runtime.buildDate"
+        class="flex items-center justify-between"
+      >
         <span class="text-gray-600 dark:text-gray-300">{{
           t("build_date")
         }}</span>
         <span class="font-medium">{{ buildDateText }}</span>
       </div>
-      <!-- eslint-disable-next-line vue/max-attributes-per-line -->
-      <!-- <div v-if="runtime.commitSha" class="flex items-center justify-between">
-        <span class="text-gray-600">{{ t("commit_sha") }}</span>
-        <span class="font-medium font-mono">{{ runtime.commitSha }}</span>
-      </div> -->
     </div>
     <div class="mt-5 flex items-center justify-between">
       <p class="text-gray-500 dark:text-gray-400">
@@ -53,6 +38,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { t } from "../i18n";
+import { formatDateOnly } from "../utils/date";
 
 const appName = ref("");
 const version = ref("");
@@ -96,14 +82,4 @@ const buildDateText = computed(() => {
     ? String(runtime.value.buildDate)
     : formatDateOnly(d);
 });
-
-function formatDateOnly(d: Date): string {
-  // Use en-GB to get DD/MM/YYYY then replace separators
-  const s = new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(d);
-  return s.replaceAll("/", "-");
-}
 </script>

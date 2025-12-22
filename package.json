@@ -1,7 +1,7 @@
 {
   "name": "ahb-sales",
   "productName": "Abdul Hamid & Brothers - Sales",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "The Sales Application of Abdul Hamid & Brothers",
   "main": ".vite/build/main.js",
   "scripts": {
@@ -10,8 +10,13 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
+    "type-check": "bunx tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
+    "test:all": "bun run test && bun run test:e2e",
     "seed": "bun run scripts/seed.ts"
   },
   "keywords": [],
@@ -26,11 +31,12 @@
     "@electron-forge/maker-rpm": "^7.9.0",
     "@electron-forge/maker-squirrel": "^7.9.0",
     "@electron-forge/maker-zip": "^7.9.0",
-    "@electron-forge/publisher-github": "^7.9.0",
     "@electron-forge/plugin-auto-unpack-natives": "^7.9.0",
     "@electron-forge/plugin-fuses": "^7.9.0",
     "@electron-forge/plugin-vite": "^7.9.0",
+    "@electron-forge/publisher-github": "^7.9.0",
     "@electron/fuses": "^1.8.0",
+    "@playwright/test": "^1.56.1",
     "@types/electron-squirrel-startup": "^1.0.2",
     "@types/node": "^20.16.11",
     "@typescript-eslint/eslint-plugin": "^8.9.0",
@@ -44,6 +50,7 @@
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-vue": "^9.29.0",
     "jsdom": "^27.0.0",
+    "playwright": "^1.56.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3",
@@ -52,9 +59,10 @@
     "vue-tsc": "^2.0.29"
   },
   "dependencies": {
-    "update-electron-app": "^3.0.0",
+    "dotenv": "^16.4.5",
     "electron-squirrel-startup": "^1.0.1",
-    "vue": "^3.5.22",
-    "dotenv": "^16.4.5"
+    "pinia": "^3.0.4",
+    "update-electron-app": "^3.0.0",
+    "vue": "^3.5.22"
   }
 }

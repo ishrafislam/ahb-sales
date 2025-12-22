@@ -72,7 +72,7 @@ describe("reportMoneyTransactionsCustomerRange", () => {
     expect(rep.rows.length).toBe(3);
 
     // Dates formatted DD-MM-YYYY (descending by date)
-    expect(rep.rows[0].date).toMatch(/^\d{2}-\d{2}-\d{4}$/);
+    expect(rep.rows[0]?.date).toMatch(/^\d{2}-\d{2}-\d{4}$/);
 
     // Check one known row values
     const rowRahim1 = rep.rows.find(

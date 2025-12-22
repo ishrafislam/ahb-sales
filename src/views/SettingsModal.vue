@@ -83,10 +83,16 @@
       </div>
     </div>
     <div class="pt-2 flex gap-2 justify-end">
-      <button class="btn" @click="resetDefaults">
+      <button
+        class="btn"
+        @click="resetDefaults"
+      >
         {{ t("reset") }}
       </button>
-      <button class="btn btn-primary" @click="save">
+      <button
+        class="btn btn-primary"
+        @click="save"
+      >
         {{ t("save") }}
       </button>
     </div>
@@ -105,6 +111,7 @@
 import { ref, onMounted } from "vue";
 import { t } from "../i18n";
 import { setTheme } from "../theme";
+import { TOAST_DURATION_UPDATE_SHORT } from "../constants/business";
 
 const paperSize = ref<"A4" | "A5" | "Letter">("A4");
 const orientation = ref<"portrait" | "landscape">("portrait");
@@ -141,7 +148,7 @@ async function save() {
     printerDevice: printerDevice.value || undefined,
   });
   showSuccess.value = true;
-  setTimeout(() => (showSuccess.value = false), 2000);
+  setTimeout(() => (showSuccess.value = false), TOAST_DURATION_UPDATE_SHORT);
 }
 
 async function onThemeSourceChange() {
