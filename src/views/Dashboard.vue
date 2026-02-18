@@ -536,9 +536,9 @@ onUnmounted(() => {
 
 function onGlobalClick(evt: MouseEvent) {
   const target = evt.target as HTMLElement;
-  // If clicks are outside the inputs, close dropdowns
-  if (!target.closest("#search-customer")) customerDropdownOpen.value = false;
-  if (!target.closest("#search-product")) productDropdownOpen.value = false;
+  // If clicks are outside the search containers, close dropdowns
+  if (!target.closest("#customer-search-container")) customerDropdownOpen.value = false;
+  if (!target.closest("#product-search-container")) productDropdownOpen.value = false;
 }
 
 // Toast states

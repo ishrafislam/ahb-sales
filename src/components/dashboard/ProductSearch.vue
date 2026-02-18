@@ -1,5 +1,6 @@
 <template>
   <div
+    id="product-search-container"
     class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4 flex items-center gap-2"
   >
     <div class="relative flex-grow">

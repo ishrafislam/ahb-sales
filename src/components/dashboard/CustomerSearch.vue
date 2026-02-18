@@ -1,5 +1,6 @@
 <template>
   <div
+    id="customer-search-container"
     class="bg-white dark:bg-gray-900 dark:text-gray-100 p-4 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 relative"
   >
     <div class="relative w-full">
