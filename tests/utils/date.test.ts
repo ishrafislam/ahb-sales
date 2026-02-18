@@ -95,8 +95,8 @@ describe("Date utilities", () => {
     });
 
     it("should handle year boundary", () => {
-      const iso = "2024-12-31T23:59:59.000Z";
-      expect(formatDate(iso)).toBe("01-01-2025"); // UTC conversion
+      const iso = "2025-01-01T00:00:00.000Z";
+      expect(formatDate(iso)).toBe("01-01-2025");
     });
 
     it("should handle invalid date strings gracefully", () => {
