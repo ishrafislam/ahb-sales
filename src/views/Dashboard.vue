@@ -104,6 +104,7 @@
           @quantity-input="onQuantityInput"
           @adjust-quantity="adjustQuantity"
           @remove-row="removeReceiptRow"
+          @rate-input="onRateInput"
         />
 
         <ProductSearch
@@ -464,6 +465,16 @@ function onQuantityInput(idx: number, evt: Event) {
   const item = receipt.value[idx];
   if (item) {
     item.quantity = val;
+    recomputeRow(idx);
+  }
+}
+
+function onRateInput(idx: number, evt: Event) {
+  const input = evt.target as HTMLInputElement;
+  const val = Math.max(1, Number(input.value || 1));
+  const item = receipt.value[idx];
+  if (item) {
+    item.rate = val;
     recomputeRow(idx);
   }
 }
