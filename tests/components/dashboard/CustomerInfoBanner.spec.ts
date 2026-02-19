@@ -9,11 +9,10 @@ describe("CustomerInfoBanner.vue", () => {
     name: "Name",
     lastBill: "Last Bill",
     due: "Due",
-    walkIn: "Walk-in",
-    walkInHint: "No customer selected. This invoice must be fully paid.",
+    selectCustomerPrompt: "Enter Customer ID or Name",
   };
 
-  it("renders walk-in view when no customer", () => {
+  it("renders select-customer prompt when no customer", () => {
     const wrapper = mount(CustomerInfoBanner, {
       props: {
         customer: null,
@@ -22,8 +21,7 @@ describe("CustomerInfoBanner.vue", () => {
       },
     });
 
-    expect(wrapper.text()).toContain("Walk-in");
-    expect(wrapper.text()).toContain("No customer selected");
+    expect(wrapper.text()).toContain("Enter Customer ID or Name");
     expect(wrapper.text()).not.toContain("Customer Information");
   });
 

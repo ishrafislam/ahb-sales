@@ -14,6 +14,7 @@ import {
   reportMoneyTransactionsCustomerRange,
   reportMoneyTransactionsDayWise,
   reportDailyPayments,
+  recordPayment,
 } from "../data";
 import type { FileService } from "./FileService";
 import { DataIndex } from "../utils/dataIndex";
@@ -121,6 +122,18 @@ export class DataService {
     });
     this.markDirty();
     return cust;
+  }
+
+  recordPayment(customerId: number, amount: number): void {
+    recordPayment(this.getData(), customerId, amount);
+    const cust = this.getData().customers.find((c) => c.id === customerId);
+    if (cust) this.index.updateCustomer(cust);
+    this.fileService.notifyDataChanged({
+      kind: "customer",
+      action: "update",
+      id: customerId,
+    });
+    this.markDirty();
   }
 
   // Invoices

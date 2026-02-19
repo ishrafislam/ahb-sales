@@ -142,5 +142,10 @@
   "shortcut_save_file": "Save File (Ctrl+S)",
   "shortcut_close_modal": "Press Esc to close",
   "shortcut_navigate": "Use Tab to navigate",
-  "initial_due": "Initial Due"
+  "initial_due": "Initial Due",
+  "make_payment": "Make Payment",
+  "make_payment_title": "Record Payment",
+  "payment_amount": "Payment Amount",
+  "empty_slot": "Empty Slot",
+  "payment_recorded": "Payment recorded successfully"
 }

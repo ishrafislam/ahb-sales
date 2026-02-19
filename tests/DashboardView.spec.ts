@@ -83,10 +83,7 @@ describe("DashboardView.vue", () => {
     });
     await Promise.resolve();
     await nextTick();
-    expect(wrapper.text()).toContain("Walk-in");
-    expect(wrapper.text()).toContain(
-      "No customer selected. This invoice must be fully paid."
-    );
+    expect(wrapper.text()).toContain("Enter Customer ID or Name");
     // Summary should show prompt instead of totals when no products
     expect(wrapper.text()).toContain("Add products to the invoice first.");
     expect(wrapper.text()).not.toContain("Total Price");
@@ -281,10 +278,7 @@ describe("DashboardView.vue", () => {
     expect(args.discount).toBe(10);
     expect(Array.isArray(args.lines) && args.lines.length).toBe(1);
 
-    // After complete, draft resets and selection cleared -> Walk-in banner shown
-    expect(wrapper.text()).toContain("Walk-in");
-    expect(wrapper.text()).toContain(
-      "No customer selected. This invoice must be fully paid."
-    );
+    // After complete, draft resets and selection cleared -> prompt shown
+    expect(wrapper.text()).toContain("Enter Customer ID or Name");
   });
 });

@@ -46,7 +46,10 @@
           @click="emit('select', c)"
         >
           <div class="flex justify-between items-center">
-            <span class="font-medium text-sm">{{ c.nameBn }}</span>
+            <span v-if="c.nameBn" class="font-medium text-sm">{{ c.nameBn }}</span>
+            <span v-else class="text-xs text-gray-400 dark:text-gray-500 italic">
+              {{ emptySlotLabel }}
+            </span>
             <span class="text-xs text-gray-500 dark:text-gray-400">{{
               c.id
             }}</span>
@@ -75,6 +78,7 @@ const props = defineProps<{
   highlightIndex: number;
   placeholder: string;
   clearLabel: string;
+  emptySlotLabel: string;
 }>();
 
 const emit = defineEmits<{
