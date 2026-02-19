@@ -22,6 +22,7 @@
           :highlight-index="customerHighlight"
           :placeholder="t('search_customer_placeholder')"
           :clear-label="t('clear')"
+          :empty-slot-label="t('empty_slot')"
           @focus="customerDropdownOpen = true"
           @input="customerDropdownOpen = true"
           @keydown-down="moveCustomerHighlight(1)"
@@ -34,7 +35,7 @@
 
         <InvoiceSummary
           :has-items="receipt.length > 0"
-          :has-customer="!!selectedCustomer"
+          :allow-partial-payment="!!selectedCustomer"
           :subtotal-text="subtotalText"
           :discount="discount"
           :net-text="netText"
@@ -62,6 +63,14 @@
           @complete="complete"
         />
 
+        <button
+          v-if="selectedCustomer && (selectedCustomer.outstanding ?? 0) > 0"
+          class="w-full bg-blue-600 text-white py-2 px-3 rounded-md text-sm font-semibold hover:bg-blue-700 transition-colors"
+          @click="showMakePayment = true; makePaymentAmount = 0"
+        >
+          {{ t('make_payment') }}
+        </button>
+
         <QuickActions
           :actions="quickActionsData"
           @navigate="navigate"
@@ -81,8 +90,7 @@
             name: t('name'),
             lastBill: t('last_bill'),
             due: t('due'),
-            walkIn: t('walk_in'),
-            walkInHint: t('walk_in_hint'),
+            selectCustomerPrompt: t('search_customer_placeholder'),
           }"
         />
 
@@ -149,6 +157,45 @@
       @confirm="onConfirmNegative"
       @cancel="onCancelNegative"
     />
+
+    <!-- Make Payment modal -->
+    <div
+      v-if="showMakePayment"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    >
+      <div class="bg-white dark:bg-gray-900 rounded-md shadow-lg p-6 w-80">
+        <h2 class="text-base font-semibold mb-3 dark:text-gray-100">
+          {{ t('make_payment_title') }}
+        </h2>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
+          {{ t('net_due') }}: {{ formatMoney(selectedCustomer?.outstanding ?? 0) }}
+        </p>
+        <input
+          v-model.number="makePaymentAmount"
+          type="number"
+          min="0.01"
+          step="0.01"
+          :max="selectedCustomer?.outstanding ?? 0"
+          :placeholder="t('payment_amount')"
+          class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 text-sm mb-4 dark:text-gray-100"
+        />
+        <div class="flex gap-2">
+          <button
+            class="flex-1 bg-green-600 text-white py-1.5 rounded text-sm font-semibold hover:bg-green-700 disabled:opacity-50"
+            :disabled="!makePaymentAmount || makePaymentAmount <= 0"
+            @click="confirmMakePayment"
+          >
+            {{ t('confirm') }}
+          </button>
+          <button
+            class="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 py-1.5 rounded text-sm"
+            @click="showMakePayment = false"
+          >
+            {{ t('cancel') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -157,7 +204,7 @@ defineOptions({ name: "AhbDashboardView" });
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { t } from "../i18n";
 import { printInvoice } from "../print/invoice";
-import { BUSINESS_NAME } from "../constants/business";
+import { BUSINESS_NAME, MAX_CUSTOMER_ID, TOAST_DURATION_SUCCESS, TOAST_DURATION_ERROR } from "../constants/business";
 import ConfirmModal from "../components/ConfirmModal.vue";
 import FileInfoPanel from "../components/dashboard/FileInfoPanel.vue";
 import CustomerSearch from "../components/dashboard/CustomerSearch.vue";
@@ -179,7 +226,7 @@ type Prod = {
 type Cust = {
   id: number;
   nameBn: string;
-  outstanding?: number;
+  outstanding: number;
 };
 
 const emit = defineEmits<{
@@ -216,13 +263,24 @@ const customerDropdownOpen = ref(false);
 const productDropdownOpen = ref(false);
 // Walk-in is implied when no customer is selected; no toggle needed.
 
-const filteredCustomers = computed(() => {
+const allSlots = computed<Cust[]>(() => {
+  const byId = new Map<number, Cust>();
+  for (const c of customers.value) byId.set(c.id, c);
+  return Array.from({ length: MAX_CUSTOMER_ID }, (_, i) => {
+    const id = i + 1;
+    const cust = byId.get(id);
+    return { id, nameBn: cust?.nameBn ?? "", outstanding: cust?.outstanding ?? 0 };
+  });
+});
+
+const filteredCustomers = computed<Cust[]>(() => {
   const q = customerQuery.value.trim().toLowerCase();
-  if (!q) return customers.value.slice(0, 20);
-  return customers.value
-    .filter(
-      (c) => String(c.id).includes(q) || c.nameBn.toLowerCase().includes(q)
-    )
+  if (!q) return allSlots.value.slice(0, 30);
+  if (/^\d+$/.test(q))
+    return allSlots.value.filter((s) => String(s.id).includes(q)).slice(0, 20);
+  // Text: only match named customers
+  return allSlots.value
+    .filter((s) => s.nameBn && s.nameBn.toLowerCase().includes(q))
     .slice(0, 20);
 });
 
@@ -357,11 +415,11 @@ const canComplete = computed(() => {
   if (receipt.value.length === 0) return false;
   if (discount.value > subtotal.value) return false;
   if (paid.value < 0) return false;
-  // Anonymous: must be fully paid (no due)
   if (!selectedCustomer.value) {
-    return Math.abs(net.value - paid.value) < 0.005; // float-safe equality
+    // No slot at all: walk-in must be fully paid
+    return Math.abs(net.value - paid.value) < 0.005;
   }
-  // Customer selected: original constraints
+  // Any slot (empty or real): partial payment allowed
   return paid.value <= previousDue.value + net.value;
 });
 
@@ -379,9 +437,15 @@ async function complete() {
 
 async function doPostInvoice() {
   try {
+    const slot = selectedCustomer.value;
+    // Auto-create a bare customer record for empty slots
+    if (slot && !customers.value.some((c) => c.id === slot.id)) {
+      await window.ahb.addCustomer({ id: slot.id, nameBn: "" });
+      await loadCustomers();
+    }
     const payload = {
       date: new Date().toISOString(),
-      customerId: selectedCustomer.value ? selectedCustomer.value.id : null,
+      customerId: slot ? slot.id : null,
       discount: Number(discount.value || 0),
       paid: Number(paid.value || 0),
       notes: notes.value,
@@ -394,7 +458,7 @@ async function doPostInvoice() {
     const inv = await window.ahb.postInvoice(payload as unknown);
     showSuccess.value = true;
     successMessage.value = t("receipt_saved", { no: inv.no });
-    setTimeout(() => (showSuccess.value = false), 2500);
+    setTimeout(() => (showSuccess.value = false), TOAST_DURATION_SUCCESS);
     try {
       const productsMap: Record<number, { name: string; unit: string }> = {};
       for (const r of receipt.value) {
@@ -402,13 +466,19 @@ async function doPostInvoice() {
       }
       printInvoice(inv as unknown as import("../main/data").Invoice, {
         businessName: BUSINESS_NAME,
-        customerName: selectedCustomer.value
-          ? selectedCustomer.value.nameBn
-          : t("walk_in"),
+        customerName: slot?.nameBn || t("walk_in"),
         products: productsMap,
       });
     } catch (err) {
       console.error("print failed", err);
+    }
+    // Update selectedCustomer outstanding from fresh data
+    if (slot) {
+      await loadCustomers();
+      const updated = customers.value.find((c) => c.id === slot.id);
+      if (updated && selectedCustomer.value) {
+        selectedCustomer.value = { ...selectedCustomer.value, outstanding: updated.outstanding };
+      }
     }
     // Reset draft
     receipt.value = [];
@@ -420,13 +490,13 @@ async function doPostInvoice() {
   } catch (e) {
     showError.value = true;
     errorMessage.value = (e as Error).message;
-    setTimeout(() => (showError.value = false), 3000);
+    setTimeout(() => (showError.value = false), TOAST_DURATION_ERROR);
   }
 }
 
 function onSelectCustomer(c: Cust) {
   selectedCustomer.value = c;
-  customerQuery.value = `${c.id} - ${c.nameBn}`;
+  customerQuery.value = c.nameBn ? `${c.id} - ${c.nameBn}` : String(c.id);
   customerDropdownOpen.value = false;
   void loadLastBillForCustomer(c.id);
 }
@@ -495,7 +565,7 @@ function removeReceiptRow(idx: number) {
 // (Removed older window.confirm-based complete() implementation)
 
 async function loadCustomers() {
-  const list = await window.ahb.listCustomers({ activeOnly: true });
+  const list = await window.ahb.listCustomers();
   customers.value = list.map((c) => ({
     id: c.id,
     nameBn: c.nameBn,
@@ -615,6 +685,30 @@ function isOversell(row: ReceiptRow): boolean {
   return row.quantity > stk;
 }
 
+// Make Payment modal state
+const showMakePayment = ref(false);
+const makePaymentAmount = ref(0);
+
+async function confirmMakePayment() {
+  const slot = selectedCustomer.value;
+  if (!slot || !makePaymentAmount.value) return;
+  try {
+    await window.ahb.recordPayment(slot.id, makePaymentAmount.value);
+    showMakePayment.value = false;
+    makePaymentAmount.value = 0;
+    await loadCustomers();
+    const updated = customers.value.find((c) => c.id === slot.id);
+    if (updated) selectedCustomer.value = { ...slot, outstanding: updated.outstanding };
+    showSuccess.value = true;
+    successMessage.value = t("payment_recorded");
+    setTimeout(() => (showSuccess.value = false), TOAST_DURATION_SUCCESS);
+  } catch (e) {
+    showError.value = true;
+    errorMessage.value = (e as Error).message;
+    setTimeout(() => (showError.value = false), TOAST_DURATION_ERROR);
+  }
+}
+
 // Confirm modal state & handlers
 const showConfirmNegative = ref(false);
 const confirmOversCount = ref(0);
@@ -626,7 +720,7 @@ function onCancelNegative() {
   showConfirmNegative.value = false;
 }
 
-// Auto-fill paid in Walk-in mode to enforce full payment UX
+// Auto-fill paid when no slot selected (walk-in) to enforce full payment UX
 watch(
   () => [selectedCustomer.value, net.value],
   () => {

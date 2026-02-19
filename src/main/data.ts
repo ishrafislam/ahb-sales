@@ -158,9 +158,6 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
   const maxPayable = ceil2(previousDue + net);
   if (paid > maxPayable)
     throw new Error("Paid amount cannot exceed previous due plus net bill");
-  // Anonymous invoices must be fully paid: enforce no due
-  if (!hasCustomer && paid !== net)
-    throw new Error("Anonymous invoice must be fully paid");
   const invoiceDue = Math.max(0, ceil2(net - paid));
   const currentDue = hasCustomer ? ceil2(previousDue + invoiceDue) : 0;
 
@@ -325,7 +322,6 @@ export type NewCustomer = Omit<
 export function addCustomer(data: AhbDataV1, c: NewCustomer): Customer {
   if (!Number.isInteger(c.id) || c.id < 1)
     throw new Error("Customer ID must be a positive integer");
-  if (!c.nameBn?.trim()) throw new Error("Customer Bengali name is required");
   if (data.customers.some((x) => x.id === c.id))
     throw new Error("Duplicate customer id");
   const parseNumber = (val: unknown, field: string, def = 0): number => {
@@ -345,7 +341,7 @@ export function addCustomer(data: AhbDataV1, c: NewCustomer): Customer {
   };
   const cust: Customer = {
     id: c.id,
-    nameBn: c.nameBn.trim(),
+    nameBn: c.nameBn?.trim() ?? "",
     nameEn: c.nameEn?.trim() || undefined,
     address: c.address?.trim() || undefined,
     phone: (() => {
@@ -407,6 +403,25 @@ export function listCustomers(
   return (opts?.activeOnly ? arr.filter((x) => x.active) : arr).sort(
     (a, b) => a.id - b.id
   );
+}
+
+export function recordPayment(
+  data: AhbDataV1,
+  customerId: number,
+  amount: number
+): void {
+  const custIdx = data.customers.findIndex((c) => c.id === customerId);
+  if (custIdx === -1) throw new Error("Customer not found");
+  const customer = data.customers[custIdx]!;
+  if (!Number.isFinite(amount) || amount <= 0)
+    throw new Error("Payment amount must be positive");
+  if (amount > customer.outstanding)
+    throw new Error("Payment amount exceeds outstanding due");
+  data.customers[custIdx] = {
+    ...customer,
+    outstanding: ceil2(customer.outstanding - amount),
+    updatedAt: nowIso(),
+  };
 }
 
 // -----------------------

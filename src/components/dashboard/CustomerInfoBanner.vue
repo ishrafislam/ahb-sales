@@ -39,13 +39,10 @@
   </div>
   <div
     v-else
-    class="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg mb-4"
+    class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg mb-4"
   >
-    <div class="text-sm text-blue-700 dark:text-blue-300 font-medium">
-      {{ labels.walkIn }}
-    </div>
-    <div class="text-xs text-blue-700/80 dark:text-blue-300/80 mt-1">
-      {{ labels.walkInHint }}
+    <div class="text-sm text-gray-500 dark:text-gray-400">
+      {{ labels.selectCustomerPrompt }}
     </div>
   </div>
 </template>
@@ -68,8 +65,7 @@ defineProps<{
     name: string;
     lastBill: string;
     due: string;
-    walkIn: string;
-    walkInHint: string;
+    selectCustomerPrompt: string;
   };
 }>();
 

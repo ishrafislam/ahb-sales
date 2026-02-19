@@ -55,16 +55,19 @@ describe("Anonymous (Walk-in) invoice", () => {
     expect(data.customers.length).toBe(0);
   });
 
-  it("rejects anonymous invoice when not fully paid", () => {
+  it("allows anonymous invoice with partial payment (no customer AR tracking)", () => {
     const data = initData();
     addSampleProduct(data);
-    expect(() =>
-      postInvoice(data, {
-        customerId: null,
-        lines: [{ productId: 1, quantity: 1 }], // 50
-        paid: 49, // not equal to net
-      })
-    ).toThrowError(/fully paid/i);
+    const inv = postInvoice(data, {
+      customerId: null,
+      lines: [{ productId: 1, quantity: 1 }], // 50
+      paid: 49, // partial payment
+    });
+    expect(inv.customerId).toBeNull();
+    expect(inv.paid).toBe(49);
+    expect(inv.totals.net).toBe(50);
+    expect(inv.currentDue).toBe(0); // no customer AR to track
+    expect(data.customers.length).toBe(0);
   });
 
   it("includes anonymous in money customer range and daily payments with customerId 0", () => {
