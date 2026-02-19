@@ -6,6 +6,7 @@
       <button
         v-for="action in actions"
         :key="action.page"
+        tabindex="-1"
         class="py-1.5 px-3 rounded-md text-sm font-semibold transition-colors"
         :class="action.className"
         @click="emit('navigate', action.page)"

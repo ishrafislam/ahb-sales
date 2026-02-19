@@ -4,6 +4,7 @@
     class="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4"
     role="dialog"
     aria-modal="true"
+    @keydown.esc="$emit('cancel')"
   >
     <div
       class="w-full max-w-sm rounded-md bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700"
@@ -26,6 +27,7 @@
           {{ cancelLabel || "Cancel" }}
         </button>
         <button
+          ref="confirmBtnRef"
           class="btn btn-primary"
           @click="$emit('confirm')"
         >
@@ -37,6 +39,8 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from "vue";
+
 interface Props {
   title?: string;
   message?: string;
@@ -47,4 +51,9 @@ interface Props {
 const props = defineProps<Props>();
 // Declare events
 defineEmits<{ (e: "confirm"): void; (e: "cancel"): void }>();
+
+const confirmBtnRef = ref<HTMLButtonElement | null>(null);
+onMounted(() => {
+  confirmBtnRef.value?.focus();
+});
 </script>

@@ -162,6 +162,7 @@
     <div
       v-if="showMakePayment"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      @keydown.esc="showMakePayment = false"
     >
       <div class="bg-white dark:bg-gray-900 rounded-md shadow-lg p-6 w-80">
         <h2 class="text-base font-semibold mb-3 dark:text-gray-100">
@@ -171,6 +172,7 @@
           {{ t('net_due') }}: {{ formatMoney(selectedCustomer?.outstanding ?? 0) }}
         </p>
         <input
+          ref="makePaymentInputRef"
           v-model.number="makePaymentAmount"
           type="number"
           min="0.01"
@@ -201,7 +203,7 @@
 
 <script setup lang="ts">
 defineOptions({ name: "AhbDashboardView" });
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { t } from "../i18n";
 import { printInvoice } from "../print/invoice";
 import { BUSINESS_NAME, MAX_CUSTOMER_ID, TOAST_DURATION_SUCCESS, TOAST_DURATION_ERROR } from "../constants/business";
@@ -494,21 +496,25 @@ async function doPostInvoice() {
   }
 }
 
-function onSelectCustomer(c: Cust) {
+async function onSelectCustomer(c: Cust) {
   selectedCustomer.value = c;
   customerQuery.value = c.nameBn ? `${c.id} - ${c.nameBn}` : String(c.id);
   customerDropdownOpen.value = false;
   void loadLastBillForCustomer(c.id);
+  await nextTick();
+  (document.getElementById("search-product") as HTMLInputElement | null)?.focus();
 }
-function clearCustomerSelection() {
+async function clearCustomerSelection() {
   selectedCustomer.value = null;
   customerQuery.value = "";
   customerDropdownOpen.value = false;
   lastBillText.value = "—";
+  await nextTick();
+  (document.getElementById("search-customer") as HTMLInputElement | null)?.focus();
 }
 // removed: selectFirstCustomerMatch (search is live on keypress)
 
-function onSelectProduct(p: Prod) {
+async function onSelectProduct(p: Prod) {
   const idx = receipt.value.findIndex((r) => r.productId === p.id);
   if (idx >= 0) {
     const item = receipt.value[idx]!;
@@ -526,6 +532,8 @@ function onSelectProduct(p: Prod) {
   }
   productDropdownOpen.value = false;
   productQuery.value = "";
+  await nextTick();
+  (document.getElementById("search-product") as HTMLInputElement | null)?.focus();
 }
 // removed: addFirstProductMatch (select from dropdown to add)
 
@@ -688,6 +696,13 @@ function isOversell(row: ReceiptRow): boolean {
 // Make Payment modal state
 const showMakePayment = ref(false);
 const makePaymentAmount = ref(0);
+const makePaymentInputRef = ref<HTMLInputElement | null>(null);
+watch(showMakePayment, async (val) => {
+  if (val) {
+    await nextTick();
+    makePaymentInputRef.value?.focus();
+  }
+});
 
 async function confirmMakePayment() {
   const slot = selectedCustomer.value;
