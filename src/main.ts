@@ -183,6 +183,13 @@ ipcMain.handle("data:update-customer", async (_e, id, patch) => {
   return dataService.updateCustomer(id, patch);
 });
 
+ipcMain.handle(
+  "data:record-payment",
+  async (_e, customerId: number, amount: number) => {
+    return dataService.recordPayment(customerId, amount);
+  }
+);
+
 // Data operations - Invoices
 ipcMain.handle("data:post-invoice", async (_e, payload) => {
   return dataService.postInvoice(payload);

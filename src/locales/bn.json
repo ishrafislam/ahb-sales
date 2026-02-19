@@ -142,5 +142,10 @@
   "shortcut_save_file": "ফাইল সংরক্ষণ করুন (Ctrl+S)",
   "shortcut_close_modal": "বন্ধ করতে Esc চাপুন",
   "shortcut_navigate": "নেভিগেট করতে Tab ব্যবহার করুন",
-  "initial_due": "প্রাথমিক বকেয়া"
+  "initial_due": "প্রাথমিক বকেয়া",
+  "make_payment": "পেমেন্ট করুন",
+  "make_payment_title": "পেমেন্ট রেকর্ড করুন",
+  "payment_amount": "পরিমাণ",
+  "empty_slot": "খালি স্লট",
+  "payment_recorded": "পেমেন্ট সফলভাবে রেকর্ড হয়েছে"
 }

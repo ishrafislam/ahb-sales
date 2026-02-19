@@ -44,7 +44,7 @@
             class="w-20 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-1 py-0 text-right font-semibold text-sm no-spinner dark:text-gray-100"
             type="number"
             min="0"
-            :disabled="!hasCustomer"
+            :disabled="!allowPartialPayment"
             @input="
               emit(
                 'update:paid',
@@ -121,7 +121,7 @@ defineOptions({ name: "InvoiceSummary" });
 
 defineProps<{
   hasItems: boolean;
-  hasCustomer: boolean;
+  allowPartialPayment: boolean;
   subtotalText: string;
   discount: number;
   netText: string;

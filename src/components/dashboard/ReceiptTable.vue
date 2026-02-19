@@ -99,7 +99,14 @@
             {{ row.unit }}
           </td>
           <td class="p-2 text-right">
-            {{ formatMoney(row.rate) }}
+            <input
+              class="w-20 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-1 py-0.5 text-right text-sm no-spinner dark:text-gray-100"
+              type="number"
+              min="1"
+              step="1"
+              :value="row.rate"
+              @change="emit('rate-input', idx, $event)"
+            />
           </td>
           <td class="p-2 text-right">
             {{ formatMoney(row.lineTotal) }}
@@ -164,6 +171,7 @@ const emit = defineEmits<{
   (e: "quantity-input", idx: number, event: Event): void;
   (e: "adjust-quantity", idx: number, delta: number): void;
   (e: "remove-row", idx: number): void;
+  (e: "rate-input", idx: number, event: Event): void;
 }>();
 
 const formatMoney = (n: number) => (Number.isFinite(n) ? n.toFixed(2) : "0.00");
