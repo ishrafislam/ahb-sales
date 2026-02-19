@@ -33,7 +33,7 @@
       v-if="dropdownOpen && filteredCustomers.length"
       class="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg z-10 max-h-64 overflow-auto"
     >
-      <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+      <ul ref="listRef" class="divide-y divide-gray-200 dark:divide-gray-700">
         <li
           v-for="(c, idx) in filteredCustomers"
           :key="c.id"
@@ -62,7 +62,7 @@
 
 <script setup lang="ts">
 defineOptions({ name: "CustomerSearch" });
-import { ref, watch } from "vue";
+import { ref, watch, nextTick } from "vue";
 
 type Customer = {
   id: number;
@@ -94,6 +94,7 @@ const emit = defineEmits<{
 }>();
 
 const localQuery = ref(props.modelValue);
+const listRef = ref<HTMLUListElement | null>(null);
 
 watch(
   () => props.modelValue,
@@ -105,4 +106,12 @@ watch(
 watch(localQuery, (newVal) => {
   emit("update:modelValue", newVal);
 });
+
+watch(
+  () => props.highlightIndex,
+  async (idx) => {
+    await nextTick();
+    (listRef.value?.children[idx] as HTMLElement | undefined)?.scrollIntoView({ block: "nearest" });
+  }
+);
 </script>
