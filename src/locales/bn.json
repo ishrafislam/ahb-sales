@@ -147,5 +147,6 @@
   "make_payment_title": "পেমেন্ট রেকর্ড করুন",
   "payment_amount": "পরিমাণ",
   "empty_slot": "খালি স্লট",
-  "payment_recorded": "পেমেন্ট সফলভাবে রেকর্ড হয়েছে"
+  "payment_recorded": "পেমেন্ট সফলভাবে রেকর্ড হয়েছে",
+  "menu_new_window": "নতুন উইন্ডো"
 }

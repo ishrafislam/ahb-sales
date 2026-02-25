@@ -11,8 +11,9 @@ import { logger } from "./Logger";
 
 export class MenuService {
   constructor(
-    private fileService: FileService,
-    private settingsService: SettingsService
+    private getFileService: () => FileService | null,
+    private settingsService: SettingsService,
+    private onNewWindow: () => void
   ) {}
 
   private notifyAll(channel: string, ...args: unknown[]) {
@@ -26,8 +27,9 @@ export class MenuService {
     const d = dict[lang];
     const themeSource =
       this.settingsService.loadSettings().themeSource ?? "system";
-    const currentFilePath = this.fileService.getCurrentFilePath();
-    const isDirty = this.fileService.getIsDirty();
+    const fs = this.getFileService();
+    const currentFilePath = fs?.getCurrentFilePath() ?? null;
+    const isDirty = fs?.getIsDirty() ?? false;
 
     const template: MenuItemConstructorOptions[] = [
       {
@@ -37,14 +39,21 @@ export class MenuService {
             label: d.menu_new,
             accelerator: process.platform === "darwin" ? "Cmd+N" : "Ctrl+N",
             click: (): void => {
-              void this.fileService.newFileFlow();
+              void this.getFileService()?.newFileFlow();
             },
           },
           {
             label: d.menu_open,
             accelerator: process.platform === "darwin" ? "Cmd+O" : "Ctrl+O",
             click: (): void => {
-              void this.fileService.openFileFlow();
+              void this.getFileService()?.openFileFlow();
+            },
+          },
+          {
+            label: d.menu_new_window ?? "New Window",
+            accelerator: process.platform === "darwin" ? "Cmd+Shift+N" : "Ctrl+Shift+N",
+            click: (): void => {
+              this.onNewWindow();
             },
           },
           {
@@ -52,7 +61,7 @@ export class MenuService {
             enabled: Boolean(currentFilePath && isDirty),
             accelerator: process.platform === "darwin" ? "Cmd+S" : "Ctrl+S",
             click: (): void => {
-              void this.fileService.handleSaveFile();
+              void this.getFileService()?.handleSaveFile();
             },
           },
           {
@@ -61,7 +70,7 @@ export class MenuService {
             accelerator:
               process.platform === "darwin" ? "Shift+Cmd+S" : "Ctrl+Shift+S",
             click: (): void => {
-              void this.fileService.handleSaveFileAs();
+              void this.getFileService()?.handleSaveFileAs();
             },
           },
           { type: "separator" },
@@ -70,7 +79,7 @@ export class MenuService {
             enabled: Boolean(currentFilePath),
             accelerator: process.platform === "darwin" ? "Cmd+W" : "Ctrl+W",
             click: (): void => {
-              void this.fileService.closeFileFlow();
+              void this.getFileService()?.closeFileFlow();
             },
           },
           {
@@ -180,11 +189,12 @@ export class MenuService {
 
   private async quitAppFlow(): Promise<void> {
     const { app } = await import("electron");
-    if (this.fileService.getIsDirty()) {
-      const decision = await this.fileService.askToSaveChanges();
+    const fs = this.getFileService();
+    if (fs?.getIsDirty()) {
+      const decision = await fs.askToSaveChanges();
       if (decision === "cancel") return;
       if (decision === "save") {
-        const ok = await this.fileService.saveCurrentPossiblyAs();
+        const ok = await fs.saveCurrentPossiblyAs();
         if (!ok) return;
       }
     }

@@ -31,6 +31,15 @@ const config: ForgeConfig = {
             ? LINUX_ICON
             : undefined,
     extraResource: fs.existsSync(ICONS_DIR) ? [ICONS_DIR] : [],
+    fileAssociations: [
+      {
+        ext: "ahbs",
+        name: "AHBSalesFile",
+        description: "AHB Sales File",
+        ...(fs.existsSync(WIN_ICON) && { icon: WIN_ICON }),
+        role: "Editor",
+      },
+    ],
   },
   rebuildConfig: {},
   publishers: [
