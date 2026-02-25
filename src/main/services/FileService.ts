@@ -18,7 +18,7 @@ export class FileService {
   private cache = new FileCache();
   private dataChangedCallbacks: Array<() => void> = [];
 
-  constructor() {
+  constructor(private win: BrowserWindow | null = null) {
     // Ensure data container exists
     if (!this.currentDoc.data || typeof this.currentDoc.data !== "object") {
       (this.currentDoc as AhbDocument).data = initData();
@@ -62,14 +62,14 @@ export class FileService {
     };
   }
 
-  private notifyAll(channel: string, ...args: unknown[]) {
-    BrowserWindow.getAllWindows().forEach((w) =>
-      w.webContents.send(channel, ...args)
-    );
+  private notify(channel: string, ...args: unknown[]) {
+    if (this.win && !this.win.isDestroyed()) {
+      this.win.webContents.send(channel, ...args);
+    }
   }
 
   broadcastFileInfo() {
-    this.notifyAll("app:file-info", {
+    this.notify("app:file-info", {
       path: this.currentFilePath,
       isDirty: this.isDirty,
     });
@@ -105,7 +105,7 @@ export class FileService {
   }
 
   async handleNewFile(): Promise<void> {
-    const res = await dialog.showSaveDialog({
+    const res = await dialog.showSaveDialog(this.win!, {
       defaultPath: "untitled.ahbs",
       filters: [{ name: "AHB Sales Files", extensions: ["ahbs"] }],
     });
@@ -122,14 +122,14 @@ export class FileService {
     }
 
     this.writeCurrentTo(this.currentFilePath);
-    this.notifyAll("app:document-changed");
+    this.notify("app:document-changed");
     this.isDirty = false;
     this.broadcastFileInfo();
     this.triggerDataChanged();
   }
 
   async handleOpenFile(): Promise<void> {
-    const res = await dialog.showOpenDialog({
+    const res = await dialog.showOpenDialog(this.win!, {
       properties: ["openFile"],
       filters: [{ name: "AHB Sales Files", extensions: ["ahbs"] }],
     });
@@ -170,13 +170,13 @@ export class FileService {
       }
 
       this.currentFilePath = filePath;
-      this.notifyAll("app:document-changed");
+      this.notify("app:document-changed");
       this.isDirty = false;
       this.broadcastFileInfo();
       this.triggerDataChanged();
     } catch (err) {
       logger.error("Failed to open/decrypt file", "FileService", err);
-      await dialog.showMessageBox({
+      await dialog.showMessageBox(this.win!, {
         type: "error",
         title: "Cannot open file",
         message:
@@ -197,7 +197,7 @@ export class FileService {
   }
 
   async handleSaveFileAs(): Promise<void> {
-    const res = await dialog.showSaveDialog({
+    const res = await dialog.showSaveDialog(this.win!, {
       defaultPath: this.currentFilePath ?? "untitled.ahbs",
       filters: [{ name: "AHB Sales Files", extensions: ["ahbs"] }],
     });
@@ -207,7 +207,7 @@ export class FileService {
       ? res.filePath
       : `${res.filePath}.ahbs`;
     this.writeCurrentTo(this.currentFilePath);
-    this.notifyAll("app:document-changed");
+    this.notify("app:document-changed");
     this.isDirty = false;
     this.broadcastFileInfo();
   }
@@ -224,13 +224,13 @@ export class FileService {
       (this.currentDoc as AhbDocument).data = initData();
     }
     this.isDirty = false;
-    this.notifyAll("app:document-closed");
+    this.notify("app:document-closed");
     this.broadcastFileInfo();
   }
 
   async askToSaveChanges(): Promise<"save" | "dont" | "cancel"> {
     if (!this.isDirty) return "dont";
-    const result = await dialog.showMessageBox({
+    const result = await dialog.showMessageBox(this.win!, {
       type: "question",
       buttons: ["Save", "Don't Save", "Cancel"],
       defaultId: 0,
@@ -291,11 +291,37 @@ export class FileService {
     await this.closeFile();
   }
 
+  async openFileByPath(filePath: string): Promise<void> {
+    try {
+      const cached = this.cache.get(filePath);
+      const doc = cached ?? (decryptJSON(fs.readFileSync(filePath)) as AhbDocument);
+      if (!cached) this.cache.set(filePath, doc);
+      if (!doc.data || typeof doc.data !== "object") {
+        (doc as AhbDocument).data = initData();
+      }
+      this.currentDoc = doc;
+      this.currentFilePath = filePath;
+      this.isDirty = false;
+      this.notify("app:document-changed");
+      this.broadcastFileInfo();
+      this.triggerDataChanged();
+    } catch (err) {
+      logger.error("Failed to open file by path", "FileService", err);
+      await dialog.showMessageBox(this.win!, {
+        type: "error",
+        title: "Cannot open file",
+        message:
+          "This file could not be opened. It may be corrupted or encrypted with a different key.",
+        detail: `${(err as Error).message}`,
+      });
+    }
+  }
+
   notifyDataChanged(event: {
     kind: string;
     action: string;
     id: number | string;
   }): void {
-    this.notifyAll("data:changed", event);
+    this.notify("data:changed", event);
   }
 }

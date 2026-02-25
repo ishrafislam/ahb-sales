@@ -23,22 +23,46 @@ if (started) {
   app.quit();
 }
 
-// Initialize services
-const fileService = new FileService();
+// -----------------------
+// Per-window context
+// -----------------------
+
+interface WindowContext {
+  win: BrowserWindow;
+  fileService: FileService;
+  dataService: DataService;
+}
+
+const contexts = new Map<number, WindowContext>();
+
+function getCtx(sender: Electron.WebContents): WindowContext {
+  const ctx = contexts.get(sender.id);
+  if (!ctx) throw new Error("No context for window " + sender.id);
+  return ctx;
+}
+
+// -----------------------
+// Shared services (created once)
+// -----------------------
+
 const settingsService = new SettingsService();
-const menuService = new MenuService(fileService, settingsService);
 const updateService = new UpdateService();
-const dataService = new DataService(fileService, menuService);
 
-// Rebuild indexes when document changes
-fileService.onDataChanged(() => {
-  dataService.rebuildIndex();
-});
+const menuService = new MenuService(
+  () => {
+    const fw = BrowserWindow.getFocusedWindow();
+    return fw ? (contexts.get(fw.webContents.id)?.fileService ?? null) : null;
+  },
+  settingsService,
+  () => void createWindow()
+);
 
-const createWindow = () => {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    // Set a comfortable initial size and enforce a sensible minimum
+// -----------------------
+// Window factory
+// -----------------------
+
+async function createWindow(filePath?: string): Promise<void> {
+  const win = new BrowserWindow({
     width: 1280,
     height: 720,
     minWidth: 1280,
@@ -49,11 +73,43 @@ const createWindow = () => {
     },
   });
 
-  // and load the index.html of the app.
+  const fileService = new FileService(win);
+  const dataService = new DataService(fileService, menuService);
+
+  fileService.onDataChanged(() => {
+    dataService.rebuildIndex();
+    menuService.buildMenu();
+  });
+
+  // Capture id before any possibility of destruction
+  const webContentsId = win.webContents.id;
+
+  const ctx: WindowContext = { win, fileService, dataService };
+  contexts.set(webContentsId, ctx);
+
+  // Intercept window close: prompt to save if dirty
+  win.on("close", (e) => {
+    if (!fileService.getIsDirty()) return;
+    e.preventDefault();
+    void fileService.askToSaveChanges().then(async (decision) => {
+      if (decision === "cancel") return;
+      if (decision === "save") await fileService.saveCurrentPossiblyAs();
+      win.destroy(); // bypasses the 'close' event
+    });
+  });
+
+  win.on("closed", () => {
+    contexts.delete(webContentsId);
+  });
+
+  // Rebuild menu to reflect this window's state when focused
+  win.on("focus", () => menuService.buildMenu());
+
+  // Load renderer
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    await win.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
-    mainWindow.loadFile(
+    await win.loadFile(
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
     );
   }
@@ -62,14 +118,67 @@ const createWindow = () => {
   // Skip DevTools in test environment
   const isTest = process.env.NODE_ENV === "test";
   if (!isTest && (!app.isPackaged || MAIN_WINDOW_VITE_DEV_SERVER_URL)) {
-    mainWindow.webContents.openDevTools();
+    win.webContents.openDevTools();
   }
-};
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
-app.on("ready", () => {
+  // If a file path was supplied (double-click / CLI), open it now
+  if (filePath) {
+    await fileService.openFileByPath(filePath);
+  }
+
+  menuService.buildMenu();
+}
+
+// -----------------------
+// File-path parsing helper
+// -----------------------
+
+function getFilePathFromArgs(argv: string[]): string | undefined {
+  return argv.find((a) => a.endsWith(".ahbs") && !a.startsWith("-"));
+}
+
+// -----------------------
+// Single-instance lock
+// -----------------------
+
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (_event, argv) => {
+    const filePath = getFilePathFromArgs(argv);
+    if (filePath) {
+      void createWindow(filePath);
+    } else {
+      // No file — focus an existing window
+      const existing = BrowserWindow.getAllWindows()[0];
+      if (existing) {
+        existing.restore();
+        existing.focus();
+      }
+    }
+  });
+}
+
+// -----------------------
+// macOS open-file event (before ready)
+// -----------------------
+
+let pendingOpenFilePath: string | undefined;
+app.on("open-file", (event, filePath) => {
+  event.preventDefault();
+  if (app.isReady()) {
+    void createWindow(filePath);
+  } else {
+    pendingOpenFilePath = filePath;
+  }
+});
+
+// -----------------------
+// App lifecycle
+// -----------------------
+
+app.on("ready", async () => {
   // Ensure app name reflects productName in dev and prod
   try {
     app.setName("Abdul Hamid & Brothers - Sales");
@@ -89,7 +198,9 @@ app.on("ready", () => {
   }
   // Setup native theme listener
   settingsService.setupNativeThemeListener();
-  createWindow();
+
+  const filePath = pendingOpenFilePath ?? getFilePathFromArgs(process.argv);
+  await createWindow(filePath);
   menuService.buildMenu();
 });
 
@@ -106,31 +217,28 @@ app.on("activate", () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
+    void createWindow();
   }
 });
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
 
 // -----------------------
 // IPC Handlers
 // -----------------------
 
-// File operations
-ipcMain.handle("app:new-file", async () => fileService.newFileFlow());
-ipcMain.handle("app:open-file", async () => fileService.openFileFlow());
-ipcMain.handle("app:save-file", async () => {
-  await fileService.handleSaveFile();
+// File operations — routed to the sender's window context
+ipcMain.handle("app:new-file", async (e) => getCtx(e.sender).fileService.newFileFlow());
+ipcMain.handle("app:open-file", async (e) => getCtx(e.sender).fileService.openFileFlow());
+ipcMain.handle("app:save-file", async (e) => {
+  await getCtx(e.sender).fileService.handleSaveFile();
   menuService.buildMenu();
 });
-ipcMain.handle("app:save-file-as", async () => {
-  await fileService.handleSaveFileAs();
+ipcMain.handle("app:save-file-as", async (e) => {
+  await getCtx(e.sender).fileService.handleSaveFileAs();
   menuService.buildMenu();
 });
-ipcMain.handle("app:get-file-info", async () => fileService.getFileInfo());
+ipcMain.handle("app:get-file-info", async (e) => getCtx(e.sender).fileService.getFileInfo());
 
-// Language
+// Language (global)
 ipcMain.handle("app:get-language", async () => getLanguage());
 ipcMain.handle("app:set-language", async (_e, lang: "bn" | "en") => {
   setLanguage(lang);
@@ -140,7 +248,7 @@ ipcMain.handle("app:set-language", async (_e, lang: "bn" | "en") => {
   menuService.buildMenu();
 });
 
-// Settings
+// Settings (global)
 ipcMain.handle("settings:get-print", async () =>
   settingsService.getPrintSettings()
 );
@@ -155,81 +263,78 @@ ipcMain.handle("settings:set-theme", async (_e, source) => {
   return result;
 });
 
-// Data operations - Products
+// Data operations — routed to the sender's window context
 ipcMain.handle(
   "data:list-products",
-  async (_e, opts?: boolean | { activeOnly?: boolean }) => {
-    return dataService.listProducts(opts);
+  async (e, opts?: boolean | { activeOnly?: boolean }) => {
+    return getCtx(e.sender).dataService.listProducts(opts);
   }
 );
-ipcMain.handle("data:add-product", async (_e, p) => {
-  return dataService.addProduct(p);
+ipcMain.handle("data:add-product", async (e, p) => {
+  return getCtx(e.sender).dataService.addProduct(p);
 });
-ipcMain.handle("data:update-product", async (_e, id, patch) => {
-  return dataService.updateProduct(id, patch);
+ipcMain.handle("data:update-product", async (e, id, patch) => {
+  return getCtx(e.sender).dataService.updateProduct(id, patch);
 });
 
-// Data operations - Customers
 ipcMain.handle(
   "data:list-customers",
-  async (_e, opts?: boolean | { activeOnly?: boolean }) => {
-    return dataService.listCustomers(opts);
+  async (e, opts?: boolean | { activeOnly?: boolean }) => {
+    return getCtx(e.sender).dataService.listCustomers(opts);
   }
 );
-ipcMain.handle("data:add-customer", async (_e, c) => {
-  return dataService.addCustomer(c);
+ipcMain.handle("data:add-customer", async (e, c) => {
+  return getCtx(e.sender).dataService.addCustomer(c);
 });
-ipcMain.handle("data:update-customer", async (_e, id, patch) => {
-  return dataService.updateCustomer(id, patch);
+ipcMain.handle("data:update-customer", async (e, id, patch) => {
+  return getCtx(e.sender).dataService.updateCustomer(id, patch);
 });
 
 ipcMain.handle(
   "data:record-payment",
-  async (_e, customerId: number, amount: number) => {
-    return dataService.recordPayment(customerId, amount);
+  async (e, customerId: number, amount: number) => {
+    return getCtx(e.sender).dataService.recordPayment(customerId, amount);
   }
 );
 
-// Data operations - Invoices
-ipcMain.handle("data:post-invoice", async (_e, payload) => {
-  return dataService.postInvoice(payload);
+ipcMain.handle("data:post-invoice", async (e, payload) => {
+  return getCtx(e.sender).dataService.postInvoice(payload);
 });
 
 ipcMain.handle(
   "data:list-invoices-by-customer",
-  async (_e, customerId: number) => {
-    return dataService.listInvoicesByCustomer(customerId);
+  async (e, customerId: number) => {
+    return getCtx(e.sender).dataService.listInvoicesByCustomer(customerId);
   }
 );
-ipcMain.handle("data:list-product-sales", async (_e, productId: number) => {
-  return dataService.listProductSales(productId);
+ipcMain.handle("data:list-product-sales", async (e, productId: number) => {
+  return getCtx(e.sender).dataService.listProductSales(productId);
 });
-ipcMain.handle("data:list-product-purchases", async (_e, productId: number) => {
-  return dataService.listProductPurchases(productId);
-});
-
-// Data operations - Purchases
-ipcMain.handle("data:post-purchase", async (_e, payload) => {
-  return dataService.postPurchase(payload);
+ipcMain.handle("data:list-product-purchases", async (e, productId: number) => {
+  return getCtx(e.sender).dataService.listProductPurchases(productId);
 });
 
-// Reports
+ipcMain.handle("data:post-purchase", async (e, payload) => {
+  return getCtx(e.sender).dataService.postPurchase(payload);
+});
+
+// Reports — routed to the sender's window context
 ipcMain.handle(
   "report:money-customer-range",
-  async (_e, from: string, to: string) => {
-    return dataService.reportMoneyTransactionsCustomerRange(from, to);
+  async (e, from: string, to: string) => {
+    return getCtx(e.sender).dataService.reportMoneyTransactionsCustomerRange(from, to);
   }
 );
 
-ipcMain.handle("report:money-daywise", async (_e, from: string, to: string) => {
-  return dataService.reportMoneyTransactionsDayWise(from, to);
+ipcMain.handle("report:money-daywise", async (e, from: string, to: string) => {
+  return getCtx(e.sender).dataService.reportMoneyTransactionsDayWise(from, to);
 });
 
-ipcMain.handle("report:daily-payment", async (_e, date: string) => {
-  return dataService.reportDailyPayments(date);
+ipcMain.handle("report:daily-payment", async (e, date: string) => {
+  return getCtx(e.sender).dataService.reportDailyPayments(date);
 });
 
-// Updates
+// Updates & app info (global)
 ipcMain.handle("app:check-for-updates", async () =>
   updateService.checkForUpdates()
 );

@@ -147,5 +147,6 @@
   "make_payment_title": "Record Payment",
   "payment_amount": "Payment Amount",
   "empty_slot": "Empty Slot",
-  "payment_recorded": "Payment recorded successfully"
+  "payment_recorded": "Payment recorded successfully",
+  "menu_new_window": "New Window"
 }
