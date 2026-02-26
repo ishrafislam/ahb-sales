@@ -249,13 +249,6 @@ ipcMain.handle("app:set-language", async (_e, lang: "bn" | "en") => {
 });
 
 // Settings (global)
-ipcMain.handle("settings:get-print", async () =>
-  settingsService.getPrintSettings()
-);
-ipcMain.handle("settings:set-print", async (_e, settings) => {
-  return settingsService.setPrintSettings(settings);
-});
-
 ipcMain.handle("settings:get-theme", async () => settingsService.getTheme());
 ipcMain.handle("settings:set-theme", async (_e, source) => {
   const result = settingsService.setTheme(source);

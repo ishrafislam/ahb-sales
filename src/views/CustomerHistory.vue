@@ -240,10 +240,13 @@ function onPrint(id: string) {
   const prodMap: Record<number, { name: string; unit: string }> = {};
   for (const p of products.value)
     prodMap[p.id] = { name: p.nameBn, unit: p.unit };
+  // invoices.value is sorted descending by inv.no (most recent first)
+  const prevInv = invoices.value.find((i) => i.no < inv.no);
   printInvoice(inv as unknown as import("../main/data").Invoice, {
     businessName: BUSINESS_NAME,
     customerName: custName,
     products: prodMap,
+    previousDueDate: prevInv?.date,
   });
 }
 </script>

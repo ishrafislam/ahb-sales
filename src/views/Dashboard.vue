@@ -445,6 +445,10 @@ async function doPostInvoice() {
       await window.ahb.addCustomer({ id: slot.id, nameBn: "" });
       await loadCustomers();
     }
+    const prevInvoices = slot
+      ? await window.ahb.listInvoicesByCustomer(slot.id)
+      : [];
+    const previousDueDate = prevInvoices[0]?.date;
     const payload = {
       date: new Date().toISOString(),
       customerId: slot ? slot.id : null,
@@ -470,6 +474,7 @@ async function doPostInvoice() {
         businessName: BUSINESS_NAME,
         customerName: slot?.nameBn || t("walk_in"),
         products: productsMap,
+        previousDueDate,
       });
     } catch (err) {
       console.error("print failed", err);
