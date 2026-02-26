@@ -125,9 +125,8 @@ async function load() {
     setTimeout(() => (showError.value = false), TOAST_DURATION_ERROR);
   }
 }
-async function printReport() {
-  const s = await window.ahb.getPrintSettings();
-  const page = `@page { size: ${s.paperSize} ${s.orientation}; margin: ${s.marginMm}mm; }`;
+function printReport() {
+  const page = "@page { size: A4 portrait; margin: 12mm; }";
   const style = `
     <style>
       ${page}
@@ -142,7 +141,8 @@ async function printReport() {
       @media print { body { padding: 0; } }
     </style>
   `;
-  const head = `<head><meta charset="utf-8" />${style}<title>Daily Payment Report</title></head>`;
+  const title = t("report_daily_payment_title");
+  const head = `<head><meta charset="utf-8" />${style}<title>${title}</title></head>`;
   const rowsHtml = rows.value
     .map((r) => {
       const name =
@@ -156,19 +156,19 @@ async function printReport() {
     .join("");
   const body = `
   <body>
-    <h1>Daily Payment Report</h1>
-    <div class="meta">Date ${date.value}</div>
+    <h1>${title}</h1>
+    <div class="meta">${t("date")} ${date.value}</div>
     <table>
       <thead>
         <tr>
-          <th>Customer</th>
-          <th style="text-align:right">Paid</th>
+          <th>${t("customer")}</th>
+          <th style="text-align:right">${t("paid")}</th>
         </tr>
       </thead>
-      <tbody>${rowsHtml || `<tr><td colspan="2" style="text-align:center;color:#6b7280">No records</td></tr>`}</tbody>
+      <tbody>${rowsHtml || `<tr><td colspan="2" style="text-align:center;color:#6b7280">${t("no_records")}</td></tr>`}</tbody>
       <tfoot>
         <tr>
-          <td>Totals</td>
+          <td>${t("totals")}</td>
           <td style="text-align:right">${fmt(totals.value.paid)}</td>
         </tr>
       </tfoot>

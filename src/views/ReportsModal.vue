@@ -500,8 +500,9 @@ onMounted(() => {
 function printMoneyCustomer() {
   const w = window.open("", "_blank");
   if (!w) return;
-  const style = `<style>*{box-sizing:border-box;}body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,"Apple Color Emoji","Segoe UI Emoji";padding:16px;}h1{font-size:18px;margin:0 0 8px}.meta{font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f8fafc;text-align:left}tfoot td{font-weight:600}@media print{body{padding:0}}</style>`;
-  const head = `<head><meta charset="utf-8"/>${style}<title>Money Transaction — Customer Based</title></head>`;
+  const style = `<style>@page{size:A4 portrait;margin:12mm;}*{box-sizing:border-box;}body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,"Apple Color Emoji","Segoe UI Emoji";padding:16px;}h1{font-size:18px;margin:0 0 8px}.meta{font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f8fafc;text-align:left}tfoot td{font-weight:600}@media print{body{padding:0}}</style>`;
+  const titleMC = t("report_money_customer_title");
+  const head = `<head><meta charset="utf-8"/>${style}<title>${titleMC}</title></head>`;
   const rowsHtml = rows.value
     .map((r) => {
       const name =
@@ -510,7 +511,7 @@ function printMoneyCustomer() {
       return `<tr><td>${r.date}</td><td>${name}</td><td style="text-align:right">${fmt(r.netBill)}</td><td style="text-align:right">${fmt(r.paid)}</td><td style="text-align:right">${fmt(r.due)}</td><td style="text-align:right">${fmt(r.previousDue)}</td><td style="text-align:right">${fmt(r.totalDue)}</td></tr>`;
     })
     .join("");
-  const body = `<body><h1>Money Transaction — Customer Based</h1><div class="meta">From ${from.value} To ${to.value}</div><table><thead><tr><th>Date</th><th>Customer Name</th><th style="text-align:right">Net Bill</th><th style="text-align:right">Paid</th><th style="text-align:right">Due</th><th style="text-align:right">Previous Due</th><th style="text-align:right">Total Due</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="7" style="text-align:center;color:#6b7280">No records</td></tr>`}</tbody><tfoot><tr><td colspan="2">Totals</td><td style="text-align:right">${fmt(totals.value.netBill)}</td><td style="text-align:right">${fmt(totals.value.paid)}</td><td style="text-align:right">${fmt(totals.value.due)}</td><td colspan="2"></td></tr></tfoot></table></body>`;
+  const body = `<body><h1>${titleMC}</h1><div class="meta">${t("from")} ${from.value} ${t("to")} ${to.value}</div><table><thead><tr><th>${t("date")}</th><th>${t("customer_name")}</th><th style="text-align:right">${t("net_bill")}</th><th style="text-align:right">${t("paid")}</th><th style="text-align:right">${t("due")}</th><th style="text-align:right">${t("previous_due")}</th><th style="text-align:right">${t("total_due")}</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="7" style="text-align:center;color:#6b7280">${t("no_records")}</td></tr>`}</tbody><tfoot><tr><td colspan="2">${t("totals")}</td><td style="text-align:right">${fmt(totals.value.netBill)}</td><td style="text-align:right">${fmt(totals.value.paid)}</td><td style="text-align:right">${fmt(totals.value.due)}</td><td colspan="2"></td></tr></tfoot></table></body>`;
   w.document.open();
   w.document.write(`<html>${head}${body}</html>`);
   w.document.close();
@@ -523,8 +524,9 @@ function printMoneyCustomer() {
 function printMoneyDayWise() {
   const w = window.open("", "_blank");
   if (!w) return;
-  const style = `<style>*{box-sizing:border-box;}body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,"Apple Color Emoji","Segoe UI Emoji";padding:16px;}h1{font-size:18px;margin:0 0 8px}.meta{font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f8fafc;text-align:left}.day-header{display:flex;justify-content:space-between;align-items:center;background:#f3f4f6;padding:6px 8px;border:1px solid #e5e7eb;border-bottom:none;margin-top:12px}.totals{font-size:12px;color:#111827;display:flex;gap:16px}.no-records{text-align:center;color:#6b7280}@media print{body{padding:0}}</style>`;
-  const head = `<head><meta charset="utf-8"/>${style}<title>Money Transaction — Day Wise</title></head>`;
+  const style = `<style>@page{size:A4 portrait;margin:12mm;}*{box-sizing:border-box;}body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,"Apple Color Emoji","Segoe UI Emoji";padding:16px;}h1{font-size:18px;margin:0 0 8px}.meta{font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f8fafc;text-align:left}.day-header{display:flex;justify-content:space-between;align-items:center;background:#f3f4f6;padding:6px 8px;border:1px solid #e5e7eb;border-bottom:none;margin-top:12px}.totals{font-size:12px;color:#111827;display:flex;gap:16px}.no-records{text-align:center;color:#6b7280}@media print{body{padding:0}}</style>`;
+  const titleDW = t("report_money_daywise_title");
+  const head = `<head><meta charset="utf-8"/>${style}<title>${titleDW}</title></head>`;
   const daySections = days.value
     .map((day) => {
       const rowsHtml = day.rows
@@ -535,10 +537,10 @@ function printMoneyDayWise() {
           return `<tr><td>${name}</td><td style="text-align:right">${fmt(r.bill)}</td><td style="text-align:right">${fmt(r.discount)}</td><td style="text-align:right">${fmt(r.netBill)}</td><td style="text-align:right">${fmt(r.paid)}</td><td style="text-align:right">${fmt(r.due)}</td><td style="text-align:right">${fmt(r.previousDue)}</td><td style="text-align:right">${fmt(r.totalDue)}</td></tr>`;
         })
         .join("");
-      return `<div class="day"><div class="day-header"><div><strong>Date:</strong> ${day.date}</div><div class="totals"><span>Bill: <strong>${fmt(day.totals.bill)}</strong></span><span>Discount: <strong>${fmt(day.totals.discount)}</strong></span><span>Net: <strong>${fmt(day.totals.netBill)}</strong></span><span>Paid: <strong>${fmt(day.totals.paid)}</strong></span><span>Due: <strong>${fmt(day.totals.due)}</strong></span></div></div><table><thead><tr><th>Customer</th><th style="text-align:right">Bill</th><th style="text-align:right">Discount</th><th style="text-align:right">Net Bill</th><th style="text-align:right">Paid</th><th style="text-align:right">Due</th><th style="text-align:right">Previous Due</th><th style="text-align:right">Total Due</th></tr></thead><tbody>${rowsHtml || `<tr><td class="no-records" colspan="8">No records</td></tr>`}</tbody></table></div>`;
+      return `<div class="day"><div class="day-header"><div><strong>${t("date")}:</strong> ${day.date}</div><div class="totals"><span>${t("bill")}: <strong>${fmt(day.totals.bill)}</strong></span><span>${t("discount")}: <strong>${fmt(day.totals.discount)}</strong></span><span>${t("net")}: <strong>${fmt(day.totals.netBill)}</strong></span><span>${t("paid")}: <strong>${fmt(day.totals.paid)}</strong></span><span>${t("due")}: <strong>${fmt(day.totals.due)}</strong></span></div></div><table><thead><tr><th>${t("customer")}</th><th style="text-align:right">${t("bill")}</th><th style="text-align:right">${t("discount")}</th><th style="text-align:right">${t("net_bill")}</th><th style="text-align:right">${t("paid")}</th><th style="text-align:right">${t("due")}</th><th style="text-align:right">${t("previous_due")}</th><th style="text-align:right">${t("total_due")}</th></tr></thead><tbody>${rowsHtml || `<tr><td class="no-records" colspan="8">${t("no_records")}</td></tr>`}</tbody></table></div>`;
     })
     .join("");
-  const body = `<body><h1>Money Transaction — Day Wise</h1><div class="meta">From ${from.value} To ${to.value}</div>${daySections || `<div class="no-records">No days found in range</div>`}</body>`;
+  const body = `<body><h1>${titleDW}</h1><div class="meta">${t("from")} ${from.value} ${t("to")} ${to.value}</div>${daySections || `<div class="no-records">${t("no_days_found")}</div>`}</body>`;
   w.document.open();
   w.document.write(`<html>${head}${body}</html>`);
   w.document.close();
@@ -551,8 +553,9 @@ function printMoneyDayWise() {
 function printDailyPayments() {
   const w = window.open("", "_blank");
   if (!w) return;
-  const style = `<style>*{box-sizing:border-box;}body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,"Apple Color Emoji","Segoe UI Emoji";padding:16px;}h1{font-size:18px;margin:0 0 8px}.meta{font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f8fafc;text-align:left}tfoot td{font-weight:600}@media print{body{padding:0}}</style>`;
-  const head = `<head><meta charset="utf-8"/>${style}<title>Daily Payment Report</title></head>`;
+  const style = `<style>@page{size:A4 portrait;margin:12mm;}*{box-sizing:border-box;}body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Ubuntu,Cantarell,Helvetica Neue,Arial,"Apple Color Emoji","Segoe UI Emoji";padding:16px;}h1{font-size:18px;margin:0 0 8px}.meta{font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #e5e7eb;padding:6px 8px}th{background:#f8fafc;text-align:left}tfoot td{font-weight:600}@media print{body{padding:0}}</style>`;
+  const titleDP = t("report_daily_payment_title");
+  const head = `<head><meta charset="utf-8"/>${style}<title>${titleDP}</title></head>`;
   const rowsHtml = dailyRows.value
     .map((r) => {
       const name =
@@ -561,7 +564,7 @@ function printDailyPayments() {
       return `<tr><td>${name}</td><td style="text-align:right">${fmt(r.paid)}</td></tr>`;
     })
     .join("");
-  const body = `<body><h1>Daily Payment Report</h1><div class="meta">Date ${dailyDate.value}</div><table><thead><tr><th>Customer</th><th style="text-align:right">Paid</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="2" style="text-align:center;color:#6b7280">No records</td></tr>`}</tbody><tfoot><tr><td>Totals</td><td style="text-align:right">${fmt(dailyTotals.value.paid)}</td></tr></tfoot></table></body>`;
+  const body = `<body><h1>${titleDP}</h1><div class="meta">${t("date")} ${dailyDate.value}</div><table><thead><tr><th>${t("customer")}</th><th style="text-align:right">${t("paid")}</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="2" style="text-align:center;color:#6b7280">${t("no_records")}</td></tr>`}</tbody><tfoot><tr><td>${t("totals")}</td><td style="text-align:right">${fmt(dailyTotals.value.paid)}</td></tr></tfoot></table></body>`;
   w.document.open();
   w.document.write(`<html>${head}${body}</html>`);
   w.document.close();
