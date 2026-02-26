@@ -1,5 +1,10 @@
 export const BUSINESS_NAME = "ABDUL HAMID AND BROTHERS";
 
+export const BUSINESS_PHONES = [
+  "0257315873 ; 0191-351254",
+  "01749162690 ; 01712619583",
+];
+
 // Product ID constraints
 export const MIN_PRODUCT_ID = 1;
 export const MAX_PRODUCT_ID = 1000;

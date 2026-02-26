@@ -206,9 +206,8 @@ async function load() {
     setTimeout(() => (showError.value = false), TOAST_DURATION_ERROR);
   }
 }
-async function printReport() {
-  const s = await window.ahb.getPrintSettings();
-  const page = `@page { size: ${s.paperSize} ${s.orientation}; margin: ${s.marginMm}mm; }`;
+function printReport() {
+  const page = "@page { size: A4 portrait; margin: 12mm; }";
   const style = `
     <style>
       ${page}
@@ -223,7 +222,8 @@ async function printReport() {
       @media print { body { padding: 0; } }
     </style>
   `;
-  const head = `<head><meta charset="utf-8" />${style}<title>Money Transaction — Customer Based</title></head>`;
+  const title = t("report_money_customer_title");
+  const head = `<head><meta charset="utf-8" />${style}<title>${title}</title></head>`;
   const rowsHtml = rows.value
     .map((r) => {
       const name =
@@ -242,24 +242,24 @@ async function printReport() {
     .join("");
   const body = `
   <body>
-    <h1>Money Transaction — Customer Based</h1>
-    <div class="meta">From ${from.value} To ${to.value}</div>
+    <h1>${title}</h1>
+    <div class="meta">${t("from")} ${from.value} ${t("to")} ${to.value}</div>
     <table>
       <thead>
         <tr>
-          <th>Date</th>
-          <th>Customer Name</th>
-          <th style="text-align:right">Net Bill</th>
-          <th style="text-align:right">Paid</th>
-          <th style="text-align:right">Due</th>
-          <th style="text-align:right">Previous Due</th>
-          <th style="text-align:right">Total Due</th>
+          <th>${t("date")}</th>
+          <th>${t("customer_name")}</th>
+          <th style="text-align:right">${t("net_bill")}</th>
+          <th style="text-align:right">${t("paid")}</th>
+          <th style="text-align:right">${t("due")}</th>
+          <th style="text-align:right">${t("previous_due")}</th>
+          <th style="text-align:right">${t("total_due")}</th>
         </tr>
       </thead>
-      <tbody>${rowsHtml || `<tr><td colspan="7" style="text-align:center;color:#6b7280">No records</td></tr>`}</tbody>
+      <tbody>${rowsHtml || `<tr><td colspan="7" style="text-align:center;color:#6b7280">${t("no_records")}</td></tr>`}</tbody>
       <tfoot>
         <tr>
-          <td colspan="2">Totals</td>
+          <td colspan="2">${t("totals")}</td>
           <td style="text-align:right">${fmt(totals.value.netBill)}</td>
           <td style="text-align:right">${fmt(totals.value.paid)}</td>
           <td style="text-align:right">${fmt(totals.value.due)}</td>

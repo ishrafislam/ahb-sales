@@ -55,6 +55,8 @@ describe("DashboardView.vue", () => {
       return () => undefined;
     };
 
+    const listInvoicesByCustomer = vi.fn(async () => []);
+
     type AhbStub = {
       listProducts: (
         opts?: boolean | { activeOnly?: boolean }
@@ -62,6 +64,7 @@ describe("DashboardView.vue", () => {
       listCustomers: (
         opts?: boolean | { activeOnly?: boolean }
       ) => Promise<Array<Record<string, unknown>>>;
+      listInvoicesByCustomer: (customerId: number) => Promise<unknown[]>;
       onDataChanged: (cb: (p: DataChangedPayload) => void) => () => void;
       postInvoice: (payload: PostInvoiceInput) => Promise<unknown>;
     };
@@ -69,6 +72,7 @@ describe("DashboardView.vue", () => {
     (window as unknown as { ahb: AhbStub }).ahb = {
       listProducts,
       listCustomers,
+      listInvoicesByCustomer,
       onDataChanged,
       postInvoice,
     } as unknown as AhbStub;

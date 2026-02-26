@@ -95,7 +95,7 @@ export class MenuService {
         label: d.settings ?? "Settings",
         submenu: [
           {
-            label: `${d.print} ${d.settings_title ?? d.settings ?? "Settings"}`,
+            label: d.settings_title ?? d.settings ?? "Settings",
             click: (): void => {
               this.notifyAll("app:open-settings");
             },
