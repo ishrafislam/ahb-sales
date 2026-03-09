@@ -4,6 +4,7 @@ import {
   addCustomer,
   addProduct,
   postInvoice,
+  recordPayment,
   type AhbDataV1,
   reportDailyPayments,
 } from "../src/main/data";
@@ -85,5 +86,36 @@ describe("reportDailyPayments", () => {
     const rep = reportDailyPayments(data, "2025-01-07");
     expect(rep.rows.length).toBe(0);
     expect(rep.totals.paid).toBe(0);
+  });
+
+  it("includes standalone due payments in report", () => {
+    const data = setupData();
+    // Customer 2 has outstanding from the 60/100 invoice
+    recordPayment(data, 2, 40, "2025-01-05T16:00:00.000Z");
+    const rep = reportDailyPayments(data, "2025-01-05");
+    // Should have original 2 invoice rows + 1 standalone payment
+    expect(rep.rows.length).toBe(3);
+    const standaloneRow = rep.rows.filter(
+      (r) => r.customerId === 2 && r.paid === 40
+    );
+    expect(standaloneRow.length).toBe(1);
+    expect(standaloneRow[0]!.customerName).toBe("Karim");
+  });
+
+  it("combines invoice and standalone payments in totals", () => {
+    const data = setupData();
+    recordPayment(data, 2, 40, "2025-01-05T16:00:00.000Z");
+    const rep = reportDailyPayments(data, "2025-01-05");
+    // Invoice payments: 100 (Rahim) + 60 (Karim) + standalone 40 (Karim) = 200
+    expect(rep.totals.paid).toBe(200);
+  });
+
+  it("standalone payment on different date excluded", () => {
+    const data = setupData();
+    recordPayment(data, 2, 40, "2025-01-08T10:00:00.000Z");
+    const rep = reportDailyPayments(data, "2025-01-05");
+    // Only the original 2 invoice rows
+    expect(rep.rows.length).toBe(2);
+    expect(rep.totals.paid).toBe(160);
   });
 });

@@ -34,6 +34,7 @@ export type AhbDataV1 = {
   // Phase 2 additions (additive; safe for older files after migration)
   invoices?: Invoice[];
   invoiceSeq?: number; // next invoice number to assign
+  payments?: Payment[];
 };
 
 export function initData(): AhbDataV1 {
@@ -42,17 +43,22 @@ export function initData(): AhbDataV1 {
     customers: [],
     invoices: [],
     invoiceSeq: 1,
+    payments: [],
   };
 }
 
 // Helpers
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-const isoToYmd = (iso: string) => iso.slice(0, 10); // YYYY-MM-DD (UTC slice)
+const isoToYmd = (iso: string) => {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
 
 // Ensure Phase 2 fields exist on data object for older files
 export type AhbDataV2 = Required<Pick<AhbDataV1, "invoices" | "invoiceSeq">> &
-  Pick<AhbDataV1, "products" | "customers">;
+  Pick<AhbDataV1, "products" | "customers" | "payments">;
 
 export function ensurePhase2(data: AhbDataV1): asserts data is AhbDataV2 {
   if (!data.invoices) {
@@ -60,6 +66,9 @@ export function ensurePhase2(data: AhbDataV1): asserts data is AhbDataV2 {
   }
   if (typeof data.invoiceSeq !== "number") {
     (data as AhbDataV1 & { invoiceSeq: number }).invoiceSeq = 1;
+  }
+  if (!data.payments) {
+    (data as AhbDataV1 & { payments: Payment[] }).payments = [];
   }
 }
 
@@ -92,6 +101,14 @@ export type Invoice = {
   status: "posted"; // Phase 2: only posted receipts
   createdAt: string;
   updatedAt: string;
+};
+
+export type Payment = {
+  id: string;
+  date: string; // ISO
+  customerId: number;
+  amount: number;
+  createdAt: string;
 };
 
 export type PostInvoiceInput = {
@@ -408,8 +425,9 @@ export function listCustomers(
 export function recordPayment(
   data: AhbDataV1,
   customerId: number,
-  amount: number
-): void {
+  amount: number,
+  date?: string
+): Payment {
   const custIdx = data.customers.findIndex((c) => c.id === customerId);
   if (custIdx === -1) throw new Error("Customer not found");
   const customer = data.customers[custIdx]!;
@@ -422,6 +440,17 @@ export function recordPayment(
     outstanding: ceil2(customer.outstanding - amount),
     updatedAt: nowIso(),
   };
+  if (!data.payments) data.payments = [];
+  const now = nowIso();
+  const payment: Payment = {
+    id: genId(),
+    date: date ?? now,
+    customerId,
+    amount: ceil2(amount),
+    createdAt: now,
+  };
+  data.payments.push(payment);
+  return payment;
 }
 
 // -----------------------
@@ -835,6 +864,18 @@ export function reportDailyPayments(
       customerId: inv.customerId ?? 0,
       customerName:
         inv.customerId != null ? nameByCustomer.get(inv.customerId) : undefined,
+      paid,
+    });
+  }
+
+  for (const p of data.payments ?? []) {
+    const ymd = isoToYmd(p.date);
+    if (ymd !== target) continue;
+    const paid = ceil2(p.amount || 0);
+    if (paid <= 0) continue;
+    rows.push({
+      customerId: p.customerId,
+      customerName: nameByCustomer.get(p.customerId),
       paid,
     });
   }
