@@ -87,7 +87,8 @@ describe("Anonymous (Walk-in) invoice", () => {
       paid: 100,
     });
 
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const custRange = reportMoneyTransactionsCustomerRange(data, today, today);
     const hasAnon = custRange.rows.some((r) => r.customerId === 0);
     expect(hasAnon).toBe(true);

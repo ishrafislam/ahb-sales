@@ -62,7 +62,7 @@ export function printInvoice(
     <style>
       @page { size: 80mm auto; margin: 4mm; }
       * { box-sizing: border-box; }
-      body { font-family: ${fontFamily}; font-size: 10px; padding: 0; width: 72mm; }
+      body { font-family: ${fontFamily}; font-size: 10px; padding: 4mm; width: 72mm; margin: 0 auto; }
       h1 { font-size: 13px; margin: 0 0 2px; text-align: center; }
       .addr { font-size: 9px; text-align: center; margin: 1px 0; }
       hr { border: none; border-top: 1px solid #000; margin: 3px 0; }
@@ -72,7 +72,6 @@ export function printInvoice(
       .sum td { padding: 1px 0; border-bottom: 1px dashed #000; }
       .sum .val { text-align: right; font-weight: 600; white-space: nowrap; }
       .notes { margin-top: 6px; font-size: 9px; }
-      @media print { body { padding: 0; } }
     </style>
   `;
   const head = `<head><meta charset="utf-8" />${style}<title>${t("invoice_no")} ${inv.no}</title></head>`;
@@ -85,7 +84,7 @@ export function printInvoice(
       <hr />
 
       <div class="meta-row">
-        <span>${isBn ? toBengaliDigits(String(inv.no)) : inv.no}–</span>
+        <span>${isBn ? toBengaliDigits(String(inv.customerId ?? inv.no)) : (inv.customerId ?? inv.no)}–${inv.customerId != null ? ` ${opts.customerName}` : ""}</span>
         <span>${fmtReceiptDate(inv.date, { shortYear: true, bengali: isBn })}</span>
       </div>
       <hr />
