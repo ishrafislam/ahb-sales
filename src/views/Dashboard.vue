@@ -6,7 +6,7 @@
         {{ BUSINESS_NAME }}
       </h1>
       <div
-        class="bg-white dark:bg-gray-900 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-2 min-w-[20rem]"
+        class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-2 min-w-[20rem]"
       >
         <div class="flex items-center gap-2">
           <label class="text-sm whitespace-nowrap w-28">{{ t("v2_product_id") }}:</label>
@@ -22,7 +22,7 @@
     <!-- Info band: date/customer-id, last bill, search -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4">
       <div
-        class="lg:col-span-3 bg-white dark:bg-gray-900 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-2"
+        class="lg:col-span-3 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-2"
       >
         <div class="flex items-center gap-2">
           <label class="text-sm whitespace-nowrap flex-1">{{ t("v2_date") }}:</label>
@@ -35,7 +35,7 @@
       </div>
 
       <div
-        class="lg:col-span-4 bg-white dark:bg-gray-900 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-2"
+        class="lg:col-span-4 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-2"
       >
         <div class="flex items-center gap-2">
           <label class="text-sm whitespace-nowrap w-36">{{ t("v2_last_bill_date") }}:</label>
@@ -48,7 +48,7 @@
       </div>
 
       <div
-        class="lg:col-span-5 bg-white dark:bg-gray-900 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-2"
+        class="lg:col-span-5 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-2"
       >
         <div class="flex items-center gap-2">
           <label class="text-sm whitespace-nowrap w-28">{{ t("v2_customer_name") }}:</label>
@@ -72,7 +72,7 @@
       <!-- Left column -->
       <div class="lg:col-span-3 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-y-auto">
         <div
-          class="bg-white dark:bg-gray-900 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-2"
+          class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-2"
         >
           <div class="flex items-center gap-2">
             <label class="text-sm whitespace-nowrap w-16">{{ t("v2_customer") }}:</label>
@@ -89,22 +89,45 @@
         </div>
 
         <div
-          class="bg-white dark:bg-gray-900 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3 grid grid-cols-3 gap-2"
+          class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-3 grid grid-cols-3 gap-2"
         >
-          <button v-for="n in 3" :key="n" type="button" :class="[buttonClass, 'h-14']" />
+          <button
+            v-for="key in printButtons"
+            :key="key"
+            type="button"
+            :class="[buttonClass, 'min-h-[3.5rem] px-1 py-1']"
+          >
+            {{ t(key) }}
+          </button>
         </div>
 
         <div
-          class="bg-white dark:bg-gray-900 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3 grid grid-cols-2 gap-2"
+          class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-3 grid grid-cols-2 gap-2"
         >
-          <button v-for="n in 6" :key="n" type="button" :class="[buttonClass, 'h-10']" />
+          <button
+            v-for="key in actionButtons"
+            :key="key"
+            type="button"
+            :class="[buttonClass, 'min-h-[2.5rem] px-1 py-1']"
+          >
+            {{ t(key) }}
+          </button>
         </div>
 
         <div
-          class="bg-white dark:bg-gray-900 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 p-3 grid grid-cols-2 gap-2"
+          class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-3 grid grid-cols-2 gap-2"
         >
-          <button v-for="n in 6" :key="n" type="button" :class="[buttonClass, 'h-10']" />
-          <button type="button" :class="[buttonClass, 'h-10 col-span-2']" />
+          <button
+            v-for="key in reportButtons"
+            :key="key"
+            type="button"
+            :class="[buttonClass, 'min-h-[2.5rem] px-1 py-1']"
+          >
+            {{ t(key) }}
+          </button>
+          <button type="button" :class="[buttonClass, 'min-h-[2.5rem] px-1 py-1 col-span-2']">
+            {{ t("v2_daily_payment_report") }}
+          </button>
         </div>
       </div>
 
@@ -113,7 +136,7 @@
         <div class="flex flex-col flex-grow min-h-0">
           <span class="text-sm mb-1">{{ t("v2_product_list") }}:</span>
           <div
-            class="flex-grow bg-white dark:bg-gray-900 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto"
+            class="flex-grow bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto"
           />
         </div>
 
@@ -142,14 +165,20 @@
         <div class="flex flex-col flex-grow min-h-0">
           <span class="text-sm mb-1 text-right">{{ t("v2_customer_status") }}:</span>
           <div
-            class="flex-grow bg-white dark:bg-gray-900 rounded-md shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto"
+            class="flex-grow bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto"
           />
         </div>
         <div class="grid grid-cols-2 gap-2">
-          <button type="button" :class="[buttonClass, 'h-10']" />
-          <button type="button" :class="[buttonClass, 'h-10']" />
+          <button type="button" :class="[buttonClass, 'h-10']">
+            {{ t("v2_post_data") }}
+          </button>
+          <button type="button" :class="[buttonClass, 'h-10']">
+            {{ t("v2_edit") }}
+          </button>
         </div>
-        <button type="button" :class="[buttonClass, 'h-10 w-full']" />
+        <button type="button" :class="[buttonClass, 'h-10 w-full']">
+          {{ t("v2_payment") }}
+        </button>
       </div>
     </div>
   </div>
@@ -163,10 +192,30 @@ import { BUSINESS_NAME } from "../constants/business";
 defineEmits<{ (e: "navigate", view: string): void }>();
 
 const inputClass =
-  "flex-1 min-w-0 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 text-sm dark:text-gray-100";
+  "flex-1 min-w-0 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm dark:text-gray-100";
 
 const buttonClass =
-  "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors";
+  "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm leading-tight dark:text-gray-100";
+
+const printButtons = ["v2_single_print", "v2_direct_print", "v2_select_print"];
+
+const actionButtons = [
+  "v2_history",
+  "v2_refresh",
+  "v2_cust_form",
+  "v2_item_form",
+  "v2_cust_list",
+  "v2_item_list",
+];
+
+const reportButtons = [
+  "v2_item_purchase_history",
+  "v2_item_sale_history",
+  "v2_purchase_entry",
+  "v2_total_sell",
+  "v2_daily_report",
+  "v2_client_report",
+];
 
 const todayText = computed(() => {
   const d = new Date();
