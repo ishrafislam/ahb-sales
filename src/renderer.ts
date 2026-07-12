@@ -31,9 +31,12 @@ import { initTheme } from "./theme";
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";
+import CustomerHistoryWindow from "./CustomerHistoryWindow.vue";
 
 void initTheme();
 const pinia = createPinia();
 const mount = document.createElement("div");
 document.body.appendChild(mount);
-createApp(App).use(pinia).mount(mount);
+const root =
+  window.location.hash === "#customer-history" ? CustomerHistoryWindow : App;
+createApp(root).use(pinia).mount(mount);

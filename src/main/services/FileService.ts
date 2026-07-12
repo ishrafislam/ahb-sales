@@ -17,8 +17,10 @@ export class FileService {
   private isDirty = false;
   private cache = new FileCache();
   private dataChangedCallbacks: Array<() => void> = [];
+  private subscriberWindows = new Set<BrowserWindow>();
 
   constructor(private win: BrowserWindow | null = null) {
+    if (win) this.subscriberWindows.add(win);
     // Ensure data container exists
     if (!this.currentDoc.data || typeof this.currentDoc.data !== "object") {
       (this.currentDoc as AhbDocument).data = initData();
@@ -62,9 +64,25 @@ export class FileService {
     };
   }
 
+  /**
+   * Subscribe an additional window (e.g. a child history window) to
+   * notify() broadcasts. Dialogs keep using the primary window.
+   */
+  attachWindow(win: BrowserWindow): void {
+    this.subscriberWindows.add(win);
+  }
+
+  detachWindow(win: BrowserWindow): void {
+    this.subscriberWindows.delete(win);
+  }
+
   private notify(channel: string, ...args: unknown[]) {
-    if (this.win && !this.win.isDestroyed()) {
-      this.win.webContents.send(channel, ...args);
+    for (const win of this.subscriberWindows) {
+      if (win.isDestroyed()) {
+        this.subscriberWindows.delete(win);
+        continue;
+      }
+      win.webContents.send(channel, ...args);
     }
   }
 

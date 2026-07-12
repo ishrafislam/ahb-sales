@@ -14,7 +14,6 @@ describe("useModalStore", () => {
     expect(store.showProducts).toBe(false);
     expect(store.showSalesHistory).toBe(false);
     expect(store.showPurchaseHistory).toBe(false);
-    expect(store.showCustomerHistory).toBe(false);
     expect(store.showPurchaseEntry).toBe(false);
     expect(store.showReportMoneyCustomer).toBe(false);
     expect(store.showReportMoneyDayWise).toBe(false);
@@ -97,14 +96,6 @@ describe("useModalStore", () => {
       store.navigateTo("product-purchase-history");
 
       expect(store.showPurchaseHistory).toBe(true);
-    });
-
-    it("should navigate to customer history", () => {
-      const store = useModalStore();
-
-      store.navigateTo("customer-history");
-
-      expect(store.showCustomerHistory).toBe(true);
     });
 
     it("should navigate to purchase entry", () => {

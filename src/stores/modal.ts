@@ -10,7 +10,6 @@ export const useModalStore = defineStore("modal", () => {
   const showProducts = ref(false);
   const showSalesHistory = ref(false);
   const showPurchaseHistory = ref(false);
-  const showCustomerHistory = ref(false);
   const showPurchaseEntry = ref(false);
   const showReportMoneyCustomer = ref(false);
   const showReportMoneyDayWise = ref(false);
@@ -26,7 +25,6 @@ export const useModalStore = defineStore("modal", () => {
     showProducts.value ||
     showSalesHistory.value ||
     showPurchaseHistory.value ||
-    showCustomerHistory.value ||
     showPurchaseEntry.value ||
     showReportMoneyCustomer.value ||
     showReportMoneyDayWise.value ||
@@ -42,7 +40,6 @@ export const useModalStore = defineStore("modal", () => {
     showProducts.value = false;
     showSalesHistory.value = false;
     showPurchaseHistory.value = false;
-    showCustomerHistory.value = false;
     showPurchaseEntry.value = false;
     showReportMoneyCustomer.value = false;
     showReportMoneyDayWise.value = false;
@@ -61,7 +58,6 @@ export const useModalStore = defineStore("modal", () => {
       | "customers"
       | "product-sales-history"
       | "product-purchase-history"
-      | "customer-history"
       | "purchase-entry"
       | "report-money-customer"
       | "report-money-daywise"
@@ -85,9 +81,6 @@ export const useModalStore = defineStore("modal", () => {
         break;
       case "product-purchase-history":
         showPurchaseHistory.value = true;
-        break;
-      case "customer-history":
-        showCustomerHistory.value = true;
         break;
       case "purchase-entry":
         showPurchaseEntry.value = true;
@@ -113,7 +106,6 @@ export const useModalStore = defineStore("modal", () => {
     showProducts,
     showSalesHistory,
     showPurchaseHistory,
-    showCustomerHistory,
     showPurchaseEntry,
     showReportMoneyCustomer,
     showReportMoneyDayWise,

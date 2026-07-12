@@ -130,6 +130,65 @@ async function createWindow(filePath?: string): Promise<void> {
 }
 
 // -----------------------
+// Customer history window (child of a main window, shares its context)
+// -----------------------
+
+const historyWindows = new Map<number, BrowserWindow>();
+
+async function openCustomerHistoryWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  const parentCtx = getCtx(sender);
+  const parentId = sender.id;
+
+  const existing = historyWindows.get(parentId);
+  if (existing && !existing.isDestroyed()) {
+    existing.restore();
+    existing.focus();
+    return;
+  }
+
+  const win = new BrowserWindow({
+    width: 1100,
+    height: 700,
+    minWidth: 900,
+    minHeight: 600,
+    parent: parentCtx.win,
+    title: app.getName(),
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
+
+  const webContentsId = win.webContents.id;
+
+  // Share the parent's file/data services so all data IPC routed by
+  // sender id operates on the same open document.
+  contexts.set(webContentsId, {
+    win,
+    fileService: parentCtx.fileService,
+    dataService: parentCtx.dataService,
+  });
+  parentCtx.fileService.attachWindow(win);
+  historyWindows.set(parentId, win);
+
+  win.on("closed", () => {
+    contexts.delete(webContentsId);
+    historyWindows.delete(parentId);
+    parentCtx.fileService.detachWindow(win);
+  });
+
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    await win.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL + "#customer-history");
+  } else {
+    await win.loadFile(
+      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+      { hash: "customer-history" }
+    );
+  }
+}
+
+// -----------------------
 // File-path parsing helper
 // -----------------------
 
@@ -276,6 +335,9 @@ ipcMain.handle(
     return getCtx(e.sender).dataService.listCustomers(opts);
   }
 );
+ipcMain.handle("data:get-customer", async (e, id: number) => {
+  return getCtx(e.sender).dataService.getCustomerById(id) ?? null;
+});
 ipcMain.handle("data:add-customer", async (e, c) => {
   return getCtx(e.sender).dataService.addCustomer(c);
 });
@@ -325,6 +387,11 @@ ipcMain.handle("report:money-daywise", async (e, from: string, to: string) => {
 
 ipcMain.handle("report:daily-payment", async (e, date: string) => {
   return getCtx(e.sender).dataService.reportDailyPayments(date);
+});
+
+// Window control
+ipcMain.handle("window:open-customer-history", async (e) => {
+  await openCustomerHistoryWindow(e.sender);
 });
 
 // Updates & app info (global)

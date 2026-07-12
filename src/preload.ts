@@ -28,6 +28,7 @@ type AppAPI = {
   listCustomers: (
     opts?: boolean | { activeOnly?: boolean }
   ) => Promise<Customer[]>;
+  getCustomerById: (id: number) => Promise<Customer | null>;
   addCustomer: (c: unknown) => Promise<unknown>;
   updateCustomer: (id: number, patch: unknown) => Promise<unknown>;
   // Phase 2: Invoices
@@ -60,6 +61,7 @@ type AppAPI = {
     cb: (payload: { kind: string; action: string; id: number }) => void
   ) => () => void;
   // App control
+  openCustomerHistory: () => Promise<void>;
   onOpenSettings: (cb: () => void) => () => void;
   onOpenAbout: (cb: () => void) => () => void;
   getAppVersion: () => Promise<string>;
@@ -116,6 +118,7 @@ const api: AppAPI = {
   updateProduct: (id, patch) =>
     ipcRenderer.invoke("data:update-product", id, patch),
   listCustomers: (opts) => ipcRenderer.invoke("data:list-customers", opts),
+  getCustomerById: (id) => ipcRenderer.invoke("data:get-customer", id),
   addCustomer: (c) => ipcRenderer.invoke("data:add-customer", c),
   updateCustomer: (id, patch) =>
     ipcRenderer.invoke("data:update-customer", id, patch),
@@ -143,6 +146,8 @@ const api: AppAPI = {
     ipcRenderer.on("data:changed", listener);
     return () => ipcRenderer.removeListener("data:changed", listener);
   },
+  openCustomerHistory: () =>
+    ipcRenderer.invoke("window:open-customer-history"),
   onOpenSettings: (cb) => {
     const listener = () => cb();
     ipcRenderer.on("app:open-settings", listener);
