@@ -121,12 +121,13 @@
           class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-3 grid grid-cols-2 gap-2"
         >
           <button
-            v-for="key in actionButtons"
-            :key="key"
+            v-for="btn in actionButtons"
+            :key="btn.key"
             type="button"
             :class="[buttonClass, 'min-h-[2.5rem] px-1 py-1']"
+            @click="btn.page && emit('navigate', btn.page)"
           >
-            {{ t(key) }}
+            {{ t(btn.key) }}
           </button>
         </div>
 
@@ -134,14 +135,19 @@
           class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-3 grid grid-cols-2 gap-2"
         >
           <button
-            v-for="key in reportButtons"
-            :key="key"
+            v-for="btn in reportButtons"
+            :key="btn.key"
             type="button"
             :class="[buttonClass, 'min-h-[2.5rem] px-1 py-1']"
+            @click="btn.page && emit('navigate', btn.page)"
           >
-            {{ t(key) }}
+            {{ t(btn.key) }}
           </button>
-          <button type="button" :class="[buttonClass, 'min-h-[2.5rem] px-1 py-1 col-span-2']">
+          <button
+            type="button"
+            :class="[buttonClass, 'min-h-[2.5rem] px-1 py-1 col-span-2']"
+            @click="emit('navigate', 'report-daily-payment')"
+          >
             {{ t("v2_daily_payment_report") }}
           </button>
         </div>
@@ -209,7 +215,7 @@ import {
   MAX_CUSTOMER_ID,
 } from "../constants/business";
 
-defineEmits<{ (e: "navigate", view: string): void }>();
+const emit = defineEmits<{ (e: "navigate", view: string): void }>();
 
 const customerId = ref("000");
 const customerIdInput = ref<HTMLInputElement | null>(null);
@@ -255,22 +261,24 @@ const buttonClass =
 
 const printButtons = ["v2_single_print", "v2_direct_print", "v2_select_print"];
 
-const actionButtons = [
-  "v2_history",
-  "v2_refresh",
-  "v2_cust_form",
-  "v2_item_form",
-  "v2_cust_list",
-  "v2_item_list",
+const actionButtons: { key: string; page?: string }[] = [
+  { key: "v2_history", page: "customer-history" },
+  // TODO(revamp/v2): action undecided
+  { key: "v2_refresh" },
+  { key: "v2_cust_form", page: "customers" },
+  { key: "v2_item_form", page: "products" },
+  { key: "v2_cust_list", page: "customers" },
+  { key: "v2_item_list", page: "products" },
 ];
 
-const reportButtons = [
-  "v2_item_purchase_history",
-  "v2_item_sale_history",
-  "v2_purchase_entry",
-  "v2_total_sell",
-  "v2_daily_report",
-  "v2_client_report",
+const reportButtons: { key: string; page?: string }[] = [
+  { key: "v2_item_purchase_history", page: "product-purchase-history" },
+  { key: "v2_item_sale_history", page: "product-sales-history" },
+  { key: "v2_purchase_entry", page: "purchase-entry" },
+  // TODO(revamp/v2): target undecided
+  { key: "v2_total_sell" },
+  { key: "v2_daily_report", page: "report-money-daywise" },
+  { key: "v2_client_report", page: "report-money-customer" },
 ];
 
 const todayText = computed(() => {

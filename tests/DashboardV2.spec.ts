@@ -119,3 +119,67 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     wrapper.unmount();
   });
 });
+
+describe("Dashboard v2 — action button navigation", () => {
+  beforeEach(() => {
+    currentLang.value = "en";
+    (window as unknown as { ahb: unknown }).ahb = {
+      listInvoicesByCustomer: vi.fn(async () => []),
+    };
+  });
+
+  function mountDashboard() {
+    return mount(Dashboard, {
+      attachTo: document.body,
+      global: { plugins: [createPinia()] },
+    });
+  }
+
+  function findButton(
+    wrapper: ReturnType<typeof mountDashboard>,
+    label: string
+  ) {
+    const button = wrapper
+      .findAll("button")
+      .find((b) => b.text() === label);
+    expect(button, `button "${label}" not found`).toBeTruthy();
+    return button!;
+  }
+
+  const wiredButtons: [label: string, page: string][] = [
+    ["History", "customer-history"],
+    ["Cust. Form", "customers"],
+    ["Cust. List", "customers"],
+    ["Item Form", "products"],
+    ["Item List", "products"],
+    ["Item Purchase History", "product-purchase-history"],
+    ["Item Sale History", "product-sales-history"],
+    ["Purchase Entry", "purchase-entry"],
+    ["Daily Report", "report-money-daywise"],
+    ["Client Report", "report-money-customer"],
+    ["Daily Payment Report", "report-daily-payment"],
+  ];
+
+  it.each(wiredButtons)(
+    "emits navigate(%s → %s) on click",
+    async (label, page) => {
+      const wrapper = mountDashboard();
+      await findButton(wrapper, label).trigger("click");
+      expect(wrapper.emitted("navigate")).toEqual([[page]]);
+      wrapper.unmount();
+    }
+  );
+
+  it.each([
+    ["Refresh"],
+    ["Total Sell"],
+    ["Single Print"],
+    ["Direct Print"],
+    ["Select Print"],
+  ])("does not emit navigate for inert button %s", async (label) => {
+    const wrapper = mountDashboard();
+    await findButton(wrapper, label).trigger("click");
+    expect(wrapper.emitted("navigate")).toBeUndefined();
+    wrapper.unmount();
+  });
+});
