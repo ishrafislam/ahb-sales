@@ -30,7 +30,13 @@
         </div>
         <div class="flex items-center gap-2">
           <label class="text-sm whitespace-nowrap flex-1">{{ t("v2_customer_id") }}:</label>
-          <input type="text" value="000" :class="[inputClass, 'max-w-[9rem] text-right']" />
+          <input
+            ref="customerIdInput"
+            v-model="customerId"
+            type="text"
+            :class="[inputClass, 'max-w-[9rem] text-right']"
+            @keydown.enter="loadLastBill"
+          />
         </div>
       </div>
 
@@ -39,11 +45,21 @@
       >
         <div class="flex items-center gap-2">
           <label class="text-sm whitespace-nowrap w-36">{{ t("v2_last_bill_date") }}:</label>
-          <input type="text" :class="inputClass" />
+          <input
+            type="text"
+            :value="lastBillDateText"
+            disabled
+            :class="[inputClass, 'disabled:opacity-70 disabled:cursor-not-allowed']"
+          />
         </div>
         <div class="flex items-center gap-2">
           <label class="text-sm whitespace-nowrap w-36">{{ t("v2_last_bill") }}:</label>
-          <input type="text" :class="inputClass" />
+          <input
+            type="text"
+            :value="lastBillText"
+            disabled
+            :class="[inputClass, 'disabled:opacity-70 disabled:cursor-not-allowed']"
+          />
         </div>
       </div>
 
@@ -185,11 +201,51 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { t } from "../i18n";
-import { BUSINESS_NAME } from "../constants/business";
+import {
+  BUSINESS_NAME,
+  MIN_CUSTOMER_ID,
+  MAX_CUSTOMER_ID,
+} from "../constants/business";
 
 defineEmits<{ (e: "navigate", view: string): void }>();
+
+const customerId = ref("000");
+const customerIdInput = ref<HTMLInputElement | null>(null);
+const lastBillDateText = ref("");
+const lastBillText = ref("");
+
+onMounted(async () => {
+  await nextTick();
+  customerIdInput.value?.focus();
+  customerIdInput.value?.select();
+});
+
+async function loadLastBill() {
+  const id = Number.parseInt(customerId.value, 10);
+  if (Number.isNaN(id) || id < MIN_CUSTOMER_ID || id > MAX_CUSTOMER_ID) {
+    lastBillDateText.value = "—";
+    lastBillText.value = "—";
+    customerIdInput.value?.select();
+    return;
+  }
+  try {
+    const invoices = await window.ahb.listInvoicesByCustomer(id);
+    if (!invoices || invoices.length === 0) {
+      lastBillDateText.value = "—";
+      lastBillText.value = "—";
+    } else {
+      const latest = invoices[0]!;
+      lastBillDateText.value = new Date(latest.date).toLocaleDateString("en-GB");
+      lastBillText.value = latest.totals.net.toFixed(2);
+    }
+  } catch {
+    lastBillDateText.value = "—";
+    lastBillText.value = "—";
+  }
+  customerIdInput.value?.select();
+}
 
 const inputClass =
   "flex-1 min-w-0 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-2 py-1.5 text-sm dark:text-gray-100";
