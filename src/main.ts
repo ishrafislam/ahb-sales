@@ -330,6 +330,9 @@ ipcMain.handle(
     return getCtx(e.sender).dataService.listProducts(opts);
   }
 );
+ipcMain.handle("data:get-product", async (e, id: number) => {
+  return getCtx(e.sender).dataService.getProductById(id) ?? null;
+});
 ipcMain.handle("data:add-product", async (e, p) => {
   return getCtx(e.sender).dataService.addProduct(p);
 });

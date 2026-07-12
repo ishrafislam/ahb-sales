@@ -23,6 +23,7 @@ type AppAPI = {
   listProducts: (
     opts?: boolean | { activeOnly?: boolean }
   ) => Promise<Product[]>;
+  getProductById: (id: number) => Promise<Product | null>;
   addProduct: (p: unknown) => Promise<unknown>;
   updateProduct: (id: number, patch: unknown) => Promise<unknown>;
   listCustomers: (
@@ -115,6 +116,7 @@ const api: AppAPI = {
     return () => ipcRenderer.removeListener("app:document-changed", listener);
   },
   listProducts: (opts) => ipcRenderer.invoke("data:list-products", opts),
+  getProductById: (id) => ipcRenderer.invoke("data:get-product", id),
   addProduct: (p) => ipcRenderer.invoke("data:add-product", p),
   updateProduct: (id, patch) =>
     ipcRenderer.invoke("data:update-product", id, patch),

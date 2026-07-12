@@ -157,15 +157,21 @@
       <div class="lg:col-span-6 flex flex-col gap-3 min-h-0">
         <div class="flex flex-col flex-grow min-h-0">
           <span class="text-sm mb-1">{{ t("v2_product_list") }}:</span>
-          <div
-            class="flex-grow bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto"
+          <ProductEntryTable
+            ref="entryTable"
+            v-model:rows="entryRows"
           />
         </div>
 
         <div class="flex flex-col gap-2">
           <div class="flex items-center gap-2">
             <label class="text-sm whitespace-nowrap flex-1">{{ t("v2_grand_total") }}:</label>
-            <input type="text" :class="[inputClass, 'max-w-[55%]']" />
+            <input
+              type="text"
+              :value="grandTotalText"
+              disabled
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            />
           </div>
           <div class="flex items-center gap-2">
             <label class="text-sm whitespace-nowrap flex-1">{{ t("v2_discount") }}:</label>
@@ -209,6 +215,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from "vue";
 import { t } from "../i18n";
+import ProductEntryTable, {
+  type EntryRow,
+} from "../components/dashboard/ProductEntryTable.vue";
 import {
   BUSINESS_NAME,
   MIN_CUSTOMER_ID,
@@ -223,6 +232,22 @@ const customerId = ref("000");
 const customerIdInput = ref<HTMLInputElement | null>(null);
 const lastBillDateText = ref("");
 const lastBillText = ref("");
+
+const entryTable = ref<InstanceType<typeof ProductEntryTable> | null>(null);
+const entryRows = ref<EntryRow[]>([]);
+
+const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
+const grandTotal = computed(() =>
+  entryRows.value.reduce((sum, row) => {
+    if (!row.product) return sum;
+    const amount = Number.parseFloat(row.amountText);
+    if (!Number.isFinite(amount) || amount <= 0) return sum;
+    return sum + ceil2(amount * row.product.price);
+  }, 0)
+);
+const grandTotalText = computed(() =>
+  entryRows.value.some((r) => r.product) ? grandTotal.value.toFixed(2) : ""
+);
 
 onMounted(async () => {
   await nextTick();
@@ -252,7 +277,8 @@ async function loadLastBill() {
     lastBillDateText.value = "—";
     lastBillText.value = "—";
   }
-  customerIdInput.value?.select();
+  // Start product entry: focus moves into the first row's ID cell
+  entryTable.value?.startEntry();
 }
 
 const inputClass =

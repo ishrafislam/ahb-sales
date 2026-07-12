@@ -43,10 +43,10 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     return wrapper.findAll("input:disabled");
   }
 
-  it("renders last bill date and last bill as always-disabled inputs", () => {
+  it("renders last bill date, last bill and grand total as always-disabled inputs", () => {
     const wrapper = mountDashboard();
     const disabled = getDisabledInputs(wrapper);
-    expect(disabled.length).toBe(2);
+    expect(disabled.length).toBe(3);
     wrapper.unmount();
   });
 
@@ -100,7 +100,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     const values = getDisabledInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).toEqual(["—", "—"]);
+    expect(values).toEqual(["—", "—", ""]);
     wrapper.unmount();
   });
 
@@ -115,7 +115,65 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     const values = getDisabledInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).toEqual(["—", "—"]);
+    expect(values).toEqual(["—", "—", ""]);
+    wrapper.unmount();
+  });
+
+  it("starts product entry with one focused row after a valid customer Enter", async () => {
+    const wrapper = mountDashboard();
+    expect(wrapper.findAll("tbody tr").length).toBe(0);
+    const input = getCustomerIdInput(wrapper);
+    await input.setValue("12");
+    await input.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const rows = wrapper.findAll("tbody tr");
+    expect(rows.length).toBe(1);
+    expect(document.activeElement).toBe(rows[0]!.find("input").element);
+    wrapper.unmount();
+  });
+
+  it("does not start product entry for an invalid customer ID", async () => {
+    const wrapper = mountDashboard();
+    const input = getCustomerIdInput(wrapper);
+    await input.setValue("abc");
+    await input.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(wrapper.findAll("tbody tr").length).toBe(0);
+    wrapper.unmount();
+  });
+
+  it("updates the grand total from entered rows", async () => {
+    const getProductById = vi.fn(async () => ({
+      id: 5,
+      nameBn: "চাল",
+      unit: "kg",
+      price: 10.5,
+    }));
+    (window as unknown as { ahb: unknown }).ahb = {
+      listInvoicesByCustomer,
+      getProductById,
+    };
+    const wrapper = mountDashboard();
+    const input = getCustomerIdInput(wrapper);
+    await input.setValue("12");
+    await input.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    await rowInputs[0]!.setValue("5");
+    await rowInputs[0]!.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await rowInputs[1]!.setValue("3");
+    await new Promise((r) => setTimeout(r, 0));
+
+    const values = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    expect(values).toContain("31.50");
     wrapper.unmount();
   });
 });
