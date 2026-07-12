@@ -37,6 +37,7 @@ void initTheme();
 const pinia = createPinia();
 const mount = document.createElement("div");
 document.body.appendChild(mount);
-const root =
-  window.location.hash === "#customer-history" ? CustomerHistoryWindow : App;
+const root = window.location.hash.startsWith("#customer-history")
+  ? CustomerHistoryWindow
+  : App;
 createApp(root).use(pinia).mount(mount);

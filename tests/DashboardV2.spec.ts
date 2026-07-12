@@ -170,6 +170,35 @@ describe("Dashboard v2 — action button navigation", () => {
     }
   );
 
+  function customerIdInput(wrapper: ReturnType<typeof mountDashboard>) {
+    const rows = wrapper
+      .findAll("div")
+      .filter(
+        (d) => d.text().includes("Customer ID") && d.find("input").exists()
+      );
+    const row = rows[rows.length - 1];
+    expect(row).toBeTruthy();
+    return row!.find("input");
+  }
+
+  it("includes the entered customer ID when navigating to history", async () => {
+    const wrapper = mountDashboard();
+    await customerIdInput(wrapper).setValue("42");
+    await findButton(wrapper, "History").trigger("click");
+    expect(wrapper.emitted("navigate")).toEqual([
+      ["customer-history", { customerId: 42 }],
+    ]);
+    wrapper.unmount();
+  });
+
+  it("omits the customer ID for history when the input is invalid", async () => {
+    const wrapper = mountDashboard();
+    await customerIdInput(wrapper).setValue("abc");
+    await findButton(wrapper, "History").trigger("click");
+    expect(wrapper.emitted("navigate")).toEqual([["customer-history"]]);
+    wrapper.unmount();
+  });
+
   it.each([
     ["Refresh"],
     ["Total Sell"],

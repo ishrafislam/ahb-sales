@@ -49,7 +49,7 @@
             type="text"
             :value="lastBillDateText"
             disabled
-            :class="[inputClass, 'disabled:opacity-70 disabled:cursor-not-allowed']"
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
           />
         </div>
         <div class="flex items-center gap-2">
@@ -58,7 +58,7 @@
             type="text"
             :value="lastBillText"
             disabled
-            :class="[inputClass, 'disabled:opacity-70 disabled:cursor-not-allowed']"
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
           />
         </div>
       </div>
@@ -125,7 +125,7 @@
             :key="btn.key"
             type="button"
             :class="[buttonClass, 'min-h-[2.5rem] px-1 py-1']"
-            @click="btn.page && emit('navigate', btn.page)"
+            @click="onActionClick(btn)"
           >
             {{ t(btn.key) }}
           </button>
@@ -215,7 +215,9 @@ import {
   MAX_CUSTOMER_ID,
 } from "../constants/business";
 
-const emit = defineEmits<{ (e: "navigate", view: string): void }>();
+const emit = defineEmits<{
+  (e: "navigate", view: string, opts?: { customerId?: number }): void;
+}>();
 
 const customerId = ref("000");
 const customerIdInput = ref<HTMLInputElement | null>(null);
@@ -229,8 +231,8 @@ onMounted(async () => {
 });
 
 async function loadLastBill() {
-  const id = Number.parseInt(customerId.value, 10);
-  if (Number.isNaN(id) || id < MIN_CUSTOMER_ID || id > MAX_CUSTOMER_ID) {
+  const id = parseCustomerId();
+  if (id === undefined) {
     lastBillDateText.value = "—";
     lastBillText.value = "—";
     customerIdInput.value?.select();
@@ -260,6 +262,24 @@ const buttonClass =
   "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm leading-tight dark:text-gray-100";
 
 const printButtons = ["v2_single_print", "v2_direct_print", "v2_select_print"];
+
+function parseCustomerId(): number | undefined {
+  const id = Number.parseInt(customerId.value, 10);
+  if (Number.isNaN(id) || id < MIN_CUSTOMER_ID || id > MAX_CUSTOMER_ID) {
+    return undefined;
+  }
+  return id;
+}
+
+function onActionClick(btn: { key: string; page?: string }) {
+  if (!btn.page) return;
+  const id = btn.page === "customer-history" ? parseCustomerId() : undefined;
+  if (id !== undefined) {
+    emit("navigate", btn.page, { customerId: id });
+  } else {
+    emit("navigate", btn.page);
+  }
+}
 
 const actionButtons: { key: string; page?: string }[] = [
   { key: "v2_history", page: "customer-history" },

@@ -27,14 +27,14 @@
           type="text"
           disabled
           :value="customer?.nameBn ?? ''"
-          class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm dark:text-gray-100"
+          class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-right dark:text-gray-100"
         >
         <label class="text-sm">{{ t("address") }}:</label>
         <input
           type="text"
           disabled
           :value="customer?.address ?? ''"
-          class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm dark:text-gray-100"
+          class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-right dark:text-gray-100"
         >
         <label class="text-sm">{{ t("v2_receivable") }}:</label>
         <input
@@ -58,6 +58,9 @@
             </th>
             <th class="px-3 py-2 text-right">
               {{ t("total_price") }}
+            </th>
+            <th class="px-3 py-2 text-right">
+              {{ t("discount") }}
             </th>
             <th class="px-3 py-2 text-right">
               {{ t("bill") }}
@@ -95,6 +98,9 @@
               {{ money(row.subtotal) }}
             </td>
             <td class="px-3 py-2 text-right">
+              {{ money(row.discount) }}
+            </td>
+            <td class="px-3 py-2 text-right">
               {{ money(row.net) }}
             </td>
             <td class="px-3 py-2 text-right text-green-600">
@@ -124,7 +130,7 @@
           <tr v-if="!rows.length">
             <td
               class="px-4 py-3 text-center text-gray-500 dark:text-gray-400"
-              colspan="9"
+              colspan="10"
             >
               {{ t("no_invoices") }}
             </td>
@@ -163,6 +169,7 @@ const rows = computed(() =>
     id: inv.id,
     date: inv.date,
     subtotal: inv.totals.subtotal,
+    discount: inv.discount,
     net: inv.totals.net,
     paid: inv.paid,
     due: ceil2(Math.max(0, inv.totals.net - inv.paid)),
@@ -215,6 +222,7 @@ async function loadProducts() {
 }
 
 let off: null | (() => void) = null;
+let offLoadCustomer: null | (() => void) = null;
 onMounted(async () => {
   await loadProducts();
   await nextTick();
@@ -227,9 +235,20 @@ onMounted(async () => {
       void loadProducts();
     }
   });
+  offLoadCustomer = window.ahb.onLoadHistoryCustomer((id) => {
+    customerId.value = String(id);
+    void onLoadCustomer();
+  });
+  // Preloaded customer passed via URL hash (#customer-history/{id})
+  const match = /^#customer-history\/(\d+)$/.exec(window.location.hash);
+  if (match) {
+    customerId.value = match[1]!;
+    void onLoadCustomer();
+  }
 });
 onUnmounted(() => {
   if (off) off();
+  if (offLoadCustomer) offLoadCustomer();
 });
 
 function onPrint(id: string) {

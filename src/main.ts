@@ -136,7 +136,8 @@ async function createWindow(filePath?: string): Promise<void> {
 const historyWindows = new Map<number, BrowserWindow>();
 
 async function openCustomerHistoryWindow(
-  sender: Electron.WebContents
+  sender: Electron.WebContents,
+  customerId?: number
 ): Promise<void> {
   const parentCtx = getCtx(sender);
   const parentId = sender.id;
@@ -145,6 +146,9 @@ async function openCustomerHistoryWindow(
   if (existing && !existing.isDestroyed()) {
     existing.restore();
     existing.focus();
+    if (customerId !== undefined) {
+      existing.webContents.send("history:load-customer", customerId);
+    }
     return;
   }
 
@@ -178,12 +182,16 @@ async function openCustomerHistoryWindow(
     parentCtx.fileService.detachWindow(win);
   });
 
+  const hash =
+    customerId !== undefined
+      ? `customer-history/${customerId}`
+      : "customer-history";
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    await win.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL + "#customer-history");
+    await win.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}#${hash}`);
   } else {
     await win.loadFile(
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
-      { hash: "customer-history" }
+      { hash }
     );
   }
 }
@@ -390,9 +398,12 @@ ipcMain.handle("report:daily-payment", async (e, date: string) => {
 });
 
 // Window control
-ipcMain.handle("window:open-customer-history", async (e) => {
-  await openCustomerHistoryWindow(e.sender);
-});
+ipcMain.handle(
+  "window:open-customer-history",
+  async (e, customerId?: number) => {
+    await openCustomerHistoryWindow(e.sender, customerId);
+  }
+);
 
 // Updates & app info (global)
 ipcMain.handle("app:check-for-updates", async () =>

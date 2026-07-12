@@ -300,7 +300,8 @@ function onNavigate(
     | "report-money-daywise"
     | "report-daily-payment"
     | "settings"
-    | string
+    | string,
+  opts?: { customerId?: number }
 ) {
   if (page === "dashboard") {
     modalStore.closeAll();
@@ -343,7 +344,7 @@ function onNavigate(
     return;
   }
   if (page === "customer-history") {
-    void window.ahb.openCustomerHistory();
+    void window.ahb.openCustomerHistory(opts?.customerId);
   }
 }
 

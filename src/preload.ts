@@ -61,7 +61,8 @@ type AppAPI = {
     cb: (payload: { kind: string; action: string; id: number }) => void
   ) => () => void;
   // App control
-  openCustomerHistory: () => Promise<void>;
+  openCustomerHistory: (customerId?: number) => Promise<void>;
+  onLoadHistoryCustomer: (cb: (id: number) => void) => () => void;
   onOpenSettings: (cb: () => void) => () => void;
   onOpenAbout: (cb: () => void) => () => void;
   getAppVersion: () => Promise<string>;
@@ -146,8 +147,14 @@ const api: AppAPI = {
     ipcRenderer.on("data:changed", listener);
     return () => ipcRenderer.removeListener("data:changed", listener);
   },
-  openCustomerHistory: () =>
-    ipcRenderer.invoke("window:open-customer-history"),
+  openCustomerHistory: (customerId) =>
+    ipcRenderer.invoke("window:open-customer-history", customerId),
+  onLoadHistoryCustomer: (cb) => {
+    const listener = (_: unknown, id: number) => cb(id);
+    ipcRenderer.on("history:load-customer", listener);
+    return () =>
+      ipcRenderer.removeListener("history:load-customer", listener);
+  },
   onOpenSettings: (cb) => {
     const listener = () => cb();
     ipcRenderer.on("app:open-settings", listener);
