@@ -186,11 +186,24 @@
           </div>
           <div class="flex items-center gap-2">
             <label class="text-sm whitespace-nowrap flex-1">{{ t("v2_discount") }}:</label>
-            <input type="text" :class="[inputClass, 'max-w-[55%]']" />
+            <input
+              ref="discountInput"
+              v-model="discountText"
+              type="text"
+              inputmode="decimal"
+              :class="[inputClass, 'max-w-[55%] text-right']"
+              @keydown.enter.prevent="onDiscountEnter"
+              @blur="onDiscountBlur"
+            />
           </div>
           <div class="flex items-center gap-2">
             <label class="text-sm whitespace-nowrap flex-1">{{ t("v2_bill") }}:</label>
-            <input type="text" :class="[inputClass, 'max-w-[55%]']" />
+            <input
+              type="text"
+              :value="billText"
+              disabled
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            />
           </div>
           <div class="flex items-center gap-2">
             <label class="text-sm whitespace-nowrap flex-1">{{ t("v2_deposit") }}:</label>
@@ -268,6 +281,34 @@ const grandTotalText = computed(() =>
   entryRows.value.some((r) => r.product) ? grandTotal.value.toFixed(2) : ""
 );
 
+// Discount is a draft until committed with Enter (same pattern as the
+// price cells); the bill is always derived from the committed value.
+const discountInput = ref<HTMLInputElement | null>(null);
+const discountText = ref("");
+const discount = ref(0);
+
+function onDiscountEnter() {
+  const d = Number.parseFloat(discountText.value);
+  if (!Number.isFinite(d) || d < 0 || d > grandTotal.value) {
+    discountText.value = discount.value > 0 ? discount.value.toFixed(2) : "";
+  } else {
+    discount.value = d;
+    discountText.value = d.toFixed(2);
+  }
+  discountInput.value?.select();
+}
+
+function onDiscountBlur() {
+  discountText.value = discount.value > 0 ? discount.value.toFixed(2) : "";
+}
+
+const bill = computed(() =>
+  ceil2(Math.max(0, grandTotal.value - discount.value))
+);
+const billText = computed(() =>
+  entryRows.value.some((r) => r.product) ? bill.value.toFixed(2) : ""
+);
+
 onMounted(async () => {
   await nextTick();
   customerIdInput.value?.focus();
@@ -299,6 +340,8 @@ async function loadLastBill() {
   // Start product entry: focus moves into the first row's ID cell
   selectedProductIdText.value = "";
   selectedProductStockText.value = "";
+  discount.value = 0;
+  discountText.value = "";
   entryTable.value?.startEntry();
 }
 

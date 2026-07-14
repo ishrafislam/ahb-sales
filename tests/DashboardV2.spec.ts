@@ -43,10 +43,10 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     return wrapper.findAll("input:disabled");
   }
 
-  it("renders product info, last bill and grand total as always-disabled inputs", () => {
+  it("renders product info, last bill, grand total and bill as always-disabled inputs", () => {
     const wrapper = mountDashboard();
     const disabled = getDisabledInputs(wrapper);
-    expect(disabled.length).toBe(5);
+    expect(disabled.length).toBe(6);
     wrapper.unmount();
   });
 
@@ -102,7 +102,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     );
     // Grid started for the valid customer: its empty row's price input is
     // also disabled until a product loads
-    expect(values).toEqual(["", "", "—", "—", "", ""]);
+    expect(values).toEqual(["", "", "—", "—", "", "", ""]);
     wrapper.unmount();
   });
 
@@ -117,7 +117,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     const values = getDisabledInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).toEqual(["", "", "—", "—", ""]);
+    expect(values).toEqual(["", "", "—", "—", "", ""]);
     wrapper.unmount();
   });
 
@@ -202,6 +202,65 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       (i) => (i.element as HTMLInputElement).value
     );
     expect(updated).toContain("10.00");
+    wrapper.unmount();
+  });
+
+  it("commits the discount on Enter and recalculates the bill", async () => {
+    const getProductById = vi.fn(async () => ({
+      id: 5,
+      nameBn: "চাল",
+      unit: "kg",
+      price: 10.5,
+      stock: 40,
+    }));
+    (window as unknown as { ahb: unknown }).ahb = {
+      listInvoicesByCustomer,
+      getProductById,
+    };
+    const wrapper = mountDashboard();
+    const input = getCustomerIdInput(wrapper);
+    await input.setValue("12");
+    await input.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    await rowInputs[0]!.setValue("5");
+    await rowInputs[0]!.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await rowInputs[1]!.setValue("2");
+    await new Promise((r) => setTimeout(r, 0));
+
+    const disabledValues = () =>
+      getDisabledInputs(wrapper).map(
+        (i) => (i.element as HTMLInputElement).value
+      );
+    // Bill mirrors the grand total (21.00) while no discount is committed
+    expect(
+      disabledValues().filter((v) => v === "21.00").length
+    ).toBe(2);
+
+    // Discount input: typing alone does not change the bill
+    const discountRows = wrapper
+      .findAll("div")
+      .filter((d) => d.text().includes("Discount") && d.find("input").exists());
+    const discountInput = discountRows[discountRows.length - 1]!.find("input");
+    await discountInput.setValue("1");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(disabledValues().filter((v) => v === "21.00").length).toBe(2);
+
+    // Enter commits: bill drops to 20.00, draft normalized to 1.00
+    await discountInput.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(disabledValues()).toContain("20.00");
+    expect((discountInput.element as HTMLInputElement).value).toBe("1.00");
+
+    // A discount above the grand total is rejected on Enter
+    await discountInput.setValue("9999");
+    await discountInput.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    expect((discountInput.element as HTMLInputElement).value).toBe("1.00");
+    expect(disabledValues()).toContain("20.00");
     wrapper.unmount();
   });
 });
