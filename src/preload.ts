@@ -34,6 +34,7 @@ type AppAPI = {
   updateCustomer: (id: number, patch: unknown) => Promise<unknown>;
   // Phase 2: Invoices
   postInvoice: (payload: unknown) => Promise<Invoice>;
+  updateInvoice: (id: string, payload: unknown) => Promise<Invoice>;
   // Phase 3: History/listings
   listInvoicesByCustomer: (customerId: number) => Promise<Invoice[]>;
   listProductSales: (
@@ -126,6 +127,8 @@ const api: AppAPI = {
   updateCustomer: (id, patch) =>
     ipcRenderer.invoke("data:update-customer", id, patch),
   postInvoice: (payload) => ipcRenderer.invoke("data:post-invoice", payload),
+  updateInvoice: (id, payload) =>
+    ipcRenderer.invoke("data:update-invoice", id, payload),
   listInvoicesByCustomer: (customerId) =>
     ipcRenderer.invoke("data:list-invoices-by-customer", customerId),
   listProductSales: (productId) =>

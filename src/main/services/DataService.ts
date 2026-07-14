@@ -7,6 +7,7 @@ import {
   updateCustomer,
   listCustomers,
   postInvoice,
+  updateInvoice,
   listInvoicesByCustomer,
   listProductSales,
   listProductPurchases,
@@ -165,6 +166,44 @@ export class DataService {
       })
     );
     // Notify customer outstanding update
+    if (inv.customerId != null) {
+      this.fileService.notifyDataChanged({
+        kind: "customer",
+        action: "update",
+        id: inv.customerId,
+      });
+    }
+    this.markDirty();
+    return inv;
+  }
+
+  updateInvoice(
+    invoiceId: string,
+    payload: Parameters<typeof updateInvoice>[2]
+  ) {
+    const data = this.getData();
+    const old = data.invoices?.find((i) => i.id === invoiceId);
+    const inv = updateInvoice(data, invoiceId, payload);
+
+    // Old and new lines may touch different products; rebuild for correctness
+    this.rebuildIndex();
+
+    this.fileService.notifyDataChanged({
+      kind: "invoice",
+      action: "update",
+      id: inv.no,
+    });
+    const productIds = new Set<number>([
+      ...(old?.lines.map((l) => l.productId) ?? []),
+      ...inv.lines.map((l) => l.productId),
+    ]);
+    for (const id of productIds) {
+      this.fileService.notifyDataChanged({
+        kind: "product",
+        action: "stock-updated",
+        id,
+      });
+    }
     if (inv.customerId != null) {
       this.fileService.notifyDataChanged({
         kind: "customer",

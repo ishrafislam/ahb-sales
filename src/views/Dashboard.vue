@@ -263,7 +263,12 @@
           >
             {{ t("v2_post_data") }}
           </button>
-          <button type="button" :class="[buttonClass, 'h-10']">
+          <button
+            type="button"
+            :class="[buttonClass, 'h-10 disabled:opacity-70 disabled:cursor-not-allowed']"
+            :disabled="mode !== 'posted'"
+            @click="onEdit"
+          >
             {{ t("v2_edit") }}
           </button>
         </div>
@@ -385,12 +390,20 @@ function onDepositBlur() {
   depositText.value = deposit.value > 0 ? deposit.value.toFixed(2) : "";
 }
 
-// Posting
-const posted = ref(false);
+// Posting: "entry" → fresh form; "posted" → locked, invoice saved;
+// "editing" → unlocked again, Post Data updates the same invoice.
+const mode = ref<"entry" | "posted" | "editing">("entry");
+const posted = computed(() => mode.value === "posted");
+const postedInvoiceId = ref<string | null>(null);
 const postedStatus = ref<PostedStatus | null>(null);
 const postError = ref("");
 const comment = ref("");
 let posting = false;
+
+function onEdit() {
+  if (mode.value !== "posted") return;
+  mode.value = "editing";
+}
 
 async function onPostData() {
   if (posted.value || posting) return;
@@ -406,13 +419,17 @@ async function onPostData() {
   if (!lines.length) return;
   posting = true;
   try {
-    const inv = await window.ahb.postInvoice({
+    const payload = {
       customerId: custId,
       lines,
       discount: discount.value,
       paid: deposit.value,
       notes: comment.value.trim() || undefined,
-    });
+    };
+    const inv =
+      mode.value === "editing" && postedInvoiceId.value !== null
+        ? await window.ahb.updateInvoice(postedInvoiceId.value, payload)
+        : await window.ahb.postInvoice(payload);
     postedStatus.value = {
       totalPrice: inv.totals.subtotal,
       discount: inv.discount,
@@ -423,7 +440,14 @@ async function onPostData() {
       nextDue: inv.currentDue,
     };
     comment.value = inv.notes ?? "";
-    posted.value = true;
+    postedInvoiceId.value = inv.id;
+    // Hide incomplete rows (e.g. the auto-appended trailing empty row)
+    entryRows.value = entryRows.value.filter((row) => {
+      if (!row.product) return false;
+      const quantity = Number.parseFloat(row.amountText);
+      return Number.isFinite(quantity) && quantity > 0;
+    });
+    mode.value = "posted";
   } catch (e) {
     postError.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -472,7 +496,8 @@ async function loadLastBill() {
   discountText.value = "";
   deposit.value = 0;
   depositText.value = "";
-  posted.value = false;
+  mode.value = "entry";
+  postedInvoiceId.value = null;
   postedStatus.value = null;
   postError.value = "";
   comment.value = "";

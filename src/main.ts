@@ -367,6 +367,10 @@ ipcMain.handle("data:post-invoice", async (e, payload) => {
   return getCtx(e.sender).dataService.postInvoice(payload);
 });
 
+ipcMain.handle("data:update-invoice", async (e, id: string, payload) => {
+  return getCtx(e.sender).dataService.updateInvoice(id, payload);
+});
+
 ipcMain.handle(
   "data:list-invoices-by-customer",
   async (e, customerId: number) => {

@@ -321,7 +321,10 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     wrapper.unmount();
   });
 
-  async function setupPostableEntry(postInvoice: ReturnType<typeof vi.fn>) {
+  async function setupPostableEntry(
+    postInvoice: ReturnType<typeof vi.fn>,
+    updateInvoice: ReturnType<typeof vi.fn> = vi.fn()
+  ) {
     const getProductById = vi.fn(async () => ({
       id: 5,
       nameBn: "চাল",
@@ -334,6 +337,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       getProductById,
       getCustomerById,
       postInvoice,
+      updateInvoice,
     };
     const wrapper = mountDashboard();
     const input = getCustomerIdInput(wrapper);
@@ -372,6 +376,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
 
   it("posts the invoice and shows the status, then locks the form", async () => {
     const postInvoice = vi.fn(async () => ({
+      id: "inv-1",
       totals: { subtotal: 21, net: 20 },
       discount: 1,
       paid: 5,
@@ -381,8 +386,19 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     }));
     const { wrapper, postButton } = await setupPostableEntry(postInvoice);
 
+    // Amount Enter appended a trailing empty row before posting
+    await wrapper
+      .findAll("tbody tr")[0]!
+      .findAll("input")[1]!
+      .trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(wrapper.findAll("tbody tr").length).toBe(2);
+
     await postButton.trigger("click");
     await new Promise((r) => setTimeout(r, 0));
+
+    // The trailing empty row is hidden after posting
+    expect(wrapper.findAll("tbody tr").length).toBe(1);
 
     expect(postInvoice).toHaveBeenCalledWith({
       customerId: 12,
@@ -423,6 +439,72 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect(
       (wrapper.find("textarea").element as HTMLTextAreaElement).disabled
     ).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("Edit unlocks the form and Post Data updates the same invoice", async () => {
+    const postInvoice = vi.fn(async () => ({
+      id: "inv-1",
+      totals: { subtotal: 21, net: 20 },
+      discount: 1,
+      paid: 5,
+      previousDue: 100,
+      currentDue: 115,
+      notes: "first purchase",
+    }));
+    const updateInvoice = vi.fn(async () => ({
+      id: "inv-1",
+      totals: { subtotal: 31.5, net: 30.5 },
+      discount: 1,
+      paid: 5,
+      previousDue: 100,
+      currentDue: 125.5,
+      notes: "first purchase",
+    }));
+    const { wrapper, postButton } = await setupPostableEntry(
+      postInvoice,
+      updateInvoice
+    );
+    const editButton = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Edit")!;
+
+    // Edit is disabled before any post
+    expect((editButton.element as HTMLButtonElement).disabled).toBe(true);
+
+    await postButton.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+    expect((editButton.element as HTMLButtonElement).disabled).toBe(false);
+
+    // Edit unlocks the grid and Post Data
+    await editButton.trigger("click");
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((rowInputs[0]!.element as HTMLInputElement).disabled).toBe(false);
+    expect((postButton.element as HTMLButtonElement).disabled).toBe(false);
+    expect((editButton.element as HTMLButtonElement).disabled).toBe(true);
+
+    // Change the amount and save
+    await rowInputs[1]!.setValue("3");
+    await postButton.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(postInvoice).toHaveBeenCalledTimes(1);
+    expect(updateInvoice).toHaveBeenCalledWith("inv-1", {
+      customerId: 12,
+      lines: [{ productId: 5, quantity: 3, rate: 10.5 }],
+      discount: 1,
+      paid: 5,
+      notes: "first purchase",
+    });
+
+    // Status panel reflects the updated invoice; form locked again
+    const values = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    expect(values).toContain("30.50");
+    expect(values).toContain("125.50");
+    expect((postButton.element as HTMLButtonElement).disabled).toBe(true);
+    expect((editButton.element as HTMLButtonElement).disabled).toBe(false);
     wrapper.unmount();
   });
 

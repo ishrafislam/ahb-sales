@@ -125,16 +125,14 @@ export type PostInvoiceInput = {
   notes?: string;
 };
 
-export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
-  ensurePhase2(data);
-  const date = input.date ? new Date(input.date) : new Date();
-  if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
-  const hasCustomer =
-    input.customerId !== null && input.customerId !== undefined;
-  const customer = hasCustomer
-    ? data.customers.find((c) => c.id === (input.customerId as number))
-    : undefined;
-  if (hasCustomer && !customer) throw new Error("Customer not found");
+// Shared between postInvoice and updateInvoice: build and validate the
+// invoice body (lines, totals, discount, paid, dues) without mutating state.
+function buildInvoiceBody(
+  data: AhbDataV1,
+  input: PostInvoiceInput,
+  previousDue: number,
+  hasCustomer: boolean
+) {
   if (!Array.isArray(input.lines) || input.lines.length === 0)
     throw new Error("At least one line item is required");
 
@@ -166,9 +164,6 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
     throw new Error("Discount must be a non-negative number");
   if (discount > subtotal) throw new Error("Discount cannot exceed subtotal");
   const net = ceil2(subtotal - discount);
-  const previousDue = hasCustomer
-    ? ceil2(Number(customer!.outstanding || 0))
-    : 0;
   const paid = Number(input.paid ?? 0);
   if (!Number.isFinite(paid) || paid < 0)
     throw new Error("Paid must be a non-negative number");
@@ -177,6 +172,55 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
     throw new Error("Paid amount cannot exceed previous due plus net bill");
   const invoiceDue = Math.max(0, ceil2(net - paid));
   const currentDue = hasCustomer ? ceil2(previousDue + invoiceDue) : 0;
+
+  return { lines, subtotal, discount, net, paid, currentDue };
+}
+
+// Adjust product stock by the invoice lines: sign -1 applies the sale
+// (decrement), sign +1 reverts it.
+function applyStock(data: AhbDataV1, lines: InvoiceLine[], sign: 1 | -1) {
+  for (const l of lines) {
+    const idx = data.products.findIndex((p) => p.id === l.productId);
+    if (idx === -1) continue; // Should not happen as validated earlier
+    const prod = data.products[idx];
+    if (!prod) continue; // Additional safety check
+    data.products[idx] = {
+      ...prod,
+      stock: prod.stock + sign * l.quantity,
+      updatedAt: nowIso(),
+    };
+  }
+}
+
+function setCustomerOutstanding(
+  data: AhbDataV1,
+  customerId: number,
+  outstanding: number
+) {
+  const custIdx = data.customers.findIndex((c) => c.id === customerId);
+  if (custIdx === -1) return;
+  data.customers[custIdx] = {
+    ...data.customers[custIdx]!,
+    outstanding,
+    updatedAt: nowIso(),
+  };
+}
+
+export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
+  ensurePhase2(data);
+  const date = input.date ? new Date(input.date) : new Date();
+  if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
+  const hasCustomer =
+    input.customerId !== null && input.customerId !== undefined;
+  const customer = hasCustomer
+    ? data.customers.find((c) => c.id === (input.customerId as number))
+    : undefined;
+  if (hasCustomer && !customer) throw new Error("Customer not found");
+
+  const previousDue = hasCustomer
+    ? ceil2(Number(customer!.outstanding || 0))
+    : 0;
+  const body = buildInvoiceBody(data, input, previousDue, hasCustomer);
 
   // Stock check removed: allow negative stock (policy change)
 
@@ -187,52 +231,71 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
     no: invoiceNo,
     date: date.toISOString(),
     customerId: hasCustomer ? customer!.id : null,
-    lines,
-    discount,
+    lines: body.lines,
+    discount: body.discount,
     notes: input.notes?.trim() || undefined,
-    totals: { subtotal, net },
-    paid,
+    totals: { subtotal: body.subtotal, net: body.net },
+    paid: body.paid,
     previousDue,
-    currentDue,
+    currentDue: body.currentDue,
     status: "posted",
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };
 
-  // Persist and update stock
+  // Persist, update stock and customer outstanding
   data.invoices.push(inv);
-  for (const l of lines) {
-    const idx = data.products.findIndex((p) => p.id === l.productId);
-    if (idx === -1) continue; // Should not happen as validated earlier
-    const prod = data.products[idx];
-    if (!prod) continue; // Additional safety check
-    const updated: Product = {
-      id: prod.id,
-      nameBn: prod.nameBn,
-      nameEn: prod.nameEn,
-      description: prod.description,
-      unit: prod.unit,
-      price: prod.price,
-      stock: prod.stock - l.quantity,
-      active: prod.active,
-      createdAt: prod.createdAt,
-      updatedAt: nowIso(),
-    };
-    data.products[idx] = updated;
-  }
-  // Update customer outstanding (currentDue)
+  applyStock(data, body.lines, -1);
   if (hasCustomer && customer) {
-    const custIdx = data.customers.findIndex((c) => c.id === customer.id);
-    if (custIdx !== -1) {
-      data.customers[custIdx] = {
-        ...customer,
-        outstanding: currentDue,
-        updatedAt: nowIso(),
-      };
-    }
+    setCustomerOutstanding(data, customer.id, body.currentDue);
   }
 
   return inv;
+}
+
+/**
+ * Update the customer's latest invoice in place: reverts the old invoice's
+ * stock and outstanding effects, then re-applies with the new input. The
+ * stored previousDue snapshot is kept as the recomputation base, so only
+ * the latest invoice (highest no for that customer) can be edited safely.
+ */
+export function updateInvoice(
+  data: AhbDataV1,
+  invoiceId: string,
+  input: PostInvoiceInput
+): Invoice {
+  ensurePhase2(data);
+  const idx = data.invoices.findIndex((i) => i.id === invoiceId);
+  if (idx === -1) throw new Error("Invoice not found");
+  const old = data.invoices[idx]!;
+  const hasNewer = data.invoices.some(
+    (i) => i.customerId === old.customerId && i.no > old.no
+  );
+  if (hasNewer) throw new Error("Only the latest invoice can be edited");
+
+  const hasCustomer = old.customerId !== null;
+  // The invoice stays with its original customer; recompute against the
+  // stored previousDue snapshot. Validation happens before any mutation.
+  const body = buildInvoiceBody(data, input, old.previousDue, hasCustomer);
+
+  applyStock(data, old.lines, 1); // revert the old sale
+  const updated: Invoice = {
+    ...old,
+    lines: body.lines,
+    discount: body.discount,
+    notes: input.notes?.trim() || undefined,
+    totals: { subtotal: body.subtotal, net: body.net },
+    paid: body.paid,
+    currentDue: body.currentDue,
+    updatedAt: nowIso(),
+  };
+  data.invoices[idx] = updated;
+  applyStock(data, body.lines, -1);
+  if (hasCustomer) {
+    setCustomerOutstanding(data, old.customerId!, body.currentDue);
+  }
+
+  return updated;
 }
 
 export function assertProductId(id: number) {
