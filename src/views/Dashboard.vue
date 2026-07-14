@@ -170,6 +170,7 @@
           <ProductEntryTable
             ref="entryTable"
             v-model:rows="entryRows"
+            :locked="posted"
             @product-selected="onProductSelected"
           />
         </div>
@@ -191,7 +192,8 @@
               v-model="discountText"
               type="text"
               inputmode="decimal"
-              :class="[inputClass, 'max-w-[55%] text-right']"
+              :disabled="posted"
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
               @keydown.enter.prevent="onDiscountEnter"
               @blur="onDiscountBlur"
             />
@@ -207,7 +209,16 @@
           </div>
           <div class="flex items-center gap-2">
             <label class="text-sm whitespace-nowrap flex-1">{{ t("v2_deposit") }}:</label>
-            <input type="text" :class="[inputClass, 'max-w-[55%]']" />
+            <input
+              ref="depositInput"
+              v-model="depositText"
+              type="text"
+              inputmode="decimal"
+              :disabled="posted"
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              @keydown.enter.prevent="onDepositEnter"
+              @blur="onDepositBlur"
+            />
           </div>
         </div>
       </div>
@@ -216,12 +227,25 @@
       <div class="lg:col-span-3 flex flex-col gap-3 min-h-0">
         <div class="flex flex-col flex-grow min-h-0">
           <span class="text-sm mb-1 text-right">{{ t("v2_customer_status") }}:</span>
-          <div
-            class="flex-grow bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto"
+          <CustomerStatusPanel
+            v-model:comment="comment"
+            :status="postedStatus"
+            :locked="posted"
           />
         </div>
+        <p
+          v-if="postError"
+          class="text-sm text-red-600 dark:text-red-400"
+        >
+          {{ postError }}
+        </p>
         <div class="grid grid-cols-2 gap-2">
-          <button type="button" :class="[buttonClass, 'h-10']">
+          <button
+            type="button"
+            :class="[buttonClass, 'h-10 disabled:opacity-70 disabled:cursor-not-allowed']"
+            :disabled="posted"
+            @click="onPostData"
+          >
             {{ t("v2_post_data") }}
           </button>
           <button type="button" :class="[buttonClass, 'h-10']">
@@ -242,6 +266,9 @@ import { t } from "../i18n";
 import ProductEntryTable, {
   type EntryRow,
 } from "../components/dashboard/ProductEntryTable.vue";
+import CustomerStatusPanel, {
+  type PostedStatus,
+} from "../components/dashboard/CustomerStatusPanel.vue";
 import {
   BUSINESS_NAME,
   MIN_CUSTOMER_ID,
@@ -309,6 +336,72 @@ const billText = computed(() =>
   entryRows.value.some((r) => r.product) ? bill.value.toFixed(2) : ""
 );
 
+// Deposit (জমা): same commit-on-Enter pattern as discount
+const depositInput = ref<HTMLInputElement | null>(null);
+const depositText = ref("");
+const deposit = ref(0);
+
+function onDepositEnter() {
+  const d = Number.parseFloat(depositText.value);
+  if (!Number.isFinite(d) || d < 0) {
+    depositText.value = deposit.value > 0 ? deposit.value.toFixed(2) : "";
+  } else {
+    deposit.value = d;
+    depositText.value = d.toFixed(2);
+  }
+  depositInput.value?.select();
+}
+
+function onDepositBlur() {
+  depositText.value = deposit.value > 0 ? deposit.value.toFixed(2) : "";
+}
+
+// Posting
+const posted = ref(false);
+const postedStatus = ref<PostedStatus | null>(null);
+const postError = ref("");
+const comment = ref("");
+let posting = false;
+
+async function onPostData() {
+  if (posted.value || posting) return;
+  postError.value = "";
+  const custId = parseCustomerId();
+  if (custId === undefined) return;
+  const lines = entryRows.value.flatMap((row) => {
+    if (!row.product || row.price === null) return [];
+    const quantity = Number.parseFloat(row.amountText);
+    if (!Number.isFinite(quantity) || quantity <= 0) return [];
+    return [{ productId: row.product.id, quantity, rate: row.price }];
+  });
+  if (!lines.length) return;
+  posting = true;
+  try {
+    const inv = await window.ahb.postInvoice({
+      customerId: custId,
+      lines,
+      discount: discount.value,
+      paid: deposit.value,
+      notes: comment.value.trim() || undefined,
+    });
+    postedStatus.value = {
+      totalPrice: inv.totals.subtotal,
+      discount: inv.discount,
+      bill: inv.totals.net,
+      deposit: inv.paid,
+      difference: ceil2(Math.max(0, inv.totals.net - inv.paid)),
+      previousDue: inv.previousDue,
+      nextDue: inv.currentDue,
+    };
+    comment.value = inv.notes ?? "";
+    posted.value = true;
+  } catch (e) {
+    postError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    posting = false;
+  }
+}
+
 onMounted(async () => {
   await nextTick();
   customerIdInput.value?.focus();
@@ -342,6 +435,12 @@ async function loadLastBill() {
   selectedProductStockText.value = "";
   discount.value = 0;
   discountText.value = "";
+  deposit.value = 0;
+  depositText.value = "";
+  posted.value = false;
+  postedStatus.value = null;
+  postError.value = "";
+  comment.value = "";
   entryTable.value?.startEntry();
 }
 

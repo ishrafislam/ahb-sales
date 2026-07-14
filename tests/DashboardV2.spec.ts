@@ -43,10 +43,11 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     return wrapper.findAll("input:disabled");
   }
 
-  it("renders product info, last bill, grand total and bill as always-disabled inputs", () => {
+  it("renders product info, last bill, totals and status fields as always-disabled inputs", () => {
     const wrapper = mountDashboard();
     const disabled = getDisabledInputs(wrapper);
-    expect(disabled.length).toBe(6);
+    // 2 header + 2 last-bill + grand total + bill + 7 status panel fields
+    expect(disabled.length).toBe(13);
     wrapper.unmount();
   });
 
@@ -101,8 +102,9 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       (i) => (i.element as HTMLInputElement).value
     );
     // Grid started for the valid customer: its empty row's price input is
-    // also disabled until a product loads
-    expect(values).toEqual(["", "", "—", "—", "", "", ""]);
+    // also disabled until a product loads; trailing empties are the
+    // grand total, bill and the 7 status panel fields
+    expect(values).toEqual(["", "", "—", "—", ...Array(10).fill("")]);
     wrapper.unmount();
   });
 
@@ -117,7 +119,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     const values = getDisabledInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).toEqual(["", "", "—", "—", "", ""]);
+    expect(values).toEqual(["", "", "—", "—", ...Array(9).fill("")]);
     wrapper.unmount();
   });
 
@@ -243,8 +245,14 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     // Discount input: typing alone does not change the bill
     const discountRows = wrapper
       .findAll("div")
-      .filter((d) => d.text().includes("Discount") && d.find("input").exists());
-    const discountInput = discountRows[discountRows.length - 1]!.find("input");
+      .filter(
+        (d) =>
+          d.text().includes("Discount") &&
+          d.find("input:not([disabled])").exists()
+      );
+    const discountInput = discountRows[discountRows.length - 1]!.find(
+      "input:not([disabled])"
+    );
     await discountInput.setValue("1");
     await new Promise((r) => setTimeout(r, 0));
     expect(disabledValues().filter((v) => v === "21.00").length).toBe(2);
@@ -261,6 +269,126 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect((discountInput.element as HTMLInputElement).value).toBe("1.00");
     expect(disabledValues()).toContain("20.00");
+    wrapper.unmount();
+  });
+
+  async function setupPostableEntry(postInvoice: ReturnType<typeof vi.fn>) {
+    const getProductById = vi.fn(async () => ({
+      id: 5,
+      nameBn: "চাল",
+      unit: "kg",
+      price: 10.5,
+      stock: 40,
+    }));
+    (window as unknown as { ahb: unknown }).ahb = {
+      listInvoicesByCustomer,
+      getProductById,
+      postInvoice,
+    };
+    const wrapper = mountDashboard();
+    const input = getCustomerIdInput(wrapper);
+    await input.setValue("12");
+    await input.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    await rowInputs[0]!.setValue("5");
+    await rowInputs[0]!.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await rowInputs[1]!.setValue("2");
+
+    const totalsInput = (label: string) => {
+      const rows = wrapper
+        .findAll("div")
+        .filter(
+          (d) =>
+            d.text().includes(label) &&
+            d.find("input:not([disabled])").exists()
+        );
+      return rows[rows.length - 1]!.find("input:not([disabled])");
+    };
+    await totalsInput("Discount").setValue("1");
+    await totalsInput("Discount").trigger("keydown.enter");
+    await totalsInput("Deposit").setValue("5");
+    await totalsInput("Deposit").trigger("keydown.enter");
+    await wrapper.find("textarea").setValue("first purchase");
+
+    const postButton = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Post Data")!;
+    return { wrapper, postButton };
+  }
+
+  it("posts the invoice and shows the status, then locks the form", async () => {
+    const postInvoice = vi.fn(async () => ({
+      totals: { subtotal: 21, net: 20 },
+      discount: 1,
+      paid: 5,
+      previousDue: 100,
+      currentDue: 115,
+      notes: "first purchase",
+    }));
+    const { wrapper, postButton } = await setupPostableEntry(postInvoice);
+
+    await postButton.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(postInvoice).toHaveBeenCalledWith({
+      customerId: 12,
+      lines: [{ productId: 5, quantity: 2, rate: 10.5 }],
+      discount: 1,
+      paid: 5,
+      notes: "first purchase",
+    });
+
+    // Status panel shows the returned invoice values
+    const values = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    for (const v of ["1.00", "20.00", "5.00", "15.00", "100.00", "115.00"]) {
+      expect(values).toContain(v);
+    }
+    expect(values.filter((v) => v === "21.00").length).toBeGreaterThanOrEqual(
+      2
+    );
+
+    // Form is locked: grid cells, discount, deposit, comment, Post Data
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    for (const cell of rowInputs) {
+      expect((cell.element as HTMLInputElement).disabled).toBe(true);
+    }
+    expect(
+      (wrapper.find("textarea").element as HTMLTextAreaElement).disabled
+    ).toBe(true);
+    expect((postButton.element as HTMLButtonElement).disabled).toBe(true);
+
+    // A new customer session unlocks and clears the status
+    const input = getCustomerIdInput(wrapper);
+    await input.setValue("13");
+    await input.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+    expect((postButton.element as HTMLButtonElement).disabled).toBe(false);
+    expect(
+      (wrapper.find("textarea").element as HTMLTextAreaElement).disabled
+    ).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("shows the error and stays editable when posting fails", async () => {
+    const postInvoice = vi.fn(async () => {
+      throw new Error("Discount cannot exceed subtotal");
+    });
+    const { wrapper, postButton } = await setupPostableEntry(postInvoice);
+
+    await postButton.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(wrapper.text()).toContain("Discount cannot exceed subtotal");
+    expect((postButton.element as HTMLButtonElement).disabled).toBe(false);
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((rowInputs[0]!.element as HTMLInputElement).disabled).toBe(false);
     wrapper.unmount();
   });
 });

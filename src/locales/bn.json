@@ -182,5 +182,8 @@
   "v2_daily_payment_report": "Daily Payment Report",
   "v2_post_data": "Post Data",
   "v2_edit": "Edit",
-  "v2_payment": "Payment"
+  "v2_payment": "Payment",
+  "v2_difference": "পার্থক্য",
+  "v2_previous_due": "সাবেক পাওনা",
+  "v2_next_due": "পরবর্তী পাওনা"
 }

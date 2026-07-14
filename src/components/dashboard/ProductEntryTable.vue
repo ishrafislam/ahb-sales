@@ -34,7 +34,8 @@
               v-model="row.idText"
               type="text"
               inputmode="numeric"
-              :class="cellInputClass"
+              :disabled="locked"
+              :class="[cellInputClass, 'disabled:opacity-70 disabled:cursor-not-allowed']"
               @keydown.enter.prevent="onIdEnter(idx)"
               @keydown="onCellKeydown($event, idx, 'id')"
               @focus="onCellFocus(idx)"
@@ -49,7 +50,8 @@
               v-model="row.amountText"
               type="text"
               inputmode="decimal"
-              :class="[cellInputClass, 'text-right']"
+              :disabled="locked"
+              :class="[cellInputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
               @keydown.enter.prevent="onAmountEnter(idx)"
               @keydown="onCellKeydown($event, idx, 'amount')"
               @focus="onCellFocus(idx)"
@@ -63,7 +65,7 @@
               v-model="row.priceText"
               type="text"
               inputmode="decimal"
-              :disabled="!row.product"
+              :disabled="locked || !row.product"
               :class="[cellInputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
               @keydown.enter.prevent="onPriceEnter(idx)"
               @blur="onPriceBlur(idx)"
@@ -102,6 +104,7 @@ export type EntryRow = {
 type Col = "id" | "amount";
 
 const rows = defineModel<EntryRow[]>("rows", { required: true });
+withDefaults(defineProps<{ locked?: boolean }>(), { locked: false });
 const emit = defineEmits<{
   (
     e: "product-selected",

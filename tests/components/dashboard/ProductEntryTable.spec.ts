@@ -37,11 +37,12 @@ describe("ProductEntryTable", () => {
       const rows = ref<EntryRow[]>([]);
       const table = ref<InstanceType<typeof ProductEntryTable> | null>(null);
       const selected = ref<Array<{ id: number; stock: number } | null>>([]);
+      const locked = ref(false);
       const onProductSelected = (p: { id: number; stock: number } | null) =>
         selected.value.push(p);
-      return { rows, table, selected, onProductSelected };
+      return { rows, table, selected, locked, onProductSelected };
     },
-    template: `<ProductEntryTable ref="table" v-model:rows="rows" @product-selected="onProductSelected" />`,
+    template: `<ProductEntryTable ref="table" v-model:rows="rows" :locked="locked" @product-selected="onProductSelected" />`,
   });
 
   function mountHost() {
@@ -135,6 +136,22 @@ describe("ProductEntryTable", () => {
     expect(wrapper.findAll("tbody tr").length).toBe(2);
     expect(document.activeElement).toBe(cellInputs(wrapper, 0).amount.element);
     expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 40 });
+    wrapper.unmount();
+  });
+
+  it("locked disables every cell input", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const first = cellInputs(wrapper, 0);
+    await first.id.setValue("5");
+    await first.id.trigger("keydown.enter");
+    await flush();
+
+    wrapper.vm.locked = true;
+    await flush();
+    for (const cell of Object.values(cellInputs(wrapper, 0))) {
+      expect((cell.element as HTMLInputElement).disabled).toBe(true);
+    }
     wrapper.unmount();
   });
 
