@@ -43,10 +43,10 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     return wrapper.findAll("input:disabled");
   }
 
-  it("renders last bill date, last bill and grand total as always-disabled inputs", () => {
+  it("renders product info, last bill and grand total as always-disabled inputs", () => {
     const wrapper = mountDashboard();
     const disabled = getDisabledInputs(wrapper);
-    expect(disabled.length).toBe(3);
+    expect(disabled.length).toBe(5);
     wrapper.unmount();
   });
 
@@ -100,7 +100,9 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     const values = getDisabledInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).toEqual(["—", "—", ""]);
+    // Grid started for the valid customer: its empty row's price input is
+    // also disabled until a product loads
+    expect(values).toEqual(["", "", "—", "—", "", ""]);
     wrapper.unmount();
   });
 
@@ -115,7 +117,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     const values = getDisabledInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).toEqual(["—", "—", ""]);
+    expect(values).toEqual(["", "", "—", "—", ""]);
     wrapper.unmount();
   });
 
@@ -151,6 +153,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       nameBn: "চাল",
       unit: "kg",
       price: 10.5,
+      stock: 40,
     }));
     (window as unknown as { ahb: unknown }).ahb = {
       listInvoicesByCustomer,
@@ -174,6 +177,31 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       (i) => (i.element as HTMLInputElement).value
     );
     expect(values).toContain("31.50");
+    // Header panel shows the selected product's ID and stock
+    expect(values[0]).toBe("5");
+    expect(values[1]).toBe("40");
+
+    // Editing the amount in place (no Enter) updates the grand total
+    await rowInputs[1]!.setValue("2");
+    await new Promise((r) => setTimeout(r, 0));
+    let updated = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    expect(updated).toContain("21.00");
+
+    // Editing the price only affects the total once committed with Enter
+    await rowInputs[2]!.setValue("5");
+    await new Promise((r) => setTimeout(r, 0));
+    updated = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    expect(updated).toContain("21.00");
+    await rowInputs[2]!.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    updated = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    expect(updated).toContain("10.00");
     wrapper.unmount();
   });
 });

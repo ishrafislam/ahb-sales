@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col h-screen p-3 lg:p-4 gap-3 lg:gap-4 dark:text-gray-100">
     <!-- Header band: title + product lookup panel -->
-    <div class="flex items-center justify-between gap-4">
+    <div class="flex items-center gap-4">
       <h1 class="text-2xl lg:text-3xl font-bold tracking-wide">
         {{ BUSINESS_NAME }}
       </h1>
@@ -10,11 +10,21 @@
       >
         <div class="flex items-center gap-2">
           <label class="text-sm whitespace-nowrap w-28">{{ t("v2_product_id") }}:</label>
-          <input type="text" :class="inputClass" />
+          <input
+            type="text"
+            :value="selectedProductIdText"
+            disabled
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+          />
         </div>
         <div class="flex items-center gap-2">
           <label class="text-sm whitespace-nowrap w-28">{{ t("v2_stock_qty") }}:</label>
-          <input type="text" :class="inputClass" />
+          <input
+            type="text"
+            :value="selectedProductStockText"
+            disabled
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+          />
         </div>
       </div>
     </div>
@@ -160,6 +170,7 @@
           <ProductEntryTable
             ref="entryTable"
             v-model:rows="entryRows"
+            @product-selected="onProductSelected"
           />
         </div>
 
@@ -235,6 +246,13 @@ const lastBillText = ref("");
 
 const entryTable = ref<InstanceType<typeof ProductEntryTable> | null>(null);
 const entryRows = ref<EntryRow[]>([]);
+const selectedProductIdText = ref("");
+const selectedProductStockText = ref("");
+
+function onProductSelected(payload: { id: number; stock: number } | null) {
+  selectedProductIdText.value = payload ? String(payload.id) : "";
+  selectedProductStockText.value = payload ? String(payload.stock) : "";
+}
 
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
 const grandTotal = computed(() =>
@@ -242,7 +260,8 @@ const grandTotal = computed(() =>
     if (!row.product) return sum;
     const amount = Number.parseFloat(row.amountText);
     if (!Number.isFinite(amount) || amount <= 0) return sum;
-    return sum + ceil2(amount * row.product.price);
+    if (row.price === null) return sum;
+    return sum + ceil2(amount * row.price);
   }, 0)
 );
 const grandTotalText = computed(() =>
@@ -278,6 +297,8 @@ async function loadLastBill() {
     lastBillText.value = "—";
   }
   // Start product entry: focus moves into the first row's ID cell
+  selectedProductIdText.value = "";
+  selectedProductStockText.value = "";
   entryTable.value?.startEntry();
 }
 
