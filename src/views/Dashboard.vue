@@ -102,15 +102,30 @@
         >
           <div class="flex items-center gap-2">
             <label class="text-sm whitespace-nowrap w-16">{{ t("v2_customer") }}:</label>
-            <input type="text" :class="inputClass" />
+            <input
+              type="text"
+              :value="customerNameText"
+              disabled
+              :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            />
           </div>
           <div class="flex items-center gap-2">
             <label class="text-sm whitespace-nowrap w-16">{{ t("v2_address") }}:</label>
-            <input type="text" :class="inputClass" />
+            <input
+              type="text"
+              :value="customerAddressText"
+              disabled
+              :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            />
           </div>
           <div class="flex items-center gap-2">
             <label class="text-sm whitespace-nowrap w-16">{{ t("v2_receivable") }}:</label>
-            <input type="text" :class="inputClass" />
+            <input
+              type="text"
+              :value="customerReceivableText"
+              disabled
+              :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            />
           </div>
         </div>
 
@@ -284,6 +299,20 @@ const customerIdInput = ref<HTMLInputElement | null>(null);
 const lastBillDateText = ref("");
 const lastBillText = ref("");
 
+const customerNameText = ref("");
+const customerAddressText = ref("");
+const customerReceivableText = ref("");
+
+function setCustomerInfo(
+  customer: { nameBn: string; address?: string; outstanding: number } | null
+) {
+  customerNameText.value = customer?.nameBn ?? "";
+  customerAddressText.value = customer?.address ?? "";
+  customerReceivableText.value = customer
+    ? customer.outstanding.toFixed(2)
+    : "";
+}
+
 const entryTable = ref<InstanceType<typeof ProductEntryTable> | null>(null);
 const entryRows = ref<EntryRow[]>([]);
 const selectedProductIdText = ref("");
@@ -413,11 +442,16 @@ async function loadLastBill() {
   if (id === undefined) {
     lastBillDateText.value = "—";
     lastBillText.value = "—";
+    setCustomerInfo(null);
     customerIdInput.value?.select();
     return;
   }
   try {
-    const invoices = await window.ahb.listInvoicesByCustomer(id);
+    const [invoices, customer] = await Promise.all([
+      window.ahb.listInvoicesByCustomer(id),
+      window.ahb.getCustomerById(id),
+    ]);
+    setCustomerInfo(customer);
     if (!invoices || invoices.length === 0) {
       lastBillDateText.value = "—";
       lastBillText.value = "—";
@@ -429,6 +463,7 @@ async function loadLastBill() {
   } catch {
     lastBillDateText.value = "—";
     lastBillText.value = "—";
+    setCustomerInfo(null);
   }
   // Start product entry: focus moves into the first row's ID cell
   selectedProductIdText.value = "";

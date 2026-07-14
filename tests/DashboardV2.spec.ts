@@ -13,11 +13,24 @@ describe("Dashboard v2 — customer ID quick entry", () => {
   let listInvoicesByCustomer: ReturnType<
     typeof vi.fn<(customerId: number) => Promise<InvoiceStub[]>>
   >;
+  let getCustomerById: ReturnType<
+    typeof vi.fn<
+      (id: number) => Promise<{
+        nameBn: string;
+        address?: string;
+        outstanding: number;
+      } | null>
+    >
+  >;
 
   beforeEach(() => {
     currentLang.value = "en";
     listInvoicesByCustomer = vi.fn(async () => [] as InvoiceStub[]);
-    (window as unknown as { ahb: unknown }).ahb = { listInvoicesByCustomer };
+    getCustomerById = vi.fn(async () => null);
+    (window as unknown as { ahb: unknown }).ahb = {
+      listInvoicesByCustomer,
+      getCustomerById,
+    };
   });
 
   function mountDashboard() {
@@ -46,8 +59,9 @@ describe("Dashboard v2 — customer ID quick entry", () => {
   it("renders product info, last bill, totals and status fields as always-disabled inputs", () => {
     const wrapper = mountDashboard();
     const disabled = getDisabledInputs(wrapper);
-    // 2 header + 2 last-bill + grand total + bill + 7 status panel fields
-    expect(disabled.length).toBe(13);
+    // 2 header + 2 last-bill + 3 customer info + grand total + bill
+    // + 7 status panel fields
+    expect(disabled.length).toBe(16);
     wrapper.unmount();
   });
 
@@ -102,9 +116,9 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       (i) => (i.element as HTMLInputElement).value
     );
     // Grid started for the valid customer: its empty row's price input is
-    // also disabled until a product loads; trailing empties are the
-    // grand total, bill and the 7 status panel fields
-    expect(values).toEqual(["", "", "—", "—", ...Array(10).fill("")]);
+    // also disabled until a product loads; other empties are the customer
+    // info box, grand total, bill and the 7 status panel fields
+    expect(values).toEqual(["", "", "—", "—", ...Array(13).fill("")]);
     wrapper.unmount();
   });
 
@@ -119,7 +133,40 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     const values = getDisabledInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).toEqual(["", "", "—", "—", ...Array(9).fill("")]);
+    expect(values).toEqual(["", "", "—", "—", ...Array(12).fill("")]);
+    wrapper.unmount();
+  });
+
+  it("populates the customer info box on selection and clears it for unknown IDs", async () => {
+    getCustomerById.mockResolvedValue({
+      nameBn: "রহিম",
+      address: "ঢাকা",
+      outstanding: 250.5,
+    });
+    const wrapper = mountDashboard();
+    const input = getCustomerIdInput(wrapper);
+    await input.setValue("12");
+    await input.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(getCustomerById).toHaveBeenCalledWith(12);
+    let values = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    expect(values).toContain("রহিম");
+    expect(values).toContain("ঢাকা");
+    expect(values).toContain("250.50");
+
+    // Unknown customer clears the box
+    getCustomerById.mockResolvedValue(null);
+    await input.setValue("13");
+    await input.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    values = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    expect(values).not.toContain("রহিম");
+    expect(values).not.toContain("250.50");
     wrapper.unmount();
   });
 
@@ -160,6 +207,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     (window as unknown as { ahb: unknown }).ahb = {
       listInvoicesByCustomer,
       getProductById,
+      getCustomerById,
     };
     const wrapper = mountDashboard();
     const input = getCustomerIdInput(wrapper);
@@ -218,6 +266,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     (window as unknown as { ahb: unknown }).ahb = {
       listInvoicesByCustomer,
       getProductById,
+      getCustomerById,
     };
     const wrapper = mountDashboard();
     const input = getCustomerIdInput(wrapper);
@@ -283,6 +332,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     (window as unknown as { ahb: unknown }).ahb = {
       listInvoicesByCustomer,
       getProductById,
+      getCustomerById,
       postInvoice,
     };
     const wrapper = mountDashboard();
