@@ -8,6 +8,7 @@ import {
   listCustomers,
   postInvoice,
   updateInvoice,
+  addInvoicePayment,
   listInvoicesByCustomer,
   listProductSales,
   listProductPurchases,
@@ -204,6 +205,33 @@ export class DataService {
         id,
       });
     }
+    if (inv.customerId != null) {
+      this.fileService.notifyDataChanged({
+        kind: "customer",
+        action: "update",
+        id: inv.customerId,
+      });
+    }
+    this.markDirty();
+    return inv;
+  }
+
+  getInvoiceById(invoiceId: string) {
+    return this.getData().invoices?.find((i) => i.id === invoiceId) ?? null;
+  }
+
+  addInvoicePayment(
+    invoiceId: string,
+    payload: Parameters<typeof addInvoicePayment>[2]
+  ) {
+    const inv = addInvoicePayment(this.getData(), invoiceId, payload);
+    // The invoice and customer objects are replaced in the data arrays
+    this.rebuildIndex();
+    this.fileService.notifyDataChanged({
+      kind: "invoice",
+      action: "payment",
+      id: inv.no,
+    });
     if (inv.customerId != null) {
       this.fileService.notifyDataChanged({
         kind: "customer",

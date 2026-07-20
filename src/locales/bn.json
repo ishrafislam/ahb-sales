@@ -185,5 +185,8 @@
   "v2_payment": "Payment",
   "v2_difference": "পার্থক্য",
   "v2_previous_due": "সাবেক পাওনা",
-  "v2_next_due": "পরবর্তী পাওনা"
+  "v2_next_due": "পরবর্তী পাওনা",
+  "okay": "ঠিক আছে",
+  "v2_edit_previous_payment": "পূর্বের জমা সম্পাদনা",
+  "payment_amount_invalid": "পরিমাণ শূন্যের চেয়ে বড় হতে হবে"
 }

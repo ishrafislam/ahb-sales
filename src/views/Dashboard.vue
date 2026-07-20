@@ -225,14 +225,10 @@
           <div class="flex items-center gap-2">
             <label class="text-sm whitespace-nowrap flex-1">{{ t("v2_deposit") }}:</label>
             <input
-              ref="depositInput"
-              v-model="depositText"
               type="text"
-              inputmode="decimal"
-              :disabled="posted"
+              :value="paidTotalText"
+              disabled
               :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
-              @keydown.enter.prevent="onDepositEnter"
-              @blur="onDepositBlur"
             />
           </div>
         </div>
@@ -272,7 +268,12 @@
             {{ t("v2_edit") }}
           </button>
         </div>
-        <button type="button" :class="[buttonClass, 'h-10 w-full']">
+        <button
+          type="button"
+          :class="[buttonClass, 'h-10 w-full disabled:opacity-70 disabled:cursor-not-allowed']"
+          :disabled="mode !== 'posted'"
+          @click="onPayment"
+        >
           {{ t("v2_payment") }}
         </button>
       </div>
@@ -281,8 +282,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { t } from "../i18n";
+import type { Invoice } from "../main/data";
 import ProductEntryTable, {
   type EntryRow,
 } from "../components/dashboard/ProductEntryTable.vue";
@@ -370,25 +372,10 @@ const billText = computed(() =>
   entryRows.value.some((r) => r.product) ? bill.value.toFixed(2) : ""
 );
 
-// Deposit (জমা): same commit-on-Enter pattern as discount
-const depositInput = ref<HTMLInputElement | null>(null);
-const depositText = ref("");
-const deposit = ref(0);
-
-function onDepositEnter() {
-  const d = Number.parseFloat(depositText.value);
-  if (!Number.isFinite(d) || d < 0) {
-    depositText.value = deposit.value > 0 ? deposit.value.toFixed(2) : "";
-  } else {
-    deposit.value = d;
-    depositText.value = d.toFixed(2);
-  }
-  depositInput.value?.select();
-}
-
-function onDepositBlur() {
-  depositText.value = deposit.value > 0 ? deposit.value.toFixed(2) : "";
-}
+// Deposit (জমা): read-only running total of payments made against the
+// posted invoice — payments are added only through the payment window.
+const paidTotal = ref(0);
+const paidTotalText = computed(() => paidTotal.value.toFixed(2));
 
 // Posting: "entry" → fresh form; "posted" → locked, invoice saved;
 // "editing" → unlocked again, Post Data updates the same invoice.
@@ -403,6 +390,40 @@ let posting = false;
 function onEdit() {
   if (mode.value !== "posted") return;
   mode.value = "editing";
+}
+
+function applyInvoiceToStatus(inv: Invoice) {
+  postedStatus.value = {
+    totalPrice: inv.totals.subtotal,
+    discount: inv.discount,
+    bill: inv.totals.net,
+    deposit: inv.paid,
+    difference: ceil2(Math.max(0, inv.totals.net - inv.paid)),
+    previousDue: inv.previousDue,
+    nextDue: inv.currentDue,
+  };
+  paidTotal.value = inv.paid;
+}
+
+function onPayment() {
+  if (mode.value !== "posted" || postedInvoiceId.value === null) return;
+  void window.ahb.openPaymentWindow(postedInvoiceId.value);
+}
+
+// Payments recorded in the payment window arrive as data-changed events;
+// refresh the deposit/status/receivable fields from the updated invoice.
+async function onDataChanged(payload: {
+  kind: string;
+  action: string;
+  id: number;
+}) {
+  if (payload.kind !== "invoice" || payload.action !== "payment") return;
+  const invoiceId = postedInvoiceId.value;
+  if (invoiceId === null) return;
+  const inv = await window.ahb.getInvoiceById(invoiceId);
+  if (!inv || postedInvoiceId.value !== invoiceId) return;
+  applyInvoiceToStatus(inv);
+  customerReceivableText.value = inv.currentDue.toFixed(2);
 }
 
 async function onPostData() {
@@ -423,22 +444,16 @@ async function onPostData() {
       customerId: custId,
       lines,
       discount: discount.value,
-      paid: deposit.value,
+      // Payments are only added via the payment window; edits carry the
+      // invoice's accumulated paid total forward.
+      paid: mode.value === "editing" ? paidTotal.value : 0,
       notes: comment.value.trim() || undefined,
     };
     const inv =
       mode.value === "editing" && postedInvoiceId.value !== null
         ? await window.ahb.updateInvoice(postedInvoiceId.value, payload)
         : await window.ahb.postInvoice(payload);
-    postedStatus.value = {
-      totalPrice: inv.totals.subtotal,
-      discount: inv.discount,
-      bill: inv.totals.net,
-      deposit: inv.paid,
-      difference: ceil2(Math.max(0, inv.totals.net - inv.paid)),
-      previousDue: inv.previousDue,
-      nextDue: inv.currentDue,
-    };
+    applyInvoiceToStatus(inv);
     comment.value = inv.notes ?? "";
     postedInvoiceId.value = inv.id;
     // Hide incomplete rows (e.g. the auto-appended trailing empty row)
@@ -455,10 +470,19 @@ async function onPostData() {
   }
 }
 
+let unsubscribeDataChanged: (() => void) | null = null;
+
 onMounted(async () => {
+  unsubscribeDataChanged =
+    window.ahb.onDataChanged?.((payload) => void onDataChanged(payload)) ??
+    null;
   await nextTick();
   customerIdInput.value?.focus();
   customerIdInput.value?.select();
+});
+
+onUnmounted(() => {
+  unsubscribeDataChanged?.();
 });
 
 async function loadLastBill() {
@@ -494,8 +518,7 @@ async function loadLastBill() {
   selectedProductStockText.value = "";
   discount.value = 0;
   discountText.value = "";
-  deposit.value = 0;
-  depositText.value = "";
+  paidTotal.value = 0;
   mode.value = "entry";
   postedInvoiceId.value = null;
   postedStatus.value = null;

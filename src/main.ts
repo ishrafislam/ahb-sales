@@ -197,6 +197,68 @@ async function openCustomerHistoryWindow(
 }
 
 // -----------------------
+// Payment window (child of a main window, shares its context)
+// -----------------------
+
+const paymentWindows = new Map<number, BrowserWindow>();
+
+async function openPaymentWindow(
+  sender: Electron.WebContents,
+  invoiceId: string
+): Promise<void> {
+  const parentCtx = getCtx(sender);
+  const parentId = sender.id;
+
+  const existing = paymentWindows.get(parentId);
+  if (existing && !existing.isDestroyed()) {
+    existing.restore();
+    existing.focus();
+    return;
+  }
+
+  const win = new BrowserWindow({
+    width: 420,
+    height: 480,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    parent: parentCtx.win,
+    title: app.getName(),
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
+
+  const webContentsId = win.webContents.id;
+
+  // Share the parent's file/data services so payment IPC routed by sender
+  // id operates on the same open document.
+  contexts.set(webContentsId, {
+    win,
+    fileService: parentCtx.fileService,
+    dataService: parentCtx.dataService,
+  });
+  parentCtx.fileService.attachWindow(win);
+  paymentWindows.set(parentId, win);
+
+  win.on("closed", () => {
+    contexts.delete(webContentsId);
+    paymentWindows.delete(parentId);
+    parentCtx.fileService.detachWindow(win);
+  });
+
+  const hash = `payment/${invoiceId}`;
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    await win.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}#${hash}`);
+  } else {
+    await win.loadFile(
+      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+      { hash }
+    );
+  }
+}
+
+// -----------------------
 // File-path parsing helper
 // -----------------------
 
@@ -371,6 +433,14 @@ ipcMain.handle("data:update-invoice", async (e, id: string, payload) => {
   return getCtx(e.sender).dataService.updateInvoice(id, payload);
 });
 
+ipcMain.handle("data:get-invoice", async (e, id: string) => {
+  return getCtx(e.sender).dataService.getInvoiceById(id);
+});
+
+ipcMain.handle("data:add-invoice-payment", async (e, id: string, payload) => {
+  return getCtx(e.sender).dataService.addInvoicePayment(id, payload);
+});
+
 ipcMain.handle(
   "data:list-invoices-by-customer",
   async (e, customerId: number) => {
@@ -411,6 +481,10 @@ ipcMain.handle(
     await openCustomerHistoryWindow(e.sender, customerId);
   }
 );
+
+ipcMain.handle("window:open-payment", async (e, invoiceId: string) => {
+  await openPaymentWindow(e.sender, invoiceId);
+});
 
 // Updates & app info (global)
 ipcMain.handle("app:check-for-updates", async () =>

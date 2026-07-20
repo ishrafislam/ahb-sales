@@ -60,8 +60,17 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     const wrapper = mountDashboard();
     const disabled = getDisabledInputs(wrapper);
     // 2 header + 2 last-bill + 3 customer info + grand total + bill
-    // + 7 status panel fields
-    expect(disabled.length).toBe(16);
+    // + deposit + 7 status panel fields
+    expect(disabled.length).toBe(17);
+    wrapper.unmount();
+  });
+
+  it("shows a read-only deposit of 0.00 from the start", () => {
+    const wrapper = mountDashboard();
+    const values = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    expect(values).toContain("0.00");
     wrapper.unmount();
   });
 
@@ -117,8 +126,17 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     );
     // Grid started for the valid customer: its empty row's price input is
     // also disabled until a product loads; other empties are the customer
-    // info box, grand total, bill and the 7 status panel fields
-    expect(values).toEqual(["", "", "—", "—", ...Array(13).fill("")]);
+    // info box, grand total, bill and the 7 status panel fields. The
+    // deposit field always shows 0.00.
+    expect(values).toEqual([
+      "",
+      "",
+      "—",
+      "—",
+      ...Array(6).fill(""),
+      "0.00",
+      ...Array(7).fill(""),
+    ]);
     wrapper.unmount();
   });
 
@@ -133,7 +151,15 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     const values = getDisabledInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).toEqual(["", "", "—", "—", ...Array(12).fill("")]);
+    expect(values).toEqual([
+      "",
+      "",
+      "—",
+      "—",
+      ...Array(5).fill(""),
+      "0.00",
+      ...Array(7).fill(""),
+    ]);
     wrapper.unmount();
   });
 
@@ -323,7 +349,8 @@ describe("Dashboard v2 — customer ID quick entry", () => {
 
   async function setupPostableEntry(
     postInvoice: ReturnType<typeof vi.fn>,
-    updateInvoice: ReturnType<typeof vi.fn> = vi.fn()
+    updateInvoice: ReturnType<typeof vi.fn> = vi.fn(),
+    extraApi: Record<string, unknown> = {}
   ) {
     const getProductById = vi.fn(async () => ({
       id: 5,
@@ -338,6 +365,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       getCustomerById,
       postInvoice,
       updateInvoice,
+      ...extraApi,
     };
     const wrapper = mountDashboard();
     const input = getCustomerIdInput(wrapper);
@@ -364,8 +392,6 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     };
     await totalsInput("Discount").setValue("1");
     await totalsInput("Discount").trigger("keydown.enter");
-    await totalsInput("Deposit").setValue("5");
-    await totalsInput("Deposit").trigger("keydown.enter");
     await wrapper.find("textarea").setValue("first purchase");
 
     const postButton = wrapper
@@ -404,7 +430,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       customerId: 12,
       lines: [{ productId: 5, quantity: 2, rate: 10.5 }],
       discount: 1,
-      paid: 5,
+      paid: 0,
       notes: "first purchase",
     });
 
@@ -505,6 +531,102 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect(values).toContain("125.50");
     expect((postButton.element as HTMLButtonElement).disabled).toBe(true);
     expect((editButton.element as HTMLButtonElement).disabled).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("enables the Payment button only after posting and opens the payment window", async () => {
+    const postInvoice = vi.fn(async () => ({
+      id: "inv-1",
+      totals: { subtotal: 21, net: 20 },
+      discount: 1,
+      paid: 0,
+      previousDue: 100,
+      currentDue: 120,
+      notes: "first purchase",
+    }));
+    const openPaymentWindow = vi.fn(async () => undefined);
+    const { wrapper, postButton } = await setupPostableEntry(
+      postInvoice,
+      vi.fn(),
+      { openPaymentWindow }
+    );
+    const paymentButton = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Payment")!;
+
+    expect((paymentButton.element as HTMLButtonElement).disabled).toBe(true);
+    await paymentButton.trigger("click");
+    expect(openPaymentWindow).not.toHaveBeenCalled();
+
+    await postButton.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+    expect((paymentButton.element as HTMLButtonElement).disabled).toBe(false);
+    await paymentButton.trigger("click");
+    expect(openPaymentWindow).toHaveBeenCalledWith("inv-1");
+
+    // Editing disables Payment again
+    const editButton = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Edit")!;
+    await editButton.trigger("click");
+    expect((paymentButton.element as HTMLButtonElement).disabled).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("refreshes deposit, status and receivable when a payment is recorded", async () => {
+    getCustomerById.mockResolvedValue({
+      nameBn: "রহিম",
+      address: "ঢাকা",
+      outstanding: 100,
+    });
+    const postInvoice = vi.fn(async () => ({
+      id: "inv-1",
+      totals: { subtotal: 21, net: 20 },
+      discount: 1,
+      paid: 0,
+      previousDue: 100,
+      currentDue: 120,
+      notes: "first purchase",
+    }));
+    let dataChangedCb:
+      | ((p: { kind: string; action: string; id: number }) => void)
+      | null = null;
+    const onDataChanged = vi.fn(
+      (cb: (p: { kind: string; action: string; id: number }) => void) => {
+        dataChangedCb = cb;
+        return () => undefined;
+      }
+    );
+    const getInvoiceById = vi.fn(async () => ({
+      id: "inv-1",
+      totals: { subtotal: 21, net: 20 },
+      discount: 1,
+      paid: 15,
+      previousDue: 100,
+      currentDue: 105,
+      notes: "first purchase",
+    }));
+    const { wrapper, postButton } = await setupPostableEntry(
+      postInvoice,
+      vi.fn(),
+      { onDataChanged, getInvoiceById }
+    );
+    await postButton.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+
+    dataChangedCb!({ kind: "invoice", action: "payment", id: 1 });
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(getInvoiceById).toHaveBeenCalledWith("inv-1");
+    const values = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    // Deposit total, status deposit, difference, next due and receivable
+    expect(values.filter((v) => v === "15.00").length).toBeGreaterThanOrEqual(
+      2
+    );
+    expect(values).toContain("5.00"); // difference: 20 - 15
+    expect(values.filter((v) => v === "105.00").length).toBe(2); // next due + receivable
     wrapper.unmount();
   });
 

@@ -96,11 +96,20 @@ export type Invoice = {
   totals: { subtotal: number; net: number };
   // Phase 3: Payments & dues
   paid: number; // amount paid against this invoice (may also cover previous due)
+  payments?: InvoicePayment[]; // individual payments summing to paid
   previousDue: number; // customer's outstanding before posting this invoice
   currentDue: number; // customer's outstanding after posting this invoice
   status: "posted"; // Phase 2: only posted receipts
   createdAt: string;
   updatedAt: string;
+};
+
+export type InvoicePayment = {
+  id: string;
+  date: string; // ISO
+  amount: number;
+  notes?: string;
+  createdAt: string;
 };
 
 export type Payment = {
@@ -131,7 +140,8 @@ function buildInvoiceBody(
   data: AhbDataV1,
   input: PostInvoiceInput,
   previousDue: number,
-  hasCustomer: boolean
+  hasCustomer: boolean,
+  allowOverpay = false
 ) {
   if (!Array.isArray(input.lines) || input.lines.length === 0)
     throw new Error("At least one line item is required");
@@ -168,9 +178,13 @@ function buildInvoiceBody(
   if (!Number.isFinite(paid) || paid < 0)
     throw new Error("Paid must be a non-negative number");
   const maxPayable = ceil2(previousDue + net);
-  if (paid > maxPayable)
+  if (!allowOverpay && paid > maxPayable)
     throw new Error("Paid amount cannot exceed previous due plus net bill");
-  const invoiceDue = Math.max(0, ceil2(net - paid));
+  // With allowOverpay (edit of an invoice carrying accumulated payments), the
+  // excess reduces previous due and may go negative (customer credit).
+  const invoiceDue = allowOverpay
+    ? ceil2(net - paid)
+    : Math.max(0, ceil2(net - paid));
   const currentDue = hasCustomer ? ceil2(previousDue + invoiceDue) : 0;
 
   return { lines, subtotal, discount, net, paid, currentDue };
@@ -276,7 +290,7 @@ export function updateInvoice(
   const hasCustomer = old.customerId !== null;
   // The invoice stays with its original customer; recompute against the
   // stored previousDue snapshot. Validation happens before any mutation.
-  const body = buildInvoiceBody(data, input, old.previousDue, hasCustomer);
+  const body = buildInvoiceBody(data, input, old.previousDue, hasCustomer, true);
 
   applyStock(data, old.lines, 1); // revert the old sale
   const updated: Invoice = {
@@ -295,6 +309,63 @@ export function updateInvoice(
     setCustomerOutstanding(data, old.customerId!, body.currentDue);
   }
 
+  return updated;
+}
+
+export type AddInvoicePaymentInput = {
+  amount: number;
+  notes?: string;
+};
+
+/**
+ * Record a payment against an invoice. Payments accumulate into `paid` and
+ * recompute currentDue as previousDue + net - paid, which may go negative
+ * (customer credit) since overpayment is allowed. Restricted to the
+ * customer's latest invoice for the same reason as updateInvoice.
+ */
+export function addInvoicePayment(
+  data: AhbDataV1,
+  invoiceId: string,
+  input: AddInvoicePaymentInput
+): Invoice {
+  ensurePhase2(data);
+  const idx = data.invoices.findIndex((i) => i.id === invoiceId);
+  if (idx === -1) throw new Error("Invoice not found");
+  const old = data.invoices[idx]!;
+  const hasNewer = data.invoices.some(
+    (i) => i.customerId === old.customerId && i.no > old.no
+  );
+  if (hasNewer)
+    throw new Error("Only the latest invoice can receive payments");
+
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0)
+    throw new Error("Payment amount must be positive");
+
+  const now = nowIso();
+  const payment: InvoicePayment = {
+    id: genId(),
+    date: now,
+    amount: ceil2(amount),
+    notes: input.notes?.trim() || undefined,
+    createdAt: now,
+  };
+  const paid = ceil2(old.paid + payment.amount);
+  const hasCustomer = old.customerId !== null;
+  const currentDue = hasCustomer
+    ? ceil2(old.previousDue + old.totals.net - paid)
+    : 0;
+  const updated: Invoice = {
+    ...old,
+    payments: [...(old.payments ?? []), payment],
+    paid,
+    currentDue,
+    updatedAt: now,
+  };
+  data.invoices[idx] = updated;
+  if (hasCustomer) {
+    setCustomerOutstanding(data, old.customerId!, currentDue);
+  }
   return updated;
 }
 
