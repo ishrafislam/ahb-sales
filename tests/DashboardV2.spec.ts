@@ -420,6 +420,13 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(wrapper.findAll("tbody tr").length).toBe(2);
 
+    // Header stock shows the projection after this sale (40 - 2)
+    const headerValues = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    expect(headerValues[0]).toBe("5");
+    expect(headerValues[1]).toBe("38");
+
     await postButton.trigger("click");
     await new Promise((r) => setTimeout(r, 0));
 

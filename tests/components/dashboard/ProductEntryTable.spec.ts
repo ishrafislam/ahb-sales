@@ -115,6 +115,42 @@ describe("ProductEntryTable", () => {
     wrapper.unmount();
   });
 
+  it("shows the projected stock in the header after QTY Enter, not before", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const first = cellInputs(wrapper, 0);
+    await first.id.setValue("5");
+    await first.id.trigger("keydown.enter");
+    await flush();
+    // Product loaded, no amount yet: full stock
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 40 });
+
+    // Typing an amount alone does not update the header
+    await first.amount.setValue("3");
+    await flush();
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 40 });
+
+    // Enter commits: header shows stock minus the amount and keeps it
+    // while the next row's empty ID cell is focused
+    await first.amount.trigger("keydown.enter");
+    await flush();
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37 });
+    expect(document.activeElement).toBe(cellInputs(wrapper, 1).id.element);
+
+    // An invalid amount re-focuses the cell; the projection counts no sale
+    await first.amount.setValue("0");
+    await first.amount.trigger("keydown.enter");
+    await flush();
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 40 });
+
+    // Fractional amounts project without float noise
+    await first.amount.setValue("2.5");
+    await first.amount.trigger("keydown.enter");
+    await flush();
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37.5 });
+    wrapper.unmount();
+  });
+
   it("re-entering an existing product ID jumps to that row's amount", async () => {
     const wrapper = mountHost();
     await startEntry(wrapper);
@@ -135,7 +171,8 @@ describe("ProductEntryTable", () => {
     expect(getProductById).not.toHaveBeenCalled();
     expect(wrapper.findAll("tbody tr").length).toBe(2);
     expect(document.activeElement).toBe(cellInputs(wrapper, 0).amount.element);
-    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 40 });
+    // Header shows the projected stock for the row's committed amount
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37 });
     wrapper.unmount();
   });
 
@@ -184,16 +221,17 @@ describe("ProductEntryTable", () => {
     await first.amount.trigger("keydown.enter");
     await flush();
 
-    // Appended empty row got focus: header info cleared
-    expect(wrapper.vm.selected.at(-1)).toBeNull();
+    // Amount Enter keeps the entered product's projected stock visible
+    // even though the appended empty row got focus
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37 });
 
     // From second row's ID, ArrowUp goes to first row's ID and the
-    // header info follows the focused row's product
+    // header info follows the focused row's product (projected stock)
     const second = cellInputs(wrapper, 1);
     await second.id.trigger("keydown", { key: "ArrowUp" });
     await flush();
     expect(document.activeElement).toBe(first.id.element);
-    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 40 });
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37 });
 
     // ArrowRight moves to the amount cell; the value is selected
     await first.id.trigger("keydown", { key: "ArrowRight" });
@@ -233,7 +271,7 @@ describe("ProductEntryTable", () => {
     (first.price.element as HTMLInputElement).focus();
     await flush();
     expect(document.activeElement).toBe(first.price.element);
-    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 40 });
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37 });
 
     // Typing alone does not commit; Enter does
     await first.price.setValue("60");

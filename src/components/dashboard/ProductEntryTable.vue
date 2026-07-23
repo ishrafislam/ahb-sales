@@ -112,11 +112,23 @@ const emit = defineEmits<{
   ): void;
 }>();
 
+// Stock shown in the header is the projection after this sale: stored
+// stock minus the row's entered amount. Display only — real stock changes
+// when the invoice is posted.
+function projectedStock(row: EntryRow): number {
+  const amount = Number.parseFloat(row.amountText);
+  const sold = Number.isFinite(amount) && amount > 0 ? amount : 0;
+  return Math.round((row.product!.stock - sold) * 100) / 100;
+}
+
 // Header info follows the focused row: fires on any focus (click, arrow
 // navigation, programmatic moves), null for rows without a loaded product.
 function onCellFocus(idx: number) {
-  const product = rows.value[idx]?.product;
-  emit("product-selected", product ? { id: product.id, stock: product.stock } : null);
+  const row = rows.value[idx];
+  emit(
+    "product-selected",
+    row?.product ? { id: row.product.id, stock: projectedStock(row) } : null
+  );
 }
 
 let nextKey = 1;
@@ -181,7 +193,7 @@ async function onIdEnter(idx: number) {
   void focusCell(idx, "amount");
 }
 
-function onAmountEnter(idx: number) {
+async function onAmountEnter(idx: number) {
   const row = rows.value[idx];
   if (!row) return;
   const amount = Number.parseFloat(row.amountText);
@@ -192,7 +204,12 @@ function onAmountEnter(idx: number) {
   if (idx === rows.value.length - 1) {
     rows.value.push(makeRow());
   }
-  void focusCell(idx + 1, "id");
+  await focusCell(idx + 1, "id");
+  // The next row's focus emitted null; keep the just-entered product's
+  // projected stock visible in the header instead.
+  if (row.product) {
+    emit("product-selected", { id: row.product.id, stock: projectedStock(row) });
+  }
 }
 
 // The edited price only takes effect on Enter; an abandoned draft
