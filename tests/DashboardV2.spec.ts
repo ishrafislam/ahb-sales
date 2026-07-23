@@ -281,6 +281,53 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     wrapper.unmount();
   });
 
+  it("deleting a selected row recalculates the grand total", async () => {
+    const getProductById = vi.fn(async () => ({
+      id: 5,
+      nameBn: "চাল",
+      unit: "kg",
+      price: 10.5,
+      stock: 40,
+    }));
+    (window as unknown as { ahb: unknown }).ahb = {
+      listInvoicesByCustomer,
+      getProductById,
+      getCustomerById,
+    };
+    const wrapper = mountDashboard();
+    const input = getCustomerIdInput(wrapper);
+    await input.setValue("12");
+    await input.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    await rowInputs[0]!.setValue("5");
+    await rowInputs[0]!.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await rowInputs[1]!.setValue("2");
+    await rowInputs[1]!.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+
+    const disabledValues = () =>
+      getDisabledInputs(wrapper).map(
+        (i) => (i.element as HTMLInputElement).value
+      );
+    expect(disabledValues()).toContain("21.00");
+
+    // Select the product row via the gutter and press Delete
+    const gutter = wrapper
+      .findAll("tbody tr")[0]!
+      .find("button.row-selector");
+    await gutter.trigger("click");
+    await gutter.trigger("keydown", { key: "Delete" });
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(wrapper.findAll("tbody tr").length).toBe(1);
+    expect(disabledValues()).not.toContain("21.00");
+    wrapper.unmount();
+  });
+
   it("commits the discount on Enter and recalculates the bill", async () => {
     const getProductById = vi.fn(async () => ({
       id: 5,

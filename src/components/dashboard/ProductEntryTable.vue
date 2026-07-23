@@ -1,23 +1,24 @@
 <template>
   <div class="flex-grow bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto">
-    <table class="w-full text-sm text-left">
+    <table class="w-full text-sm text-left border-collapse">
       <thead
-        class="text-xs uppercase bg-gray-50 dark:bg-gray-900 dark:text-gray-100 sticky top-0 border-b border-gray-200 dark:border-gray-700"
+        class="text-xs uppercase bg-gray-50 dark:bg-gray-900 dark:text-gray-100 sticky top-0"
       >
         <tr>
-          <th class="px-2 py-2 w-20">
+          <th :class="[cellBorderClass, 'w-8']"></th>
+          <th :class="[cellBorderClass, 'px-2 py-2 w-20']">
             {{ t("id") }}
           </th>
-          <th class="px-2 py-2">
+          <th :class="[cellBorderClass, 'px-2 py-2']">
             {{ t("name") }}
           </th>
-          <th class="px-2 py-2 w-24 text-right">
+          <th :class="[cellBorderClass, 'px-2 py-2 w-24 text-right']">
             {{ t("qty") }}
           </th>
-          <th class="px-2 py-2 w-20">
+          <th :class="[cellBorderClass, 'px-2 py-2 w-20']">
             {{ t("unit") }}
           </th>
-          <th class="px-2 py-2 w-24 text-right">
+          <th :class="[cellBorderClass, 'px-2 py-2 w-24 text-right']">
             {{ t("price") }}
           </th>
         </tr>
@@ -26,9 +27,24 @@
         <tr
           v-for="(row, idx) in rows"
           :key="row.key"
-          class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700"
+          :class="
+            row.key === selectedKey
+              ? 'bg-blue-50 dark:bg-blue-950'
+              : 'bg-white dark:bg-gray-900'
+          "
         >
-          <td class="px-2 py-1">
+          <td :class="[cellBorderClass, 'p-0 w-8 h-px']">
+            <button
+              type="button"
+              :disabled="locked || !row.product"
+              class="row-selector block w-full h-full text-center text-xs bg-gray-50 dark:bg-gray-800 disabled:cursor-not-allowed"
+              @click="selectRow(row)"
+              @keydown.delete.prevent="deleteSelected"
+            >
+              {{ row.key === selectedKey ? "►" : "" }}
+            </button>
+          </td>
+          <td :class="[cellBorderClass, 'px-2 py-1']">
             <input
               :ref="(el) => setCellRef(idx, 'id', el)"
               v-model="row.idText"
@@ -41,10 +57,10 @@
               @focus="onCellFocus(idx)"
             >
           </td>
-          <td class="px-2 py-1">
+          <td :class="[cellBorderClass, 'px-2 py-1']">
             {{ row.product?.nameBn ?? "" }}
           </td>
-          <td class="px-2 py-1">
+          <td :class="[cellBorderClass, 'px-2 py-1']">
             <input
               :ref="(el) => setCellRef(idx, 'amount', el)"
               v-model="row.amountText"
@@ -57,10 +73,10 @@
               @focus="onCellFocus(idx)"
             >
           </td>
-          <td class="px-2 py-1">
+          <td :class="[cellBorderClass, 'px-2 py-1']">
             {{ row.product?.unit ?? "" }}
           </td>
-          <td class="px-2 py-1">
+          <td :class="[cellBorderClass, 'px-2 py-1']">
             <input
               v-model="row.priceText"
               type="text"
@@ -80,7 +96,7 @@
 
 <script setup lang="ts">
 defineOptions({ name: "AhbProductEntryTable" });
-import { nextTick } from "vue";
+import { nextTick, ref, watch } from "vue";
 import { t } from "../../i18n";
 import { MIN_PRODUCT_ID, MAX_PRODUCT_ID } from "../../constants/business";
 
@@ -104,7 +120,9 @@ export type EntryRow = {
 type Col = "id" | "amount";
 
 const rows = defineModel<EntryRow[]>("rows", { required: true });
-withDefaults(defineProps<{ locked?: boolean }>(), { locked: false });
+const props = withDefaults(defineProps<{ locked?: boolean }>(), {
+  locked: false,
+});
 const emit = defineEmits<{
   (
     e: "product-selected",
@@ -130,6 +148,51 @@ function onCellFocus(idx: number) {
     row?.product ? { id: row.product.id, stock: projectedStock(row) } : null
   );
 }
+
+// Excel-style row selection via the left gutter column: click selects,
+// Delete removes the row from the draft (the invoice itself is only
+// updated on Post Data).
+const selectedKey = ref<number | null>(null);
+
+// Clicking an already-selected row's gutter deselects it (toggle); rows
+// without a loaded product (the fresh entry row) cannot be selected.
+function selectRow(row: EntryRow) {
+  if (!row.product) return;
+  selectedKey.value = selectedKey.value === row.key ? null : row.key;
+}
+
+function deleteSelected() {
+  if (props.locked || selectedKey.value === null) return;
+  const idx = rows.value.findIndex((r) => r.key === selectedKey.value);
+  selectedKey.value = null;
+  if (idx === -1) return;
+  rows.value.splice(idx, 1);
+  if (rows.value.length === 0) {
+    rows.value.push(makeRow());
+    void focusCell(0, "id");
+  }
+}
+
+// Selection can become stale when rows are replaced (new customer,
+// posting prunes rows) or the grid locks
+watch(
+  rows,
+  () => {
+    if (
+      selectedKey.value !== null &&
+      !rows.value.some((r) => r.key === selectedKey.value)
+    ) {
+      selectedKey.value = null;
+    }
+  },
+  { deep: true }
+);
+watch(
+  () => props.locked,
+  (locked) => {
+    if (locked) selectedKey.value = null;
+  }
+);
 
 let nextKey = 1;
 function makeRow(): EntryRow {
@@ -253,6 +316,7 @@ function onCellKeydown(e: KeyboardEvent, idx: number, col: Col) {
 }
 
 function startEntry() {
+  selectedKey.value = null;
   rows.value = [makeRow()];
   void focusCell(0, "id");
 }
@@ -260,6 +324,7 @@ function startEntry() {
 // Re-entering edit mode on a posted invoice: the trailing empty row was
 // pruned at post time, so append a fresh one for new products.
 function resumeEntry() {
+  selectedKey.value = null;
   rows.value.push(makeRow());
   void focusCell(rows.value.length - 1, "id");
 }
@@ -268,4 +333,6 @@ defineExpose({ startEntry, resumeEntry });
 
 const cellInputClass =
   "w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm dark:text-gray-100";
+
+const cellBorderClass = "border border-gray-300 dark:border-gray-600";
 </script>

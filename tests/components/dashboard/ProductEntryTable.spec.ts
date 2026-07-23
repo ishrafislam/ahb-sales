@@ -256,6 +256,122 @@ describe("ProductEntryTable", () => {
     wrapper.unmount();
   });
 
+  function gutterButton(wrapper: ReturnType<typeof mountHost>, rowIdx: number) {
+    return wrapper.findAll("tbody tr")[rowIdx]!.find("button.row-selector");
+  }
+
+  async function enterProductRow(
+    wrapper: ReturnType<typeof mountHost>,
+    rowIdx: number,
+    id: string,
+    amount: string
+  ) {
+    const cells = cellInputs(wrapper, rowIdx);
+    await cells.id.setValue(id);
+    await cells.id.trigger("keydown.enter");
+    await flush();
+    await cells.amount.setValue(amount);
+    await cells.amount.trigger("keydown.enter");
+    await flush();
+  }
+
+  it("selects a row from the gutter and deletes it with the Delete key", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    await enterProductRow(wrapper, 0, "5", "3");
+    await enterProductRow(wrapper, 1, "7", "2");
+    expect(wrapper.findAll("tbody tr").length).toBe(3);
+
+    // The fresh entry row cannot be selected: its gutter is disabled
+    const emptyGutter = gutterButton(wrapper, 2);
+    expect(emptyGutter.text()).toBe("");
+    expect((emptyGutter.element as HTMLButtonElement).disabled).toBe(true);
+    await emptyGutter.trigger("click");
+    expect(emptyGutter.text()).toBe("");
+
+    // Click the first row's gutter: marker + highlight move there
+    await gutterButton(wrapper, 0).trigger("click");
+    expect(gutterButton(wrapper, 0).text()).toBe("►");
+    expect(wrapper.findAll("tbody tr")[0]!.classes()).toContain("bg-blue-50");
+
+    // Clicking the selected gutter again deselects the row
+    await gutterButton(wrapper, 0).trigger("click");
+    expect(gutterButton(wrapper, 0).text()).toBe("");
+    expect(wrapper.findAll("tbody tr")[0]!.classes()).not.toContain(
+      "bg-blue-50"
+    );
+
+    // Selection moves on clicking another gutter
+    await gutterButton(wrapper, 0).trigger("click");
+    await gutterButton(wrapper, 1).trigger("click");
+    expect(gutterButton(wrapper, 0).text()).toBe("");
+    expect(gutterButton(wrapper, 1).text()).toBe("►");
+
+    // Delete removes the selected row (product 7); the draft shrinks
+    await gutterButton(wrapper, 1).trigger("keydown", { key: "Delete" });
+    await flush();
+    expect(wrapper.findAll("tbody tr").length).toBe(2);
+    expect(wrapper.vm.rows.map((r) => r.product?.id)).toEqual([5, undefined]);
+    expect(gutterButton(wrapper, 0).text()).toBe("");
+    expect(gutterButton(wrapper, 1).text()).toBe("");
+
+    // Delete again without a selection does nothing
+    await gutterButton(wrapper, 0).trigger("keydown", { key: "Delete" });
+    await flush();
+    expect(wrapper.findAll("tbody tr").length).toBe(2);
+    wrapper.unmount();
+  });
+
+  it("deleting the only row leaves a fresh empty row with focus in its ID", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const cells = cellInputs(wrapper, 0);
+    await cells.id.setValue("5");
+    await cells.id.trigger("keydown.enter");
+    await flush();
+    await cells.amount.setValue("3");
+
+    await gutterButton(wrapper, 0).trigger("click");
+    await gutterButton(wrapper, 0).trigger("keydown", { key: "Delete" });
+    await flush();
+
+    expect(wrapper.findAll("tbody tr").length).toBe(1);
+    expect(wrapper.vm.rows[0]!.product).toBeNull();
+    expect(wrapper.vm.rows[0]!.idText).toBe("");
+    expect(document.activeElement).toBe(cellInputs(wrapper, 0).id.element);
+    wrapper.unmount();
+  });
+
+  it("locking disables the gutter and clears the selection", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    await enterProductRow(wrapper, 0, "5", "3");
+
+    await gutterButton(wrapper, 0).trigger("click");
+    expect(gutterButton(wrapper, 0).text()).toBe("►");
+
+    wrapper.vm.locked = true;
+    await flush();
+    expect(gutterButton(wrapper, 0).text()).toBe("");
+    expect(
+      (gutterButton(wrapper, 0).element as HTMLButtonElement).disabled
+    ).toBe(true);
+    await gutterButton(wrapper, 0).trigger("keydown", { key: "Delete" });
+    await flush();
+    expect(wrapper.findAll("tbody tr").length).toBe(2);
+    wrapper.unmount();
+  });
+
+  it("renders bordered cells", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    expect(wrapper.find("table").classes()).toContain("border-collapse");
+    for (const cell of wrapper.findAll("th, td")) {
+      expect(cell.classes()).toContain("border");
+    }
+    wrapper.unmount();
+  });
+
   it("price cell is click-editable but arrow keys do not navigate from it", async () => {
     const wrapper = mountHost();
     await startEntry(wrapper);
