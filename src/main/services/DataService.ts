@@ -9,6 +9,7 @@ import {
   postInvoice,
   updateInvoice,
   addInvoicePayment,
+  updateInvoicePayment,
   listInvoicesByCustomer,
   listProductSales,
   listProductPurchases,
@@ -224,7 +225,21 @@ export class DataService {
     invoiceId: string,
     payload: Parameters<typeof addInvoicePayment>[2]
   ) {
-    const inv = addInvoicePayment(this.getData(), invoiceId, payload);
+    return this.notifyPaymentChange(
+      addInvoicePayment(this.getData(), invoiceId, payload)
+    );
+  }
+
+  updateInvoicePayment(
+    invoiceId: string,
+    payload: Parameters<typeof updateInvoicePayment>[2]
+  ) {
+    return this.notifyPaymentChange(
+      updateInvoicePayment(this.getData(), invoiceId, payload)
+    );
+  }
+
+  private notifyPaymentChange(inv: ReturnType<typeof addInvoicePayment>) {
     // The invoice and customer objects are replaced in the data arrays
     this.rebuildIndex();
     this.fileService.notifyDataChanged({

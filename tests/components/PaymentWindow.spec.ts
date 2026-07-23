@@ -5,17 +5,20 @@ import { currentLang } from "../../src/i18n";
 
 describe("PaymentWindow", () => {
   const addInvoicePayment = vi.fn();
+  const openEditPaymentWindow = vi.fn();
   const close = vi.fn();
 
   beforeEach(() => {
     currentLang.value = "en";
     addInvoicePayment.mockReset().mockResolvedValue({});
+    openEditPaymentWindow.mockReset().mockResolvedValue(undefined);
     close.mockReset();
     window.location.hash = "#payment/inv-1";
     (window as unknown as { ahb: unknown }).ahb = {
       getLanguage: vi.fn().mockResolvedValue("en"),
       onLanguageChanged: vi.fn(() => () => undefined),
       addInvoicePayment,
+      openEditPaymentWindow,
     };
     vi.spyOn(window, "close").mockImplementation(close);
   });
@@ -78,6 +81,15 @@ describe("PaymentWindow", () => {
     const wrapper = mount(PaymentWindow);
     await findButton(wrapper, "Cancel").trigger("click");
     expect(addInvoicePayment).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("Edit Previous Payment opens the edit window and closes itself", async () => {
+    const wrapper = mount(PaymentWindow);
+    await findButton(wrapper, "Edit Previous Payment").trigger("click");
+    await Promise.resolve();
+    expect(openEditPaymentWindow).toHaveBeenCalledWith("inv-1");
     expect(close).toHaveBeenCalled();
     wrapper.unmount();
   });

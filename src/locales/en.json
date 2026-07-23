@@ -188,5 +188,6 @@
   "v2_next_due": "Next Due",
   "okay": "Okay",
   "v2_edit_previous_payment": "Edit Previous Payment",
-  "payment_amount_invalid": "Payment amount must be greater than zero"
+  "payment_amount_invalid": "Payment amount must be greater than zero",
+  "no_payment_to_edit": "No payment to edit yet"
 }

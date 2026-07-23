@@ -201,28 +201,37 @@ async function openCustomerHistoryWindow(
 // -----------------------
 
 const paymentWindows = new Map<number, BrowserWindow>();
+const editPaymentWindows = new Map<number, BrowserWindow>();
 
-async function openPaymentWindow(
+// Small fixed-size child window sharing the parent's file/data services so
+// all data IPC routed by sender id operates on the same open document.
+async function openSmallChildWindow(
   sender: Electron.WebContents,
-  invoiceId: string
+  registry: Map<number, BrowserWindow>,
+  hash: string,
+  height: number
 ): Promise<void> {
   const parentCtx = getCtx(sender);
   const parentId = sender.id;
 
-  const existing = paymentWindows.get(parentId);
+  const existing = registry.get(parentId);
   if (existing && !existing.isDestroyed()) {
     existing.restore();
     existing.focus();
     return;
   }
 
+  // Anchor to the top-level window: when one small window opens another
+  // (payment → edit payment) the opener may close right away, and a child
+  // window would be destroyed with its parent.
+  const topLevelParent = parentCtx.win.getParentWindow() ?? parentCtx.win;
   const win = new BrowserWindow({
     width: 420,
-    height: 480,
+    height,
     resizable: false,
     minimizable: false,
     maximizable: false,
-    parent: parentCtx.win,
+    parent: topLevelParent,
     title: app.getName(),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -231,23 +240,20 @@ async function openPaymentWindow(
 
   const webContentsId = win.webContents.id;
 
-  // Share the parent's file/data services so payment IPC routed by sender
-  // id operates on the same open document.
   contexts.set(webContentsId, {
     win,
     fileService: parentCtx.fileService,
     dataService: parentCtx.dataService,
   });
   parentCtx.fileService.attachWindow(win);
-  paymentWindows.set(parentId, win);
+  registry.set(parentId, win);
 
   win.on("closed", () => {
     contexts.delete(webContentsId);
-    paymentWindows.delete(parentId);
+    registry.delete(parentId);
     parentCtx.fileService.detachWindow(win);
   });
 
-  const hash = `payment/${invoiceId}`;
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     await win.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}#${hash}`);
   } else {
@@ -256,6 +262,30 @@ async function openPaymentWindow(
       { hash }
     );
   }
+}
+
+async function openPaymentWindow(
+  sender: Electron.WebContents,
+  invoiceId: string
+): Promise<void> {
+  await openSmallChildWindow(
+    sender,
+    paymentWindows,
+    `payment/${invoiceId}`,
+    480
+  );
+}
+
+async function openEditPaymentWindow(
+  sender: Electron.WebContents,
+  invoiceId: string
+): Promise<void> {
+  await openSmallChildWindow(
+    sender,
+    editPaymentWindows,
+    `edit-payment/${invoiceId}`,
+    520
+  );
 }
 
 // -----------------------
@@ -442,6 +472,13 @@ ipcMain.handle("data:add-invoice-payment", async (e, id: string, payload) => {
 });
 
 ipcMain.handle(
+  "data:update-invoice-payment",
+  async (e, id: string, payload) => {
+    return getCtx(e.sender).dataService.updateInvoicePayment(id, payload);
+  }
+);
+
+ipcMain.handle(
   "data:list-invoices-by-customer",
   async (e, customerId: number) => {
     return getCtx(e.sender).dataService.listInvoicesByCustomer(customerId);
@@ -484,6 +521,10 @@ ipcMain.handle(
 
 ipcMain.handle("window:open-payment", async (e, invoiceId: string) => {
   await openPaymentWindow(e.sender, invoiceId);
+});
+
+ipcMain.handle("window:open-edit-payment", async (e, invoiceId: string) => {
+  await openEditPaymentWindow(e.sender, invoiceId);
 });
 
 // Updates & app info (global)

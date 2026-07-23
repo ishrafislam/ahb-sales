@@ -33,6 +33,7 @@ import { createPinia } from "pinia";
 import App from "./App.vue";
 import CustomerHistoryWindow from "./CustomerHistoryWindow.vue";
 import PaymentWindow from "./PaymentWindow.vue";
+import EditPaymentWindow from "./EditPaymentWindow.vue";
 
 void initTheme();
 const pinia = createPinia();
@@ -41,7 +42,9 @@ document.body.appendChild(mount);
 const hash = window.location.hash;
 const root = hash.startsWith("#customer-history")
   ? CustomerHistoryWindow
-  : hash.startsWith("#payment")
-    ? PaymentWindow
-    : App;
+  : hash.startsWith("#edit-payment")
+    ? EditPaymentWindow
+    : hash.startsWith("#payment")
+      ? PaymentWindow
+      : App;
 createApp(root).use(pinia).mount(mount);

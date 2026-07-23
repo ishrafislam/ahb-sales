@@ -494,6 +494,7 @@ async function loadLastBill() {
     customerIdInput.value?.select();
     return;
   }
+  let todayInvoice: Invoice | null = null;
   try {
     const [invoices, customer] = await Promise.all([
       window.ahb.listInvoicesByCustomer(id),
@@ -507,13 +508,13 @@ async function loadLastBill() {
       const latest = invoices[0]!;
       lastBillDateText.value = new Date(latest.date).toLocaleDateString("en-GB");
       lastBillText.value = latest.totals.net.toFixed(2);
+      if (isToday(latest.date)) todayInvoice = latest;
     }
   } catch {
     lastBillDateText.value = "—";
     lastBillText.value = "—";
     setCustomerInfo(null);
   }
-  // Start product entry: focus moves into the first row's ID cell
   selectedProductIdText.value = "";
   selectedProductStockText.value = "";
   discount.value = 0;
@@ -524,7 +525,59 @@ async function loadLastBill() {
   postedStatus.value = null;
   postError.value = "";
   comment.value = "";
-  entryTable.value?.startEntry();
+  if (todayInvoice) {
+    // An invoice from today loads into the locked posted state, exactly
+    // as right after Post Data: Edit unlocks it, Payment applies to it.
+    await loadPostedInvoice(todayInvoice);
+  } else {
+    // Start product entry: focus moves into the first row's ID cell
+    entryTable.value?.startEntry();
+  }
+}
+
+function isToday(iso: string): boolean {
+  const d = new Date(iso);
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
+let loadedRowKey = -1;
+async function loadPostedInvoice(inv: Invoice) {
+  const rows = await Promise.all(
+    inv.lines.map(async (line): Promise<EntryRow> => {
+      let product: { nameBn: string; stock: number } | null = null;
+      try {
+        product = await window.ahb.getProductById(line.productId);
+      } catch {
+        product = null;
+      }
+      return {
+        key: loadedRowKey--,
+        idText: String(line.productId),
+        product: {
+          id: line.productId,
+          nameBn: product?.nameBn ?? line.description ?? "",
+          unit: line.unit,
+          price: line.rate,
+          stock: product?.stock ?? 0,
+        },
+        amountText: String(line.quantity),
+        priceText: line.rate.toFixed(2),
+        price: line.rate,
+      };
+    })
+  );
+  entryRows.value = rows;
+  discount.value = inv.discount;
+  discountText.value = inv.discount > 0 ? inv.discount.toFixed(2) : "";
+  comment.value = inv.notes ?? "";
+  postedInvoiceId.value = inv.id;
+  applyInvoiceToStatus(inv);
+  mode.value = "posted";
 }
 
 const inputClass =

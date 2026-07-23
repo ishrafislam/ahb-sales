@@ -43,6 +43,7 @@
     </div>
     <button
       class="px-3 py-2 border rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+      @click="onEditPreviousPayment"
     >
       {{ t("v2_edit_previous_payment") }}
     </button>
@@ -98,6 +99,11 @@ async function onOkay() {
 }
 
 function onCancel() {
+  window.close();
+}
+
+async function onEditPreviousPayment() {
+  await window.ahb.openEditPaymentWindow(invoiceIdFromHash());
   window.close();
 }
 </script>

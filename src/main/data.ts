@@ -317,16 +317,18 @@ export type AddInvoicePaymentInput = {
   notes?: string;
 };
 
-/**
- * Record a payment against an invoice. Payments accumulate into `paid` and
- * recompute currentDue as previousDue + net - paid, which may go negative
- * (customer credit) since overpayment is allowed. Restricted to the
- * customer's latest invoice for the same reason as updateInvoice.
- */
-export function addInvoicePayment(
+// Shared by addInvoicePayment/updateInvoicePayment: locate and guard the
+// invoice, validate the amount, and apply the single payment record.
+function applyInvoicePayment(
   data: AhbDataV1,
   invoiceId: string,
-  input: AddInvoicePaymentInput
+  input: AddInvoicePaymentInput,
+  buildPayment: (
+    existing: InvoicePayment | undefined,
+    amount: number,
+    notes: string | undefined,
+    now: string
+  ) => InvoicePayment
 ): Invoice {
   ensurePhase2(data);
   const idx = data.invoices.findIndex((i) => i.id === invoiceId);
@@ -343,21 +345,20 @@ export function addInvoicePayment(
     throw new Error("Payment amount must be positive");
 
   const now = nowIso();
-  const payment: InvoicePayment = {
-    id: genId(),
-    date: now,
-    amount: ceil2(amount),
-    notes: input.notes?.trim() || undefined,
-    createdAt: now,
-  };
-  const paid = ceil2(old.paid + payment.amount);
+  const payment = buildPayment(
+    old.payments?.[0],
+    ceil2(amount),
+    input.notes?.trim() || undefined,
+    now
+  );
+  const paid = payment.amount;
   const hasCustomer = old.customerId !== null;
   const currentDue = hasCustomer
     ? ceil2(old.previousDue + old.totals.net - paid)
     : 0;
   const updated: Invoice = {
     ...old,
-    payments: [...(old.payments ?? []), payment],
+    payments: [payment],
     paid,
     currentDue,
     updatedAt: now,
@@ -367,6 +368,56 @@ export function addInvoicePayment(
     setCustomerOutstanding(data, old.customerId!, currentDue);
   }
   return updated;
+}
+
+/**
+ * Record a payment against an invoice. Every invoice keeps a single
+ * payment record: adding merges into it (amounts summed, notes replaced
+ * when provided). `paid` mirrors that record; currentDue is recomputed as
+ * previousDue + net - paid and may go negative (customer credit) since
+ * overpayment is allowed. Restricted to the customer's latest invoice for
+ * the same reason as updateInvoice.
+ */
+export function addInvoicePayment(
+  data: AhbDataV1,
+  invoiceId: string,
+  input: AddInvoicePaymentInput
+): Invoice {
+  return applyInvoicePayment(
+    data,
+    invoiceId,
+    input,
+    (existing, amount, notes, now) =>
+      existing
+        ? {
+            ...existing,
+            amount: ceil2(existing.amount + amount),
+            notes: notes ?? existing.notes,
+            date: now,
+          }
+        : { id: genId(), date: now, amount, notes, createdAt: now }
+  );
+}
+
+/**
+ * Correct the invoice's single payment record: the amount replaces the
+ * previous one (not added), notes are replaced. The record's original
+ * date/createdAt are kept.
+ */
+export function updateInvoicePayment(
+  data: AhbDataV1,
+  invoiceId: string,
+  input: AddInvoicePaymentInput
+): Invoice {
+  return applyInvoicePayment(
+    data,
+    invoiceId,
+    input,
+    (existing, amount, notes) => {
+      if (!existing) throw new Error("Invoice has no payment to edit");
+      return { ...existing, amount, notes };
+    }
+  );
 }
 
 export function assertProductId(id: number) {

@@ -541,6 +541,121 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     wrapper.unmount();
   });
 
+  it("loads a same-day invoice into the locked posted state on customer Enter", async () => {
+    const todayInvoice = {
+      id: "inv-today",
+      date: new Date().toISOString(),
+      customerId: 12,
+      lines: [
+        {
+          sn: 1,
+          productId: 5,
+          unit: "kg",
+          quantity: 2,
+          rate: 10.5,
+          lineTotal: 21,
+        },
+      ],
+      discount: 1,
+      notes: "loaded note",
+      totals: { subtotal: 21, net: 20 },
+      paid: 8,
+      previousDue: 100,
+      currentDue: 112,
+      payments: [
+        {
+          id: "p-1",
+          date: new Date().toISOString(),
+          amount: 8,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    };
+    listInvoicesByCustomer.mockResolvedValue([
+      todayInvoice as unknown as InvoiceStub,
+    ]);
+    const getProductById = vi.fn(async () => ({
+      id: 5,
+      nameBn: "চাল",
+      unit: "kg",
+      price: 10.5,
+      stock: 40,
+    }));
+    (window as unknown as { ahb: unknown }).ahb = {
+      listInvoicesByCustomer,
+      getCustomerById,
+      getProductById,
+    };
+    const wrapper = mountDashboard();
+    const input = getCustomerIdInput(wrapper);
+    await input.setValue("12");
+    await input.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    // Grid shows exactly the invoice's line, locked (no trailing row)
+    const rows = wrapper.findAll("tbody tr");
+    expect(rows.length).toBe(1);
+    const cells = rows[0]!.findAll("input");
+    expect((cells[0]!.element as HTMLInputElement).value).toBe("5");
+    expect((cells[1]!.element as HTMLInputElement).value).toBe("2");
+    expect((cells[2]!.element as HTMLInputElement).value).toBe("10.50");
+    for (const cell of cells) {
+      expect((cell.element as HTMLInputElement).disabled).toBe(true);
+    }
+    expect(rows[0]!.text()).toContain("চাল");
+
+    // Buttons reflect the posted state
+    const button = (label: string) =>
+      wrapper.findAll("button").find((b) => b.text() === label)!
+        .element as HTMLButtonElement;
+    expect(button("Post Data").disabled).toBe(true);
+    expect(button("Edit").disabled).toBe(false);
+    expect(button("Payment").disabled).toBe(false);
+
+    // Status panel, deposit total and comment come from the invoice
+    const values = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    for (const v of ["1.00", "20.00", "100.00", "112.00"]) {
+      expect(values).toContain(v);
+    }
+    expect(values.filter((v) => v === "8.00").length).toBe(2);
+    expect(
+      (wrapper.find("textarea").element as HTMLTextAreaElement).value
+    ).toBe("loaded note");
+    wrapper.unmount();
+  });
+
+  it("starts an empty entry grid when the latest invoice is not from today", async () => {
+    listInvoicesByCustomer.mockResolvedValue([
+      {
+        date: "2026-07-05T10:00:00.000Z",
+        totals: { subtotal: 120, net: 115.5 },
+      },
+    ]);
+    const wrapper = mountDashboard();
+    const input = getCustomerIdInput(wrapper);
+    await input.setValue("12");
+    await input.trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    const rows = wrapper.findAll("tbody tr");
+    expect(rows.length).toBe(1);
+    expect(
+      (rows[0]!.findAll("input")[0]!.element as HTMLInputElement).disabled
+    ).toBe(false);
+    expect(
+      (rows[0]!.findAll("input")[0]!.element as HTMLInputElement).value
+    ).toBe("");
+    const postButton = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Post Data")!;
+    expect((postButton.element as HTMLButtonElement).disabled).toBe(false);
+    wrapper.unmount();
+  });
+
   it("enables the Payment button only after posting and opens the payment window", async () => {
     const postInvoice = vi.fn(async () => ({
       id: "inv-1",

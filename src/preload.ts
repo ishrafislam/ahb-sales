@@ -40,6 +40,10 @@ type AppAPI = {
     id: string,
     payload: { amount: number; notes?: string }
   ) => Promise<Invoice>;
+  updateInvoicePayment: (
+    id: string,
+    payload: { amount: number; notes?: string }
+  ) => Promise<Invoice>;
   // Phase 3: History/listings
   listInvoicesByCustomer: (customerId: number) => Promise<Invoice[]>;
   listProductSales: (
@@ -70,6 +74,7 @@ type AppAPI = {
   // App control
   openCustomerHistory: (customerId?: number) => Promise<void>;
   openPaymentWindow: (invoiceId: string) => Promise<void>;
+  openEditPaymentWindow: (invoiceId: string) => Promise<void>;
   onLoadHistoryCustomer: (cb: (id: number) => void) => () => void;
   onOpenSettings: (cb: () => void) => () => void;
   onOpenAbout: (cb: () => void) => () => void;
@@ -138,6 +143,8 @@ const api: AppAPI = {
   getInvoiceById: (id) => ipcRenderer.invoke("data:get-invoice", id),
   addInvoicePayment: (id, payload) =>
     ipcRenderer.invoke("data:add-invoice-payment", id, payload),
+  updateInvoicePayment: (id, payload) =>
+    ipcRenderer.invoke("data:update-invoice-payment", id, payload),
   listInvoicesByCustomer: (customerId) =>
     ipcRenderer.invoke("data:list-invoices-by-customer", customerId),
   listProductSales: (productId) =>
@@ -165,6 +172,8 @@ const api: AppAPI = {
     ipcRenderer.invoke("window:open-customer-history", customerId),
   openPaymentWindow: (invoiceId) =>
     ipcRenderer.invoke("window:open-payment", invoiceId),
+  openEditPaymentWindow: (invoiceId) =>
+    ipcRenderer.invoke("window:open-edit-payment", invoiceId),
   onLoadHistoryCustomer: (cb) => {
     const listener = (_: unknown, id: number) => cb(id);
     ipcRenderer.on("history:load-customer", listener);
