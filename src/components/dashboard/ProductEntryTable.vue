@@ -158,7 +158,12 @@ const selectedKey = ref<number | null>(null);
 // without a loaded product (the fresh entry row) cannot be selected.
 function selectRow(row: EntryRow) {
   if (!row.product) return;
-  selectedKey.value = selectedKey.value === row.key ? null : row.key;
+  const selecting = selectedKey.value !== row.key;
+  selectedKey.value = selecting ? row.key : null;
+  // Show the selected product's projected stock in the header
+  if (selecting) {
+    emit("product-selected", { id: row.product.id, stock: projectedStock(row) });
+  }
 }
 
 function deleteSelected() {

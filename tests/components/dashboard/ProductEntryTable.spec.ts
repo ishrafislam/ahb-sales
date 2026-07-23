@@ -289,10 +289,13 @@ describe("ProductEntryTable", () => {
     await emptyGutter.trigger("click");
     expect(emptyGutter.text()).toBe("");
 
-    // Click the first row's gutter: marker + highlight move there
+    // Click the first row's gutter: marker + highlight move there, and the
+    // header shows that product's projected stock (product 5, amount 3,
+    // stock 40 → 37)
     await gutterButton(wrapper, 0).trigger("click");
     expect(gutterButton(wrapper, 0).text()).toBe("►");
     expect(wrapper.findAll("tbody tr")[0]!.classes()).toContain("bg-blue-50");
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37 });
 
     // Clicking the selected gutter again deselects the row
     await gutterButton(wrapper, 0).trigger("click");
