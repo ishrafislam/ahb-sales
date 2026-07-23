@@ -509,9 +509,16 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect((editButton.element as HTMLButtonElement).disabled).toBe(false);
 
-    // Edit unlocks the grid and Post Data
+    // Edit unlocks the grid and Post Data, and appends a fresh empty row
+    // (the trailing row was pruned at post time) with focus in its ID
     await editButton.trigger("click");
-    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    await new Promise((r) => setTimeout(r, 0));
+    const gridRows = wrapper.findAll("tbody tr");
+    expect(gridRows.length).toBe(2);
+    const newRowId = gridRows[1]!.findAll("input")[0]!;
+    expect((newRowId.element as HTMLInputElement).value).toBe("");
+    expect(document.activeElement).toBe(newRowId.element);
+    const rowInputs = gridRows[0]!.findAll("input");
     expect((rowInputs[0]!.element as HTMLInputElement).disabled).toBe(false);
     expect((postButton.element as HTMLButtonElement).disabled).toBe(false);
     expect((editButton.element as HTMLButtonElement).disabled).toBe(true);

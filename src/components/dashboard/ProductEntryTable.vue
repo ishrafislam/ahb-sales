@@ -257,7 +257,14 @@ function startEntry() {
   void focusCell(0, "id");
 }
 
-defineExpose({ startEntry });
+// Re-entering edit mode on a posted invoice: the trailing empty row was
+// pruned at post time, so append a fresh one for new products.
+function resumeEntry() {
+  rows.value.push(makeRow());
+  void focusCell(rows.value.length - 1, "id");
+}
+
+defineExpose({ startEntry, resumeEntry });
 
 const cellInputClass =
   "w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm dark:text-gray-100";

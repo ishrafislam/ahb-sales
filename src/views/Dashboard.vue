@@ -390,6 +390,7 @@ let posting = false;
 function onEdit() {
   if (mode.value !== "posted") return;
   mode.value = "editing";
+  entryTable.value?.resumeEntry();
 }
 
 function applyInvoiceToStatus(inv: Invoice) {

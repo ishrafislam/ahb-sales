@@ -3,7 +3,7 @@
     class="h-screen flex flex-col gap-4 p-4 bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors"
   >
     <div class="flex items-center gap-3">
-      <label class="text-sm whitespace-nowrap w-20">{{ t("v2_date") }}:</label>
+      <label class="text-sm whitespace-nowrap w-32 shrink-0">{{ t("v2_date") }}:</label>
       <input
         :value="dateText"
         type="text"
@@ -12,7 +12,7 @@
       />
     </div>
     <div class="flex items-center gap-3">
-      <label class="text-sm whitespace-nowrap w-20">{{
+      <label class="text-sm whitespace-nowrap w-32 shrink-0">{{
         t("v2_customer")
       }}:</label>
       <input
@@ -23,7 +23,7 @@
       />
     </div>
     <div class="flex items-center gap-3">
-      <label class="text-sm whitespace-nowrap w-20">{{
+      <label class="text-sm whitespace-nowrap w-32 shrink-0">{{
         t("v2_deposit")
       }}:</label>
       <input
@@ -36,7 +36,7 @@
       />
     </div>
     <div class="flex items-start gap-3 flex-1">
-      <label class="text-sm whitespace-nowrap w-20 pt-1">{{
+      <label class="text-sm whitespace-nowrap w-32 shrink-0 pt-1">{{
         t("comment")
       }}:</label>
       <textarea
