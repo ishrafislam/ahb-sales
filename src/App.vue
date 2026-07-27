@@ -32,14 +32,6 @@
 
     <!-- Modals -->
     <BaseModal
-      v-if="modalStore.showCustomers"
-      :title="t('customers_title')"
-      :max-width="'4xl'"
-      @close="modalStore.closeAll"
-    >
-      <CustomersModal />
-    </BaseModal>
-    <BaseModal
       v-if="modalStore.showProducts"
       :title="t('products_title')"
       :max-width="'5xl'"
@@ -130,7 +122,6 @@
 import { onMounted } from "vue";
 import { t, initI18n } from "./i18n";
 import ProductsModal from "./views/ProductsModal.vue";
-import CustomersModal from "./views/CustomersModal.vue";
 import Dashboard from "./views/Dashboard.vue";
 import ProductSalesHistory from "./views/ProductSalesHistory.vue";
 import ProductPurchaseHistory from "./views/ProductPurchaseHistory.vue";
@@ -312,7 +303,7 @@ function onNavigate(
     return;
   }
   if (page === "customers") {
-    modalStore.navigateTo("customers");
+    void window.ahb.openCustomersWindow();
     return;
   }
   if (page === "product-sales-history") {

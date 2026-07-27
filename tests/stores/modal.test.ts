@@ -10,7 +10,6 @@ describe("useModalStore", () => {
   it("should have all modals closed by default", () => {
     const store = useModalStore();
 
-    expect(store.showCustomers).toBe(false);
     expect(store.showProducts).toBe(false);
     expect(store.showSalesHistory).toBe(false);
     expect(store.showPurchaseHistory).toBe(false);
@@ -27,7 +26,7 @@ describe("useModalStore", () => {
 
     expect(store.isAnyModalOpen()).toBe(false);
 
-    store.showCustomers = true;
+    store.showProducts = true;
     expect(store.isAnyModalOpen()).toBe(true);
 
     store.closeAll();
@@ -38,13 +37,11 @@ describe("useModalStore", () => {
     const store = useModalStore();
 
     // Open multiple modals
-    store.showCustomers = true;
     store.showProducts = true;
     store.showSettings = true;
 
     store.closeAll();
 
-    expect(store.showCustomers).toBe(false);
     expect(store.showProducts).toBe(false);
     expect(store.showSettings).toBe(false);
     expect(store.isAnyModalOpen()).toBe(false);
@@ -53,13 +50,13 @@ describe("useModalStore", () => {
   describe("navigateTo", () => {
     it("should navigate to dashboard (close all)", () => {
       const store = useModalStore();
-      store.showCustomers = true;
       store.showProducts = true;
+      store.showSettings = true;
 
       store.navigateTo("dashboard");
 
-      expect(store.showCustomers).toBe(false);
       expect(store.showProducts).toBe(false);
+      expect(store.showSettings).toBe(false);
       expect(store.isAnyModalOpen()).toBe(false);
     });
 
@@ -69,17 +66,7 @@ describe("useModalStore", () => {
       store.navigateTo("products");
 
       expect(store.showProducts).toBe(true);
-      expect(store.showCustomers).toBe(false);
       expect(store.isAnyModalOpen()).toBe(true);
-    });
-
-    it("should navigate to customers", () => {
-      const store = useModalStore();
-
-      store.navigateTo("customers");
-
-      expect(store.showCustomers).toBe(true);
-      expect(store.showProducts).toBe(false);
     });
 
     it("should navigate to product sales history", () => {
@@ -140,12 +127,12 @@ describe("useModalStore", () => {
 
     it("should close previous modal when navigating", () => {
       const store = useModalStore();
-      store.navigateTo("customers");
-      expect(store.showCustomers).toBe(true);
+      store.navigateTo("settings");
+      expect(store.showSettings).toBe(true);
 
       store.navigateTo("products");
 
-      expect(store.showCustomers).toBe(false);
+      expect(store.showSettings).toBe(false);
       expect(store.showProducts).toBe(true);
     });
   });
@@ -153,12 +140,12 @@ describe("useModalStore", () => {
   it("should support multiple sequential navigations", () => {
     const store = useModalStore();
 
-    store.navigateTo("customers");
-    expect(store.showCustomers).toBe(true);
+    store.navigateTo("purchase-entry");
+    expect(store.showPurchaseEntry).toBe(true);
 
     store.navigateTo("products");
     expect(store.showProducts).toBe(true);
-    expect(store.showCustomers).toBe(false);
+    expect(store.showPurchaseEntry).toBe(false);
 
     store.navigateTo("settings");
     expect(store.showSettings).toBe(true);

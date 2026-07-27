@@ -75,6 +75,7 @@ type AppAPI = {
   openCustomerHistory: (customerId?: number) => Promise<void>;
   openPaymentWindow: (invoiceId: string) => Promise<void>;
   openEditPaymentWindow: (invoiceId: string) => Promise<void>;
+  openCustomersWindow: () => Promise<void>;
   onLoadHistoryCustomer: (cb: (id: number) => void) => () => void;
   onOpenSettings: (cb: () => void) => () => void;
   onOpenAbout: (cb: () => void) => () => void;
@@ -174,6 +175,7 @@ const api: AppAPI = {
     ipcRenderer.invoke("window:open-payment", invoiceId),
   openEditPaymentWindow: (invoiceId) =>
     ipcRenderer.invoke("window:open-edit-payment", invoiceId),
+  openCustomersWindow: () => ipcRenderer.invoke("window:open-customers"),
   onLoadHistoryCustomer: (cb) => {
     const listener = (_: unknown, id: number) => cb(id);
     ipcRenderer.on("history:load-customer", listener);

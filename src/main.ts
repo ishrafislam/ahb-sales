@@ -197,19 +197,20 @@ async function openCustomerHistoryWindow(
 }
 
 // -----------------------
-// Payment window (child of a main window, shares its context)
+// Payment / customer windows (children of a main window, share its context)
 // -----------------------
 
 const paymentWindows = new Map<number, BrowserWindow>();
 const editPaymentWindows = new Map<number, BrowserWindow>();
+const customersWindows = new Map<number, BrowserWindow>();
 
-// Small fixed-size child window sharing the parent's file/data services so
-// all data IPC routed by sender id operates on the same open document.
-async function openSmallChildWindow(
+// Child window sharing the parent's file/data services so all data IPC
+// routed by sender id operates on the same open document.
+async function openChildWindow(
   sender: Electron.WebContents,
   registry: Map<number, BrowserWindow>,
   hash: string,
-  height: number
+  opts: { width: number; height: number; resizable: boolean }
 ): Promise<void> {
   const parentCtx = getCtx(sender);
   const parentId = sender.id;
@@ -226,11 +227,11 @@ async function openSmallChildWindow(
   // window would be destroyed with its parent.
   const topLevelParent = parentCtx.win.getParentWindow() ?? parentCtx.win;
   const win = new BrowserWindow({
-    width: 420,
-    height,
-    resizable: false,
-    minimizable: false,
-    maximizable: false,
+    width: opts.width,
+    height: opts.height,
+    resizable: opts.resizable,
+    minimizable: opts.resizable,
+    maximizable: opts.resizable,
     parent: topLevelParent,
     title: app.getName(),
     webPreferences: {
@@ -268,24 +269,33 @@ async function openPaymentWindow(
   sender: Electron.WebContents,
   invoiceId: string
 ): Promise<void> {
-  await openSmallChildWindow(
-    sender,
-    paymentWindows,
-    `payment/${invoiceId}`,
-    480
-  );
+  await openChildWindow(sender, paymentWindows, `payment/${invoiceId}`, {
+    width: 420,
+    height: 480,
+    resizable: false,
+  });
 }
 
 async function openEditPaymentWindow(
   sender: Electron.WebContents,
   invoiceId: string
 ): Promise<void> {
-  await openSmallChildWindow(
+  await openChildWindow(
     sender,
     editPaymentWindows,
     `edit-payment/${invoiceId}`,
-    520
+    { width: 420, height: 520, resizable: false }
   );
+}
+
+async function openCustomersWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, customersWindows, "customers", {
+    width: 780,
+    height: 780,
+    resizable: true,
+  });
 }
 
 // -----------------------
@@ -525,6 +535,10 @@ ipcMain.handle("window:open-payment", async (e, invoiceId: string) => {
 
 ipcMain.handle("window:open-edit-payment", async (e, invoiceId: string) => {
   await openEditPaymentWindow(e.sender, invoiceId);
+});
+
+ipcMain.handle("window:open-customers", async (e) => {
+  await openCustomersWindow(e.sender);
 });
 
 // Updates & app info (global)
