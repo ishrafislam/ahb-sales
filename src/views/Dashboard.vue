@@ -443,6 +443,8 @@ async function onPostData() {
   try {
     const payload = {
       customerId: custId,
+      // Selling to an empty slot creates the customer at that id
+      createMissingCustomer: true,
       lines,
       discount: discount.value,
       // Payments are only added via the payment window; edits carry the
@@ -455,6 +457,7 @@ async function onPostData() {
         ? await window.ahb.updateInvoice(postedInvoiceId.value, payload)
         : await window.ahb.postInvoice(payload);
     applyInvoiceToStatus(inv);
+    customerReceivableText.value = inv.currentDue.toFixed(2);
     comment.value = inv.notes ?? "";
     postedInvoiceId.value = inv.id;
     // Hide incomplete rows (e.g. the auto-appended trailing empty row)

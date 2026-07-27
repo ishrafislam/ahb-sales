@@ -3,9 +3,11 @@ import {
   initData,
   addProduct,
   addCustomer,
+  getCustomer,
   postInvoice,
   type AhbDataV1,
 } from "../src/main/data";
+import { MAX_CUSTOMER_ID } from "../src/constants/business";
 
 // Ensure tests run with deterministic environment when needed
 process.env.AHB_KEY_HEX =
@@ -228,5 +230,97 @@ describe("postInvoice (Phase 2)", () => {
     expect(inv2.no).toBe(2);
     expect(data.invoiceSeq).toBe(3);
     expect(data.invoices?.length).toBe(2);
+  });
+});
+
+describe("postInvoice on an empty customer slot", () => {
+  function seed(): AhbDataV1 {
+    const data = initData();
+    addProduct(data, {
+      id: 1,
+      nameBn: "চিনি",
+      unit: "kg",
+      price: 100,
+      stock: 50,
+    });
+    return data;
+  }
+
+  it("still refuses an unknown customer without the flag", () => {
+    const data = seed();
+    expect(() =>
+      postInvoice(data, {
+        customerId: 100,
+        lines: [{ productId: 1, quantity: 1 }],
+      })
+    ).toThrow(/Customer not found/);
+    expect(data.customers.length).toBe(0);
+    expect(data.invoices?.length ?? 0).toBe(0);
+  });
+
+  it("creates the customer at that id and posts the invoice", () => {
+    const data = seed();
+    const inv = postInvoice(data, {
+      customerId: 100,
+      createMissingCustomer: true,
+      lines: [{ productId: 1, quantity: 2 }],
+    });
+
+    expect(inv.customerId).toBe(100);
+    expect(inv.previousDue).toBe(0);
+    expect(inv.totals.net).toBe(200);
+    expect(inv.currentDue).toBe(200);
+
+    const cust = getCustomer(data, 100)!;
+    expect(cust).toBeTruthy();
+    expect(cust.nameBn).toBe("");
+    expect(cust.active).toBe(true);
+    expect(cust.outstanding).toBe(inv.currentDue);
+  });
+
+  it("rejects out-of-range ids even with the flag", () => {
+    const data = seed();
+    for (const id of [0, MAX_CUSTOMER_ID + 1]) {
+      expect(() =>
+        postInvoice(data, {
+          customerId: id,
+          createMissingCustomer: true,
+          lines: [{ productId: 1, quantity: 1 }],
+        })
+      ).toThrow(/Customer ID out of range/);
+    }
+    expect(data.customers.length).toBe(0);
+  });
+
+  it("does not create the customer when the invoice itself is invalid", () => {
+    const data = seed();
+    expect(() =>
+      postInvoice(data, {
+        customerId: 100,
+        createMissingCustomer: true,
+        lines: [{ productId: 1, quantity: 0 }],
+      })
+    ).toThrow(/Quantity must be > 0/);
+    expect(data.customers.length).toBe(0);
+  });
+
+  it("accumulates due on the next invoice for the created customer", () => {
+    const data = seed();
+    postInvoice(data, {
+      customerId: 100,
+      createMissingCustomer: true,
+      lines: [{ productId: 1, quantity: 2 }],
+    });
+    const second = postInvoice(data, {
+      customerId: 100,
+      createMissingCustomer: true,
+      lines: [{ productId: 1, quantity: 1 }],
+    });
+
+    // The second post finds the customer created by the first one
+    expect(data.customers.length).toBe(1);
+    expect(second.previousDue).toBe(200);
+    expect(second.currentDue).toBe(300);
+    expect(getCustomer(data, 100)!.outstanding).toBe(300);
   });
 });

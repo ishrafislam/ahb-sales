@@ -1,4 +1,9 @@
-import { MIN_PRODUCT_ID, MAX_PRODUCT_ID } from "../constants/business";
+import {
+  MIN_PRODUCT_ID,
+  MAX_PRODUCT_ID,
+  MIN_CUSTOMER_ID,
+  MAX_CUSTOMER_ID,
+} from "../constants/business";
 import { nowIso, toDDMMYYYY } from "../utils/date";
 
 export type Lang = "bn" | "en";
@@ -132,6 +137,9 @@ export type PostInvoiceInput = {
   discount?: number;
   paid?: number;
   notes?: string;
+  // Sell to an empty customer slot: create the customer at that id instead
+  // of failing when no record exists yet.
+  createMissingCustomer?: boolean;
 };
 
 // Shared between postInvoice and updateInvoice: build and validate the
@@ -226,15 +234,30 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
   if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
   const hasCustomer =
     input.customerId !== null && input.customerId !== undefined;
-  const customer = hasCustomer
+  let customer = hasCustomer
     ? data.customers.find((c) => c.id === (input.customerId as number))
     : undefined;
-  if (hasCustomer && !customer) throw new Error("Customer not found");
+  // Selling to an empty slot creates the customer on the spot; the name and
+  // contact details are filled in later from the customer form. The record is
+  // only created once the invoice body validates, so a rejected post never
+  // leaves a stray customer behind.
+  const newCustomerId = hasCustomer && !customer ? (input.customerId as number) : null;
+  if (newCustomerId !== null) {
+    if (!input.createMissingCustomer) throw new Error("Customer not found");
+    if (
+      !Number.isInteger(newCustomerId) ||
+      newCustomerId < MIN_CUSTOMER_ID ||
+      newCustomerId > MAX_CUSTOMER_ID
+    ) {
+      throw new Error("Customer ID out of range");
+    }
+  }
 
-  const previousDue = hasCustomer
-    ? ceil2(Number(customer!.outstanding || 0))
-    : 0;
+  const previousDue = customer ? ceil2(Number(customer.outstanding || 0)) : 0;
   const body = buildInvoiceBody(data, input, previousDue, hasCustomer);
+  if (newCustomerId !== null) {
+    customer = addCustomer(data, { id: newCustomerId, nameBn: "" });
+  }
 
   // Stock check removed: allow negative stock (policy change)
 

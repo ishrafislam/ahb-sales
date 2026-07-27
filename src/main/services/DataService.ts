@@ -141,16 +141,23 @@ export class DataService {
 
   // Invoices
   postInvoice(payload: Parameters<typeof postInvoice>[1]) {
+    // Posting to an empty slot creates the customer, which the index has
+    // never seen before
+    const isNewCustomer =
+      payload.customerId != null && !this.index.getCustomer(payload.customerId);
     const inv = postInvoice(this.getData(), payload);
 
-    // Update indexes
+    // Update indexes. Stock and outstanding are applied by replacing the
+    // entries in `data`, so the fresh objects have to be re-read from there
+    // rather than pulled back out of the index.
+    const data = this.getData();
     this.index.addInvoice(inv);
     inv.lines.forEach((ln) => {
-      const prod = this.index.getProduct(ln.productId);
+      const prod = data.products.find((p) => p.id === ln.productId);
       if (prod) this.index.updateProduct(prod);
     });
     if (inv.customerId != null) {
-      const cust = this.index.getCustomer(inv.customerId);
+      const cust = data.customers.find((c) => c.id === inv.customerId);
       if (cust) this.index.updateCustomer(cust);
     }
 
@@ -171,7 +178,7 @@ export class DataService {
     if (inv.customerId != null) {
       this.fileService.notifyDataChanged({
         kind: "customer",
-        action: "update",
+        action: isNewCustomer ? "add" : "update",
         id: inv.customerId,
       });
     }

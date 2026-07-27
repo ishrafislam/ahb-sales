@@ -482,6 +482,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
 
     expect(postInvoice).toHaveBeenCalledWith({
       customerId: 12,
+      createMissingCustomer: true,
       lines: [{ productId: 5, quantity: 2, rate: 10.5 }],
       discount: 1,
       paid: 0,
@@ -519,6 +520,38 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect(
       (wrapper.find("textarea").element as HTMLTextAreaElement).disabled
     ).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("posts to an empty customer slot and shows the new receivable", async () => {
+    // No customer record at that ID: the main process creates it on post
+    getCustomerById.mockResolvedValue(null);
+    const postInvoice = vi.fn(async () => ({
+      id: "inv-1",
+      totals: { subtotal: 21, net: 20 },
+      discount: 1,
+      paid: 0,
+      previousDue: 0,
+      currentDue: 20,
+      notes: "first purchase",
+    }));
+    const { wrapper, postButton } = await setupPostableEntry(postInvoice);
+
+    await postButton.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(postInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({ customerId: 12, createMissingCustomer: true })
+    );
+    // No "Customer not found" (or any other) error, and the customer info
+    // box picks up the due the invoice just created
+    expect(wrapper.find(".text-red-600").exists()).toBe(false);
+    const values = getDisabledInputs(wrapper).map(
+      (i) => (i.element as HTMLInputElement).value
+    );
+    // Customer info box: name, address, receivable
+    expect(values.slice(4, 7)).toEqual(["", "", "20.00"]);
+    expect((postButton.element as HTMLButtonElement).disabled).toBe(true);
     wrapper.unmount();
   });
 
@@ -578,6 +611,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect(postInvoice).toHaveBeenCalledTimes(1);
     expect(updateInvoice).toHaveBeenCalledWith("inv-1", {
       customerId: 12,
+      createMissingCustomer: true,
       lines: [{ productId: 5, quantity: 3, rate: 10.5 }],
       discount: 1,
       paid: 5,
