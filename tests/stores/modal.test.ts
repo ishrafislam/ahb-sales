@@ -10,7 +10,6 @@ describe("useModalStore", () => {
   it("should have all modals closed by default", () => {
     const store = useModalStore();
 
-    expect(store.showProducts).toBe(false);
     expect(store.showSalesHistory).toBe(false);
     expect(store.showPurchaseHistory).toBe(false);
     expect(store.showPurchaseEntry).toBe(false);
@@ -26,7 +25,7 @@ describe("useModalStore", () => {
 
     expect(store.isAnyModalOpen()).toBe(false);
 
-    store.showProducts = true;
+    store.showSalesHistory = true;
     expect(store.isAnyModalOpen()).toBe(true);
 
     store.closeAll();
@@ -37,12 +36,12 @@ describe("useModalStore", () => {
     const store = useModalStore();
 
     // Open multiple modals
-    store.showProducts = true;
+    store.showSalesHistory = true;
     store.showSettings = true;
 
     store.closeAll();
 
-    expect(store.showProducts).toBe(false);
+    expect(store.showSalesHistory).toBe(false);
     expect(store.showSettings).toBe(false);
     expect(store.isAnyModalOpen()).toBe(false);
   });
@@ -50,23 +49,14 @@ describe("useModalStore", () => {
   describe("navigateTo", () => {
     it("should navigate to dashboard (close all)", () => {
       const store = useModalStore();
-      store.showProducts = true;
+      store.showSalesHistory = true;
       store.showSettings = true;
 
       store.navigateTo("dashboard");
 
-      expect(store.showProducts).toBe(false);
+      expect(store.showSalesHistory).toBe(false);
       expect(store.showSettings).toBe(false);
       expect(store.isAnyModalOpen()).toBe(false);
-    });
-
-    it("should navigate to products", () => {
-      const store = useModalStore();
-
-      store.navigateTo("products");
-
-      expect(store.showProducts).toBe(true);
-      expect(store.isAnyModalOpen()).toBe(true);
     });
 
     it("should navigate to product sales history", () => {
@@ -130,10 +120,10 @@ describe("useModalStore", () => {
       store.navigateTo("settings");
       expect(store.showSettings).toBe(true);
 
-      store.navigateTo("products");
+      store.navigateTo("product-sales-history");
 
       expect(store.showSettings).toBe(false);
-      expect(store.showProducts).toBe(true);
+      expect(store.showSalesHistory).toBe(true);
     });
   });
 
@@ -143,13 +133,13 @@ describe("useModalStore", () => {
     store.navigateTo("purchase-entry");
     expect(store.showPurchaseEntry).toBe(true);
 
-    store.navigateTo("products");
-    expect(store.showProducts).toBe(true);
+    store.navigateTo("product-sales-history");
+    expect(store.showSalesHistory).toBe(true);
     expect(store.showPurchaseEntry).toBe(false);
 
     store.navigateTo("settings");
     expect(store.showSettings).toBe(true);
-    expect(store.showProducts).toBe(false);
+    expect(store.showSalesHistory).toBe(false);
 
     store.closeAll();
     expect(store.isAnyModalOpen()).toBe(false);

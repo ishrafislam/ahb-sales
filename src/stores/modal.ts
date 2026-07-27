@@ -6,7 +6,6 @@ import { ref } from "vue";
  */
 export const useModalStore = defineStore("modal", () => {
   // Modal visibility flags
-  const showProducts = ref(false);
   const showSalesHistory = ref(false);
   const showPurchaseHistory = ref(false);
   const showPurchaseEntry = ref(false);
@@ -20,7 +19,6 @@ export const useModalStore = defineStore("modal", () => {
    * Check if any modal is currently open
    */
   const isAnyModalOpen = () =>
-    showProducts.value ||
     showSalesHistory.value ||
     showPurchaseHistory.value ||
     showPurchaseEntry.value ||
@@ -34,7 +32,6 @@ export const useModalStore = defineStore("modal", () => {
    * Close all modals
    */
   const closeAll = () => {
-    showProducts.value = false;
     showSalesHistory.value = false;
     showPurchaseHistory.value = false;
     showPurchaseEntry.value = false;
@@ -51,7 +48,6 @@ export const useModalStore = defineStore("modal", () => {
   const navigateTo = (
     page:
       | "dashboard"
-      | "products"
       | "product-sales-history"
       | "product-purchase-history"
       | "purchase-entry"
@@ -65,9 +61,6 @@ export const useModalStore = defineStore("modal", () => {
     switch (page) {
       case "dashboard":
         // All modals already closed
-        break;
-      case "products":
-        showProducts.value = true;
         break;
       case "product-sales-history":
         showSalesHistory.value = true;
@@ -95,7 +88,6 @@ export const useModalStore = defineStore("modal", () => {
 
   return {
     // State
-    showProducts,
     showSalesHistory,
     showPurchaseHistory,
     showPurchaseEntry,

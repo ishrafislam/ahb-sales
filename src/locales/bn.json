@@ -192,5 +192,9 @@
   "no_payment_to_edit": "সম্পাদনার মতো কোনো জমা নেই",
   "close": "বন্ধ",
   "edit": "এডিট",
-  "currency_taka": "টাকা"
+  "currency_taka": "টাকা",
+  "item_details": "আইটেমের বিবরণ",
+  "last_purchase_date": "সর্বশেষ ক্রয়ের তারিখ",
+  "last_purchase_amount": "সর্বশেষ ক্রয়ের পরিমাণ",
+  "purchase_entry": "ক্রয় এন্ট্রি"
 }

@@ -203,6 +203,7 @@ async function openCustomerHistoryWindow(
 const paymentWindows = new Map<number, BrowserWindow>();
 const editPaymentWindows = new Map<number, BrowserWindow>();
 const customersWindows = new Map<number, BrowserWindow>();
+const productsWindows = new Map<number, BrowserWindow>();
 
 // Child window sharing the parent's file/data services so all data IPC
 // routed by sender id operates on the same open document.
@@ -294,6 +295,16 @@ async function openCustomersWindow(
   await openChildWindow(sender, customersWindows, "customers", {
     width: 780,
     height: 780,
+    resizable: true,
+  });
+}
+
+async function openProductsWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, productsWindows, "products", {
+    width: 900,
+    height: 720,
     resizable: true,
   });
 }
@@ -539,6 +550,10 @@ ipcMain.handle("window:open-edit-payment", async (e, invoiceId: string) => {
 
 ipcMain.handle("window:open-customers", async (e) => {
   await openCustomersWindow(e.sender);
+});
+
+ipcMain.handle("window:open-products", async (e) => {
+  await openProductsWindow(e.sender);
 });
 
 // Updates & app info (global)
