@@ -204,5 +204,12 @@
   "margin_bottom": "Bottom",
   "margin_left": "Left",
   "margin_right": "Right",
-  "print_failed": "Could not print: {reason}"
+  "print_failed": "Could not print: {reason}",
+  "total_sell_title": "Total Sell",
+  "start_date": "Start date",
+  "end_date": "End date",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "invalid_date": "Enter both dates as DD/MM/YYYY.",
+  "end_before_start": "End date cannot be before the start date."
 }

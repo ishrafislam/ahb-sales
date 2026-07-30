@@ -204,5 +204,12 @@
   "margin_bottom": "নিচে",
   "margin_left": "বামে",
   "margin_right": "ডানে",
-  "print_failed": "প্রিন্ট করা যায়নি: {reason}"
+  "print_failed": "প্রিন্ট করা যায়নি: {reason}",
+  "total_sell_title": "মোট বিক্রয়",
+  "start_date": "শুরুর তারিখ",
+  "end_date": "শেষ তারিখ",
+  "today": "আজ",
+  "yesterday": "গতকাল",
+  "invalid_date": "দুটি তারিখই DD/MM/YYYY আকারে দিন।",
+  "end_before_start": "শেষ তারিখ শুরুর তারিখের আগে হতে পারে না।"
 }

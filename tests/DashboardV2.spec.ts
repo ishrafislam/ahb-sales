@@ -949,10 +949,14 @@ describe("Dashboard v2 — customer ID quick entry", () => {
 });
 
 describe("Dashboard v2 — action button navigation", () => {
+  let openTotalSellWindow: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     currentLang.value = "en";
+    openTotalSellWindow = vi.fn(async () => undefined);
     (window as unknown as { ahb: unknown }).ahb = {
       listInvoicesByCustomer: vi.fn(async () => []),
+      openTotalSellWindow,
     };
   });
 
@@ -1033,10 +1037,18 @@ describe("Dashboard v2 — action button navigation", () => {
     ["Single Print"],
     ["Direct Print"],
     ["Select Print"],
-  ])("does not emit navigate for inert button %s", async (label) => {
+  ])("does not emit navigate for non-navigating button %s", async (label) => {
     const wrapper = mountDashboard();
     await findButton(wrapper, label).trigger("click");
     expect(wrapper.emitted("navigate")).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it("Total Sell opens the date range window", async () => {
+    const wrapper = mountDashboard();
+    await findButton(wrapper, "Total Sell").trigger("click");
+
+    expect(openTotalSellWindow).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });
 });

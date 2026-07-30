@@ -166,7 +166,7 @@
             :key="btn.key"
             type="button"
             :class="[buttonClass, 'min-h-[2.5rem] px-1 py-1']"
-            @click="btn.page && emit('navigate', btn.page)"
+            @click="onReportClick(btn)"
           >
             {{ t(btn.key) }}
           </button>
@@ -676,12 +676,27 @@ const actionButtons: { key: string; page?: string }[] = [
   { key: "v2_item_list", page: "products" },
 ];
 
-const reportButtons: { key: string; page?: string }[] = [
+// Most of these navigate; Total Sell opens its own window instead
+function onReportClick(btn: { page?: string; handler?: () => void }) {
+  if (btn.handler) {
+    btn.handler();
+    return;
+  }
+  if (btn.page) emit("navigate", btn.page);
+}
+
+const reportButtons: {
+  key: string;
+  page?: string;
+  handler?: () => void;
+}[] = [
   { key: "v2_item_purchase_history", page: "product-purchase-history" },
   { key: "v2_item_sale_history", page: "product-sales-history" },
   { key: "v2_purchase_entry", page: "purchase-entry" },
-  // TODO(revamp/v2): target undecided
-  { key: "v2_total_sell" },
+  {
+    key: "v2_total_sell",
+    handler: () => void window.ahb.openTotalSellWindow(),
+  },
   { key: "v2_daily_report", page: "report-money-daywise" },
   { key: "v2_client_report", page: "report-money-customer" },
 ];

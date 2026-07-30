@@ -17,6 +17,7 @@ import {
   reportMoneyTransactionsCustomerRange,
   reportMoneyTransactionsDayWise,
   reportDailyPayments,
+  reportTotalSell,
   recordPayment,
 } from "../data";
 import type { FileService } from "./FileService";
@@ -315,5 +316,9 @@ export class DataService {
 
   reportDailyPayments(date: string) {
     return reportDailyPayments(this.getData(), date);
+  }
+
+  reportTotalSell(from: string, to: string) {
+    return reportTotalSell(this.getData(), from, to);
   }
 }

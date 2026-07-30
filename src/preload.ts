@@ -73,6 +73,10 @@ type AppAPI = {
   reportDailyPayments: (
     date: string
   ) => Promise<import("./main/data").DailyPaymentReport>;
+  reportTotalSell: (
+    from: string,
+    to: string
+  ) => Promise<import("./main/data").TotalSellReport>;
   onDataChanged: (
     cb: (payload: { kind: string; action: string; id: number }) => void
   ) => () => void;
@@ -85,6 +89,7 @@ type AppAPI = {
   openPurchaseEntryWindow: (productId?: number) => Promise<void>;
   openPurchaseHistoryWindow: (productId?: number) => Promise<void>;
   openSalesHistoryWindow: (productId?: number) => Promise<void>;
+  openTotalSellWindow: () => Promise<void>;
   // Printing
   openPrintPreview: (doc: PrintDocument) => Promise<string>;
   getPrintJob: (id: string) => Promise<PrintJob | null>;
@@ -185,6 +190,8 @@ const api: AppAPI = {
     ipcRenderer.invoke("report:money-daywise", from, to),
   reportDailyPayments: (date) =>
     ipcRenderer.invoke("report:daily-payment", date),
+  reportTotalSell: (from, to) =>
+    ipcRenderer.invoke("report:total-sell", from, to),
   onDataChanged: (cb) => {
     const listener = (
       _: unknown,
@@ -207,6 +214,7 @@ const api: AppAPI = {
     ipcRenderer.invoke("window:open-purchase-history", productId),
   openSalesHistoryWindow: (productId) =>
     ipcRenderer.invoke("window:open-sales-history", productId),
+  openTotalSellWindow: () => ipcRenderer.invoke("window:open-total-sell"),
   openPrintPreview: (doc) => ipcRenderer.invoke("print:create-job", doc),
   getPrintJob: (id) => ipcRenderer.invoke("print:get-job", id),
   setPrintMargins: (id, margins) =>

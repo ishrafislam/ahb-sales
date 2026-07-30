@@ -1101,3 +1101,67 @@ export function reportDailyPayments(
 
   return { header: { date: toDDMMYYYY(target) }, rows, totals };
 }
+
+// -----------------------
+// Total sell: quantity sold per item, per day
+// -----------------------
+
+export type TotalSellItemRow = {
+  productId: number;
+  productNameBn?: string;
+  quantity: number;
+};
+
+export type TotalSellDay = {
+  date: string; // DD-MM-YYYY
+  rows: TotalSellItemRow[];
+  totalQuantity: number;
+};
+
+export type TotalSellReport = { days: TotalSellDay[] };
+
+export function reportTotalSell(
+  data: AhbDataV1,
+  from: string,
+  to: string
+): TotalSellReport {
+  ensurePhase2(data);
+  const nameByProduct = new Map<number, string>(
+    data.products.map((p) => [p.id, p.nameBn])
+  );
+
+  // ymd -> productId -> quantity
+  const dayMap = new Map<string, Map<number, number>>();
+  for (const inv of data.invoices ?? []) {
+    const ymd = isoToYmd(inv.date);
+    if (ymd < from || ymd > to) continue;
+    let byProduct = dayMap.get(ymd);
+    if (!byProduct) {
+      byProduct = new Map();
+      dayMap.set(ymd, byProduct);
+    }
+    for (const ln of inv.lines) {
+      const qty = Number(ln.quantity) || 0;
+      byProduct.set(ln.productId, ceil2((byProduct.get(ln.productId) ?? 0) + qty));
+    }
+  }
+
+  const days: TotalSellDay[] = [];
+  // Oldest first: the report reads forwards through the range
+  for (const ymd of Array.from(dayMap.keys()).sort()) {
+    const byProduct = dayMap.get(ymd)!;
+    const rows: TotalSellItemRow[] = Array.from(byProduct.entries())
+      .map(([productId, quantity]) => ({
+        productId,
+        productNameBn: nameByProduct.get(productId),
+        quantity,
+      }))
+      .sort((a, b) => a.productId - b.productId);
+    days.push({
+      date: toDDMMYYYY(ymd),
+      rows,
+      totalQuantity: rows.reduce((t, r) => ceil2(t + r.quantity), 0),
+    });
+  }
+  return { days };
+}

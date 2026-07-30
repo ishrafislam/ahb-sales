@@ -212,6 +212,7 @@ const productsWindows = new Map<number, BrowserWindow>();
 const purchaseEntryWindows = new Map<number, BrowserWindow>();
 const purchaseHistoryWindows = new Map<number, BrowserWindow>();
 const salesHistoryWindows = new Map<number, BrowserWindow>();
+const totalSellWindows = new Map<number, BrowserWindow>();
 // Print windows are keyed by job id, not by opener: printing twice from the
 // same screen must give two previews, not refocus the first.
 const printPreviewWindows = new Map<string, BrowserWindow>();
@@ -447,6 +448,16 @@ async function openSalesHistoryWindow(
   });
 }
 
+async function openTotalSellWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, totalSellWindows, "total-sell", {
+    width: 460,
+    height: 440,
+    resizable: false,
+  });
+}
+
 // -----------------------
 // File-path parsing helper
 // -----------------------
@@ -670,6 +681,10 @@ ipcMain.handle("report:daily-payment", async (e, date: string) => {
   return getCtx(e.sender).dataService.reportDailyPayments(date);
 });
 
+ipcMain.handle("report:total-sell", async (e, from: string, to: string) => {
+  return getCtx(e.sender).dataService.reportTotalSell(from, to);
+});
+
 // Window control
 ipcMain.handle(
   "window:open-customer-history",
@@ -710,6 +725,10 @@ ipcMain.handle(
 
 ipcMain.handle("window:open-sales-history", async (e, productId?: number) => {
   await openSalesHistoryWindow(e.sender, productId);
+});
+
+ipcMain.handle("window:open-total-sell", async (e) => {
+  await openTotalSellWindow(e.sender);
 });
 
 // -----------------------
