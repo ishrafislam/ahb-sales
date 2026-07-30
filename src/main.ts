@@ -206,6 +206,7 @@ const customersWindows = new Map<number, BrowserWindow>();
 const productsWindows = new Map<number, BrowserWindow>();
 const purchaseEntryWindows = new Map<number, BrowserWindow>();
 const purchaseHistoryWindows = new Map<number, BrowserWindow>();
+const salesHistoryWindows = new Map<number, BrowserWindow>();
 
 // Child window sharing the parent's file/data services so all data IPC
 // routed by sender id operates on the same open document.
@@ -330,6 +331,18 @@ async function openPurchaseHistoryWindow(
 ): Promise<void> {
   const hash = productId ? `purchase-history/${productId}` : "purchase-history";
   await openChildWindow(sender, purchaseHistoryWindows, hash, {
+    width: 1000,
+    height: 720,
+    resizable: true,
+  });
+}
+
+async function openSalesHistoryWindow(
+  sender: Electron.WebContents,
+  productId?: number
+): Promise<void> {
+  const hash = productId ? `sales-history/${productId}` : "sales-history";
+  await openChildWindow(sender, salesHistoryWindows, hash, {
     width: 1000,
     height: 720,
     resizable: true,
@@ -596,6 +609,10 @@ ipcMain.handle(
     await openPurchaseHistoryWindow(e.sender, productId);
   }
 );
+
+ipcMain.handle("window:open-sales-history", async (e, productId?: number) => {
+  await openSalesHistoryWindow(e.sender, productId);
+});
 
 // Updates & app info (global)
 ipcMain.handle("app:check-for-updates", async () =>

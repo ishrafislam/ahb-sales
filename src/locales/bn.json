@@ -32,6 +32,7 @@
   "no_days_found": "পরিসরে কোনও দিন পাওয়া যায়নি",
   "date": "তারিখ",
   "customer": "ক্রেতা",
+  "customer_id": "ক্রেতার আইডি",
   "customer_name": "ক্রেতার নাম",
   "bill": "বিল",
   "discount": "ডিসকাউন্ট",

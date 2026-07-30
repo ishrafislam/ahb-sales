@@ -10,7 +10,6 @@ describe("useModalStore", () => {
   it("should have all modals closed by default", () => {
     const store = useModalStore();
 
-    expect(store.showSalesHistory).toBe(false);
     expect(store.showReportMoneyCustomer).toBe(false);
     expect(store.showReportMoneyDayWise).toBe(false);
     expect(store.showReportDailyPayment).toBe(false);
@@ -23,7 +22,7 @@ describe("useModalStore", () => {
 
     expect(store.isAnyModalOpen()).toBe(false);
 
-    store.showSalesHistory = true;
+    store.showReportMoneyDayWise = true;
     expect(store.isAnyModalOpen()).toBe(true);
 
     store.closeAll();
@@ -34,12 +33,12 @@ describe("useModalStore", () => {
     const store = useModalStore();
 
     // Open multiple modals
-    store.showSalesHistory = true;
+    store.showReportMoneyDayWise = true;
     store.showSettings = true;
 
     store.closeAll();
 
-    expect(store.showSalesHistory).toBe(false);
+    expect(store.showReportMoneyDayWise).toBe(false);
     expect(store.showSettings).toBe(false);
     expect(store.isAnyModalOpen()).toBe(false);
   });
@@ -47,22 +46,14 @@ describe("useModalStore", () => {
   describe("navigateTo", () => {
     it("should navigate to dashboard (close all)", () => {
       const store = useModalStore();
-      store.showSalesHistory = true;
+      store.showReportMoneyDayWise = true;
       store.showSettings = true;
 
       store.navigateTo("dashboard");
 
-      expect(store.showSalesHistory).toBe(false);
+      expect(store.showReportMoneyDayWise).toBe(false);
       expect(store.showSettings).toBe(false);
       expect(store.isAnyModalOpen()).toBe(false);
-    });
-
-    it("should navigate to product sales history", () => {
-      const store = useModalStore();
-
-      store.navigateTo("product-sales-history");
-
-      expect(store.showSalesHistory).toBe(true);
     });
 
     it("should navigate to report money customer", () => {
@@ -102,10 +93,10 @@ describe("useModalStore", () => {
       store.navigateTo("settings");
       expect(store.showSettings).toBe(true);
 
-      store.navigateTo("product-sales-history");
+      store.navigateTo("report-money-daywise");
 
       expect(store.showSettings).toBe(false);
-      expect(store.showSalesHistory).toBe(true);
+      expect(store.showReportMoneyDayWise).toBe(true);
     });
   });
 
@@ -115,13 +106,13 @@ describe("useModalStore", () => {
     store.navigateTo("report-money-customer");
     expect(store.showReportMoneyCustomer).toBe(true);
 
-    store.navigateTo("product-sales-history");
-    expect(store.showSalesHistory).toBe(true);
+    store.navigateTo("report-daily-payment");
+    expect(store.showReportDailyPayment).toBe(true);
     expect(store.showReportMoneyCustomer).toBe(false);
 
     store.navigateTo("settings");
     expect(store.showSettings).toBe(true);
-    expect(store.showSalesHistory).toBe(false);
+    expect(store.showReportDailyPayment).toBe(false);
 
     store.closeAll();
     expect(store.isAnyModalOpen()).toBe(false);

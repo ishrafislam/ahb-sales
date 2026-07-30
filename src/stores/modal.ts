@@ -6,7 +6,6 @@ import { ref } from "vue";
  */
 export const useModalStore = defineStore("modal", () => {
   // Modal visibility flags
-  const showSalesHistory = ref(false);
   const showReportMoneyCustomer = ref(false);
   const showReportMoneyDayWise = ref(false);
   const showReportDailyPayment = ref(false);
@@ -17,7 +16,6 @@ export const useModalStore = defineStore("modal", () => {
    * Check if any modal is currently open
    */
   const isAnyModalOpen = () =>
-    showSalesHistory.value ||
     showReportMoneyCustomer.value ||
     showReportMoneyDayWise.value ||
     showReportDailyPayment.value ||
@@ -28,7 +26,6 @@ export const useModalStore = defineStore("modal", () => {
    * Close all modals
    */
   const closeAll = () => {
-    showSalesHistory.value = false;
     showReportMoneyCustomer.value = false;
     showReportMoneyDayWise.value = false;
     showReportDailyPayment.value = false;
@@ -42,7 +39,6 @@ export const useModalStore = defineStore("modal", () => {
   const navigateTo = (
     page:
       | "dashboard"
-      | "product-sales-history"
       | "report-money-customer"
       | "report-money-daywise"
       | "report-daily-payment"
@@ -53,9 +49,6 @@ export const useModalStore = defineStore("modal", () => {
     switch (page) {
       case "dashboard":
         // All modals already closed
-        break;
-      case "product-sales-history":
-        showSalesHistory.value = true;
         break;
       case "report-money-customer":
         showReportMoneyCustomer.value = true;
@@ -74,7 +67,6 @@ export const useModalStore = defineStore("modal", () => {
 
   return {
     // State
-    showSalesHistory,
     showReportMoneyCustomer,
     showReportMoneyDayWise,
     showReportDailyPayment,

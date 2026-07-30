@@ -32,6 +32,7 @@
   "no_days_found": "No days found in range",
   "date": "Date",
   "customer": "Customer",
+  "customer_id": "Customer ID",
   "customer_name": "Customer Name",
   "bill": "Bill",
   "discount": "Discount",

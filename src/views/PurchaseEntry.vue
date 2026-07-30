@@ -124,7 +124,11 @@
 
     <!-- Right: purchase history + stock entry -->
     <div class="flex-1 min-w-0 p-6 flex flex-col gap-4 min-h-0">
-      <PurchaseHistoryTable :rows="purchases" />
+      <HistoryTable
+        :columns="[t('date'), t('amount'), t('unit')]"
+        :rows="purchaseCells"
+        :empty-text="t('no_purchases')"
+      />
 
       <div class="grid grid-cols-2 gap-4">
         <div>
@@ -178,7 +182,7 @@
 defineOptions({ name: "AhbPurchaseEntry" });
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
-import PurchaseHistoryTable from "../components/PurchaseHistoryTable.vue";
+import HistoryTable from "../components/HistoryTable.vue";
 import { MAX_PRODUCT_ID, MAX_PURCHASE_QUANTITY } from "../constants/business";
 
 interface ProductRow {
@@ -242,6 +246,14 @@ const canUpdate = computed(
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB");
 }
+
+const purchaseCells = computed(() =>
+  purchases.value.map((p) => [
+    formatDate(p.date),
+    String(p.quantity),
+    p.unit,
+  ])
+);
 
 function select(id: number) {
   if (id === selectedId.value) return;

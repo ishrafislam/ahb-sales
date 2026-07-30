@@ -10,31 +10,40 @@
         class="sticky top-0 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
       >
         <tr>
-          <th :class="[headCellClass, 'border-r']">{{ t("date") }}</th>
-          <th :class="[headCellClass, 'border-r']">{{ t("amount") }}</th>
-          <th :class="headCellClass">{{ t("unit") }}</th>
+          <th
+            v-for="(label, c) in columns"
+            :key="c"
+            :class="[
+              headCellClass,
+              c < columns.length - 1 ? 'border-r' : '',
+            ]"
+          >
+            {{ label }}
+          </th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="rows.length === 0">
           <td
             class="px-3 py-3 text-center text-gray-500 dark:text-gray-400"
-            colspan="3"
+            :colspan="columns.length"
           >
-            {{ t("no_purchases") }}
+            {{ emptyText }}
           </td>
         </tr>
         <tr
-          v-for="(p, i) in rows"
+          v-for="(row, i) in rows"
           :key="i"
           class="dark:text-gray-100"
-          data-row="purchase"
+          data-row="grid"
         >
-          <td :class="[bodyCellClass, 'border-r']">
-            {{ formatDate(p.date) }}
+          <td
+            v-for="(cell, c) in row"
+            :key="c"
+            :class="[bodyCellClass, c < row.length - 1 ? 'border-r' : '']"
+          >
+            {{ cell }}
           </td>
-          <td :class="[bodyCellClass, 'border-r']">{{ p.quantity }}</td>
-          <td :class="bodyCellClass">{{ p.unit }}</td>
         </tr>
       </tbody>
     </table>
@@ -42,16 +51,15 @@
 </template>
 
 <script setup lang="ts">
-defineOptions({ name: "AhbPurchaseHistoryTable" });
-import { t } from "../i18n";
+defineOptions({ name: "AhbHistoryTable" });
 
+// Headers arrive translated and cells pre-formatted: this component only
+// lays strings out on the grid.
 defineProps<{
-  rows: { date: string; unit: string; quantity: number }[];
+  columns: string[];
+  rows: string[][];
+  emptyText: string;
 }>();
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-GB");
-}
 
 const gridBorderClass = "border-gray-300 dark:border-gray-600";
 

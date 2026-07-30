@@ -81,7 +81,7 @@ describe("Purchase entry window", () => {
     wrapper.findAll("button").find((b) => b.text() === label)!;
 
   const rows = (wrapper: View) =>
-    wrapper.findAll('tr[data-row="purchase"]').map((r) =>
+    wrapper.findAll('tr[data-row="grid"]').map((r) =>
       r.findAll("td").map((c) => c.text())
     );
 

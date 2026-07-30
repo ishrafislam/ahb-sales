@@ -35,19 +35,19 @@
       </div>
     </div>
 
-    <!-- Right: purchase history -->
+    <!-- Right: sale history -->
     <div class="flex-1 min-w-0 p-6 flex flex-col min-h-0">
       <HistoryTable
-        :columns="[t('date'), t('amount'), t('unit')]"
-        :rows="purchaseCells"
-        :empty-text="t('no_purchases')"
+        :columns="[t('date'), t('customer_id'), t('customer_name'), t('amount')]"
+        :rows="saleCells"
+        :empty-text="t('no_sales')"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-defineOptions({ name: "AhbPurchaseHistory" });
+defineOptions({ name: "AhbSalesHistory" });
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
 import HistoryTable from "../components/HistoryTable.vue";
@@ -58,16 +58,17 @@ interface ProductRow {
   nameBn: string;
 }
 
-interface PurchaseRow {
+interface SaleRow {
   date: string;
-  unit: string;
+  customerId: number;
+  customerNameBn?: string;
   quantity: number;
 }
 
 const products = ref<ProductRow[]>([]);
-const purchases = ref<PurchaseRow[]>([]);
+const sales = ref<SaleRow[]>([]);
 
-// Opened either bare or as `#purchase-history/<productId>`
+// Opened either bare or as `#sales-history/<productId>`
 function initialSelectedId(): number {
   const [, raw] = window.location.hash.replace(/^#/, "").split("/");
   const id = Number(raw);
@@ -89,18 +90,20 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB");
 }
 
-const purchaseCells = computed(() =>
-  purchases.value.map((p) => [
-    formatDate(p.date),
-    String(p.quantity),
-    p.unit,
+// A customer created from an empty slot has an id but no name yet
+const saleCells = computed(() =>
+  sales.value.map((s) => [
+    formatDate(s.date),
+    String(s.customerId),
+    s.customerNameBn || "",
+    String(s.quantity),
   ])
 );
 
 function select(id: number) {
   if (id === selectedId.value) return;
   selectedId.value = id;
-  void loadPurchases(id);
+  void loadSales(id);
   void scrollSelectedIntoView();
 }
 
@@ -117,34 +120,35 @@ async function load() {
   products.value = list.map((p) => ({ id: p.id, nameBn: p.nameBn }));
 }
 
-async function loadPurchases(id: number) {
-  purchases.value = [];
+async function loadSales(id: number) {
+  sales.value = [];
   let list;
   try {
-    list = await window.ahb.listProductPurchases(id);
+    list = await window.ahb.listProductSales(id);
   } catch {
     return;
   }
   // Arrow keys can move the selection on before this resolves
   if (id !== selectedId.value) return;
-  purchases.value = (list || []).map((p) => ({
-    date: p.date,
-    unit: p.unit,
-    quantity: p.quantity,
+  sales.value = (list || []).map((s) => ({
+    date: s.date,
+    customerId: s.customerId,
+    customerNameBn: s.customerNameBn,
+    quantity: s.quantity,
   }));
 }
 
 let off: null | (() => void) = null;
 onMounted(async () => {
   await load();
-  await loadPurchases(selectedId.value);
+  await loadSales(selectedId.value);
   await scrollSelectedIntoView();
   // Arrow keys work straight away, without clicking the list first
   leftListRef.value?.focus();
   off = window.ahb.onDataChanged((payload) => {
-    if (payload.kind === "product" || payload.kind === "purchase") {
+    if (payload.kind === "invoice" || payload.kind === "product") {
       void load();
-      void loadPurchases(selectedId.value);
+      void loadSales(selectedId.value);
     }
   });
 });

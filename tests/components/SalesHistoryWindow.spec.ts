@@ -1,61 +1,81 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { mount } from "@vue/test-utils";
-import PurchaseHistory from "../../src/views/PurchaseHistory.vue";
+import SalesHistory from "../../src/views/SalesHistory.vue";
 import { currentLang } from "../../src/i18n";
 
-type ProductStub = {
-  id: number;
-  nameBn: string;
+type ProductStub = { id: number; nameBn: string };
+
+type SaleStub = {
+  date: string;
+  invoiceNo: number;
+  productId: number;
   unit: string;
-  price: number;
-  stock: number;
-  active: boolean;
+  quantity: number;
+  rate: number;
+  lineTotal: number;
+  customerId: number;
+  customerNameBn?: string;
 };
 
-type PurchaseStub = { date: string; unit: string; quantity: number };
-
-describe("Purchase history window", () => {
+describe("Sales history window", () => {
   const listProducts = vi.fn();
-  const listProductPurchases = vi.fn();
+  const listProductSales = vi.fn();
 
-  const purchases1: PurchaseStub[] = [
-    { date: "2026-07-30T10:00:00.000Z", unit: "Bag", quantity: 120 },
-    { date: "2026-07-15T10:00:00.000Z", unit: "Bag", quantity: 55 },
+  const sales1: SaleStub[] = [
+    {
+      date: "2026-07-30T10:00:00.000Z",
+      invoiceNo: 12,
+      productId: 1,
+      unit: "Bag",
+      quantity: 25,
+      rate: 466,
+      lineTotal: 11650,
+      customerId: 100,
+      customerNameBn: "Karim Store",
+    },
+    {
+      date: "2026-07-15T10:00:00.000Z",
+      invoiceNo: 9,
+      productId: 1,
+      unit: "Bag",
+      quantity: 4,
+      rate: 466,
+      lineTotal: 1864,
+      // Created from an empty slot: it has an id but no name yet
+      customerId: 250,
+    },
+    {
+      date: "2026-07-01T10:00:00.000Z",
+      invoiceNo: 3,
+      productId: 1,
+      unit: "Bag",
+      quantity: 2,
+      rate: 460,
+      lineTotal: 920,
+      // Legacy anonymous invoice
+      customerId: 0,
+    },
   ];
 
   beforeEach(() => {
     currentLang.value = "en";
     window.location.hash = "";
     listProducts.mockReset().mockResolvedValue([
-      {
-        id: 1,
-        nameBn: "Item 1",
-        unit: "Bag",
-        price: 466,
-        stock: 50,
-        active: true,
-      },
-      {
-        id: 3,
-        nameBn: "Item 3",
-        unit: "kg",
-        price: 12.5,
-        stock: 0,
-        active: true,
-      },
+      { id: 1, nameBn: "Item 1" },
+      { id: 3, nameBn: "Item 3" },
     ] as ProductStub[]);
-    listProductPurchases
+    listProductSales
       .mockReset()
-      .mockImplementation(async (id: number) => (id === 1 ? purchases1 : []));
+      .mockImplementation(async (id: number) => (id === 1 ? sales1 : []));
     (window as unknown as { ahb: unknown }).ahb = {
       listProducts,
-      listProductPurchases,
+      listProductSales,
       onDataChanged: vi.fn(() => () => undefined),
     };
   });
 
   async function mountView() {
-    const wrapper = mount(PurchaseHistory, { attachTo: document.body });
+    const wrapper = mount(SalesHistory, { attachTo: document.body });
     await new Promise((r) => setTimeout(r, 0));
     await wrapper.vm.$nextTick();
     return wrapper;
@@ -79,22 +99,30 @@ describe("Purchase history window", () => {
     wrapper.unmount();
   });
 
-  it("shows the selected item's purchases newest-first", async () => {
+  it("shows the selected item's sales, newest first", async () => {
     const wrapper = await mountView();
 
-    expect(listProductPurchases).toHaveBeenCalledWith(1);
+    expect(listProductSales).toHaveBeenCalledWith(1);
     expect(rows(wrapper)).toEqual([
-      ["30/07/2026", "120", "Bag"],
-      ["15/07/2026", "55", "Bag"],
+      ["30/07/2026", "100", "Karim Store", "25"],
+      // Customer created from an empty slot: id only, name still blank
+      ["15/07/2026", "250", "", "4"],
+      // Legacy anonymous invoice: plain 0, no "Walk-in" substitution
+      ["01/07/2026", "0", "", "2"],
     ]);
     wrapper.unmount();
   });
 
-  it("labels the columns Date / Amount / Unit and centres every cell", async () => {
+  it("labels the four columns and centres every cell", async () => {
     const wrapper = await mountView();
 
     const heads = wrapper.findAll("th");
-    expect(heads.map((h) => h.text())).toEqual(["Date", "Amount", "Unit"]);
+    expect(heads.map((h) => h.text())).toEqual([
+      "Date",
+      "Customer ID",
+      "Customer Name",
+      "Amount",
+    ]);
     for (const h of heads) expect(h.classes()).toContain("text-center");
 
     const cells = wrapper.find('tr[data-row="grid"]').findAll("td");
@@ -102,13 +130,13 @@ describe("Purchase history window", () => {
     wrapper.unmount();
   });
 
-  it("shows the empty state for an item with no purchases", async () => {
+  it("shows the empty state for an item with no sales", async () => {
     const wrapper = await mountView();
     await wrapper.find('li[data-id="3"]').trigger("click");
     await new Promise((r) => setTimeout(r, 0));
 
     expect(rows(wrapper)).toEqual([]);
-    expect(wrapper.find("tbody").text()).toContain("No purchases");
+    expect(wrapper.find("tbody").text()).toContain("No sales");
     wrapper.unmount();
   });
 
@@ -121,21 +149,21 @@ describe("Purchase history window", () => {
 
     await list.trigger("keydown.down");
     await new Promise((r) => setTimeout(r, 0));
-    expect(listProductPurchases).toHaveBeenCalledWith(2);
+    expect(listProductSales).toHaveBeenCalledWith(2);
     expect(rows(wrapper)).toEqual([]);
 
     await list.trigger("keydown.up");
     await new Promise((r) => setTimeout(r, 0));
     expect(wrapper.find("li[data-id='1']").classes()).toContain("bg-blue-100");
-    expect(rows(wrapper)).toHaveLength(2);
+    expect(rows(wrapper)).toHaveLength(3);
     wrapper.unmount();
   });
 
   it("opens on the item id carried in the hash", async () => {
-    window.location.hash = "#purchase-history/3";
+    window.location.hash = "#sales-history/3";
     const wrapper = await mountView();
 
-    expect(listProductPurchases).toHaveBeenCalledWith(3);
+    expect(listProductSales).toHaveBeenCalledWith(3);
     expect(wrapper.find("li[data-id='3']").classes()).toContain("bg-blue-100");
     wrapper.unmount();
   });
