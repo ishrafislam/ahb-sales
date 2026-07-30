@@ -78,6 +78,7 @@ type AppAPI = {
   openCustomersWindow: () => Promise<void>;
   openProductsWindow: () => Promise<void>;
   openPurchaseEntryWindow: (productId?: number) => Promise<void>;
+  openPurchaseHistoryWindow: (productId?: number) => Promise<void>;
   onLoadHistoryCustomer: (cb: (id: number) => void) => () => void;
   onOpenSettings: (cb: () => void) => () => void;
   onOpenAbout: (cb: () => void) => () => void;
@@ -181,6 +182,8 @@ const api: AppAPI = {
   openProductsWindow: () => ipcRenderer.invoke("window:open-products"),
   openPurchaseEntryWindow: (productId) =>
     ipcRenderer.invoke("window:open-purchase-entry", productId),
+  openPurchaseHistoryWindow: (productId) =>
+    ipcRenderer.invoke("window:open-purchase-history", productId),
   onLoadHistoryCustomer: (cb) => {
     const listener = (_: unknown, id: number) => cb(id);
     ipcRenderer.on("history:load-customer", listener);

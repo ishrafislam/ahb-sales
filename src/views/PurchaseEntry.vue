@@ -124,46 +124,7 @@
 
     <!-- Right: purchase history + stock entry -->
     <div class="flex-1 min-w-0 p-6 flex flex-col gap-4 min-h-0">
-      <div
-        class="flex-1 min-h-0 scrollbar-always border border-gray-300 dark:border-gray-600 rounded-md"
-      >
-        <!-- Separate borders, not collapsed: a sticky header loses collapsed
-             cell borders while scrolling. The container supplies the outer
-             frame, each cell its right and bottom gridline. -->
-        <table class="w-full text-sm border-separate border-spacing-0">
-          <thead
-            class="sticky top-0 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
-          >
-            <tr>
-              <th :class="[headCellClass, 'border-r']">{{ t("date") }}</th>
-              <th :class="[headCellClass, 'border-r']">{{ t("amount") }}</th>
-              <th :class="headCellClass">{{ t("unit") }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="purchases.length === 0">
-              <td
-                class="px-3 py-3 text-center text-gray-500 dark:text-gray-400"
-                colspan="3"
-              >
-                {{ t("no_purchases") }}
-              </td>
-            </tr>
-            <tr
-              v-for="(p, i) in purchases"
-              :key="i"
-              class="dark:text-gray-100"
-              data-row="purchase"
-            >
-              <td :class="[bodyCellClass, 'border-r']">
-                {{ formatDate(p.date) }}
-              </td>
-              <td :class="[bodyCellClass, 'border-r']">{{ p.quantity }}</td>
-              <td :class="bodyCellClass">{{ p.unit }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <PurchaseHistoryTable :rows="purchases" />
 
       <div class="grid grid-cols-2 gap-4">
         <div>
@@ -217,6 +178,7 @@
 defineOptions({ name: "AhbPurchaseEntry" });
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
+import PurchaseHistoryTable from "../components/PurchaseHistoryTable.vue";
 import { MAX_PRODUCT_ID, MAX_PURCHASE_QUANTITY } from "../constants/business";
 
 interface ProductRow {
@@ -390,12 +352,6 @@ async function scrollSelectedIntoView() {
 watch(selectedId, () => {
   void scrollSelectedIntoView();
 });
-
-const gridBorderClass = "border-gray-300 dark:border-gray-600";
-
-const headCellClass = `px-3 py-2 text-center font-medium border-b ${gridBorderClass}`;
-
-const bodyCellClass = `px-3 py-2 text-center border-b ${gridBorderClass}`;
 
 const labelClass =
   "block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1";

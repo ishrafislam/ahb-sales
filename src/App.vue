@@ -39,13 +39,6 @@
       <ProductSalesHistory @navigate="onNavigate" />
     </BaseModal>
     <BaseModal
-      v-if="modalStore.showPurchaseHistory"
-      :title="t('product_purchase_history_title')"
-      @close="modalStore.closeAll"
-    >
-      <ProductPurchaseHistory @navigate="onNavigate" />
-    </BaseModal>
-    <BaseModal
       v-if="modalStore.showReportMoneyCustomer"
       :title="t('report_money_customer_title')"
       :max-width="'5xl'"
@@ -108,7 +101,6 @@ import { onMounted } from "vue";
 import { t, initI18n } from "./i18n";
 import Dashboard from "./views/Dashboard.vue";
 import ProductSalesHistory from "./views/ProductSalesHistory.vue";
-import ProductPurchaseHistory from "./views/ProductPurchaseHistory.vue";
 import BaseModal from "./components/BaseModal.vue";
 import ReportMoneyCustomer from "./views/ReportMoneyCustomer.vue";
 import ReportMoneyDayWise from "./views/ReportMoneyDayWise.vue";
@@ -294,7 +286,7 @@ function onNavigate(
     return;
   }
   if (page === "product-purchase-history") {
-    modalStore.navigateTo("product-purchase-history");
+    void window.ahb.openPurchaseHistoryWindow();
     return;
   }
   if (page === "purchase-entry") {

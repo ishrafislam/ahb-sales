@@ -11,7 +11,6 @@ describe("useModalStore", () => {
     const store = useModalStore();
 
     expect(store.showSalesHistory).toBe(false);
-    expect(store.showPurchaseHistory).toBe(false);
     expect(store.showReportMoneyCustomer).toBe(false);
     expect(store.showReportMoneyDayWise).toBe(false);
     expect(store.showReportDailyPayment).toBe(false);
@@ -66,14 +65,6 @@ describe("useModalStore", () => {
       expect(store.showSalesHistory).toBe(true);
     });
 
-    it("should navigate to product purchase history", () => {
-      const store = useModalStore();
-
-      store.navigateTo("product-purchase-history");
-
-      expect(store.showPurchaseHistory).toBe(true);
-    });
-
     it("should navigate to report money customer", () => {
       const store = useModalStore();
 
@@ -121,12 +112,12 @@ describe("useModalStore", () => {
   it("should support multiple sequential navigations", () => {
     const store = useModalStore();
 
-    store.navigateTo("product-purchase-history");
-    expect(store.showPurchaseHistory).toBe(true);
+    store.navigateTo("report-money-customer");
+    expect(store.showReportMoneyCustomer).toBe(true);
 
     store.navigateTo("product-sales-history");
     expect(store.showSalesHistory).toBe(true);
-    expect(store.showPurchaseHistory).toBe(false);
+    expect(store.showReportMoneyCustomer).toBe(false);
 
     store.navigateTo("settings");
     expect(store.showSettings).toBe(true);
