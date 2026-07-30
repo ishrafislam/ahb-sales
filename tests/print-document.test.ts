@@ -114,6 +114,44 @@ describe("composePrintHtml", () => {
     expect(html).toContain(`padding: ${MAX_MARGIN_MM}mm`);
   });
 
+  it("leaves a single-column document identical in both modes", () => {
+    expect(composePrintHtml(doc, DEFAULT_MARGINS, "preview")).toBe(
+      composePrintHtml(doc, DEFAULT_MARGINS, "print")
+    );
+    expect(composePrintHtml(doc, DEFAULT_MARGINS)).not.toContain("column-");
+  });
+
+  it("fills column by column when printing two columns", () => {
+    const html = composePrintHtml(
+      { ...doc, columns: 2 },
+      DEFAULT_MARGINS,
+      "print"
+    );
+
+    expect(html).toContain("column-count: 2");
+    expect(html).toContain("column-fill: auto");
+    // Gap must equal left + right so the preview's page period works out
+    expect(html).toContain(`column-gap: ${12 + 12}mm`);
+    expect(html).not.toContain("column-width");
+  });
+
+  it("overflows sideways when previewing two columns", () => {
+    const margins = { top: 40, bottom: 40, left: 20, right: 10 };
+    const html = composePrintHtml({ ...doc, columns: 2 }, margins, "preview");
+    const content = pageContentSizeMm({}, margins);
+
+    // One page's content height, so the columns spill into the next page
+    expect(html).toContain(`height: ${content.height}mm`);
+    expect(html).toContain(`height: ${A4_HEIGHT_MM - 80}mm`);
+    expect(html).toContain("width: auto");
+    expect(html).toContain(`column-gap: ${20 + 10}mm`);
+    expect(html).toContain(
+      `column-width: ${(content.width - 30) / 2}mm`
+    );
+    expect(html).toContain("column-fill: auto");
+    expect(html).not.toContain("column-count");
+  });
+
   it("honours landscape", () => {
     const html = composePrintHtml(
       { ...doc, orientation: "landscape" },

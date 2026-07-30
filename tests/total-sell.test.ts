@@ -57,19 +57,18 @@ describe("reportTotalSell", () => {
 
     // Both invoices for item 1 on the 10th are summed; rows go by product id
     expect(rep.days[0]!.rows).toEqual([
-      { productId: 1, productNameBn: "চাল", quantity: 15 },
-      { productId: 2, productNameBn: "ডাল", quantity: 4 },
+      { productId: 1, productNameBn: "চাল", unit: "kg", quantity: 15 },
+      { productId: 2, productNameBn: "ডাল", unit: "kg", quantity: 4 },
     ]);
     expect(rep.days[1]!.rows).toEqual([
-      { productId: 5, productNameBn: "তেল", quantity: 2.5 },
+      { productId: 5, productNameBn: "তেল", unit: "L", quantity: 2.5 },
     ]);
   });
 
-  it("totals each day", () => {
+  it("reports a day as its rows alone, with no day total", () => {
     const rep = reportTotalSell(seed(), "2026-07-05", "2026-07-31");
 
-    expect(rep.days[0]!.totalQuantity).toBe(19);
-    expect(rep.days[1]!.totalQuantity).toBe(2.5);
+    expect(Object.keys(rep.days[0]!).sort()).toEqual(["date", "rows"]);
   });
 
   it("counts anonymous sales like any other", () => {
@@ -103,5 +102,6 @@ describe("reportTotalSell", () => {
 
     const rep = reportTotalSell(data, "2026-07-12", "2026-07-12");
     expect(rep.days[0]!.rows[0]!.productNameBn).toBeUndefined();
+    expect(rep.days[0]!.rows[0]!.unit).toBeUndefined();
   });
 });

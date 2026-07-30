@@ -1109,13 +1109,13 @@ export function reportDailyPayments(
 export type TotalSellItemRow = {
   productId: number;
   productNameBn?: string;
+  unit?: string;
   quantity: number;
 };
 
 export type TotalSellDay = {
   date: string; // DD-MM-YYYY
   rows: TotalSellItemRow[];
-  totalQuantity: number;
 };
 
 export type TotalSellReport = { days: TotalSellDay[] };
@@ -1126,9 +1126,7 @@ export function reportTotalSell(
   to: string
 ): TotalSellReport {
   ensurePhase2(data);
-  const nameByProduct = new Map<number, string>(
-    data.products.map((p) => [p.id, p.nameBn])
-  );
+  const productById = new Map(data.products.map((p) => [p.id, p]));
 
   // ymd -> productId -> quantity
   const dayMap = new Map<string, Map<number, number>>();
@@ -1153,15 +1151,12 @@ export function reportTotalSell(
     const rows: TotalSellItemRow[] = Array.from(byProduct.entries())
       .map(([productId, quantity]) => ({
         productId,
-        productNameBn: nameByProduct.get(productId),
+        productNameBn: productById.get(productId)?.nameBn,
+        unit: productById.get(productId)?.unit,
         quantity,
       }))
       .sort((a, b) => a.productId - b.productId);
-    days.push({
-      date: toDDMMYYYY(ymd),
-      rows,
-      totalQuantity: rows.reduce((t, r) => ceil2(t + r.quantity), 0),
-    });
+    days.push({ date: toDDMMYYYY(ymd), rows });
   }
   return { days };
 }

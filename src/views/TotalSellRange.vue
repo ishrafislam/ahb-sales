@@ -162,12 +162,7 @@ async function okay() {
       toYmd(startDate.value!),
       toYmd(endDate.value!)
     );
-    await window.ahb.openPrintPreview(
-      buildTotalSellDocument(report, {
-        fromText: startText.value,
-        toText: endText.value,
-      })
-    );
+    await window.ahb.openPrintPreview(buildTotalSellDocument(report));
     window.close();
   } finally {
     running.value = false;

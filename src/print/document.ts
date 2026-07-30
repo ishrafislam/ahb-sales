@@ -29,6 +29,8 @@ export type PrintDocument = {
   pageSize?: "A4";
   orientation?: "portrait" | "landscape";
   margins?: Partial<PrintMargins>;
+  /** Flow the content down one column then the next. Defaults to 1. */
+  columns?: 1 | 2;
 };
 
 export type PrintJob = {
@@ -87,14 +89,21 @@ export function pageContentSizeMm(
   };
 }
 
-/** How many sheets a document of this height needs. Always at least one. */
+/**
+ * How many sheets a document of this size needs. Always at least one.
+ *
+ * A normal document grows downwards, so this measures height against page
+ * height; a two-column document overflows sideways in the preview, so the
+ * same sum runs on the width axis.
+ */
 export function pageCountFor(
-  contentHeightPx: number,
-  pageHeightPx: number
+  contentSizePx: number,
+  pageSizePx: number
 ): number {
-  if (!Number.isFinite(contentHeightPx) || contentHeightPx <= 0) return 1;
-  if (!Number.isFinite(pageHeightPx) || pageHeightPx <= 0) return 1;
-  const pages = Math.ceil(contentHeightPx / pageHeightPx);
+  if (!Number.isFinite(contentSizePx) || contentSizePx <= 0) return 1;
+  if (!Number.isFinite(pageSizePx) || pageSizePx <= 0) return 1;
+  // Sub-pixel overshoot from layout rounding should not add a blank sheet
+  const pages = Math.ceil((contentSizePx - 0.5) / pageSizePx);
   return Math.min(MAX_PREVIEW_PAGES, Math.max(1, pages));
 }
 
@@ -107,13 +116,57 @@ function escapeHtml(s: string): string {
 }
 
 /**
+ * The gap between the two columns is the left plus the right margin.
+ *
+ * That is not an aesthetic choice. In the preview the columns overflow
+ * sideways, so the distance from one column to the one two along has to come
+ * out at exactly one page width for every sheet to keep its margins — and
+ * that only holds when the gap equals left + right. Print uses the same gap
+ * so the two renderings stay identical.
+ */
+export function columnGapMm(margins: PrintMargins): number {
+  return margins.left + margins.right;
+}
+
+/**
+ * Two-column flow, rendered two ways from one layout.
+ *
+ * On paper, `column-fill: auto` fills the left column to the page bottom,
+ * then the right, then starts a new page. The preview has no pages to fill,
+ * so it pins the body to one page's content height instead: the columns then
+ * overflow sideways, and each sheet is the horizontal slice of one page
+ * width. Both renderings break in the same places, which is the point.
+ */
+function columnCss(
+  doc: PrintDocument,
+  margins: PrintMargins,
+  mode: "print" | "preview"
+): string {
+  if (doc.columns !== 2) return "";
+  const content = pageContentSizeMm(doc, margins);
+  const gap = columnGapMm(margins);
+  if (mode === "print") {
+    return `body { column-count: 2; column-gap: ${gap}mm; column-fill: auto; }`;
+  }
+  const columnWidth = Math.max(0, (content.width - gap) / 2);
+  return `body {
+      width: auto;
+      height: ${content.height}mm;
+      column-width: ${columnWidth}mm;
+      column-gap: ${gap}mm;
+      column-fill: auto;
+    }`;
+}
+
+/**
  * Build the full print document. The margins become body padding rather than
  * `@page` margins so that the preview and the paper agree, and so the print
  * call can ask the printer for no margins of its own.
  */
 export function composePrintHtml(
   doc: PrintDocument,
-  margins: PrintMargins
+  margins: PrintMargins,
+  mode: "print" | "preview" = "print"
 ): string {
   const m = normalizeMargins(margins);
   const orientation = doc.orientation === "landscape" ? "landscape" : "portrait";
@@ -132,6 +185,7 @@ export function composePrintHtml(
     }
     table { width: 100%; border-collapse: collapse; }
     tr, .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+    ${columnCss(doc, m, mode)}
   `;
   const extra = doc.styleCss ? `<style>${doc.styleCss}</style>` : "";
   return [

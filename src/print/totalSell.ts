@@ -1,14 +1,29 @@
 import type { TotalSellReport } from "../main/data";
-import { t } from "../i18n";
+import { t, currentLang } from "../i18n";
 import type { PrintDocument } from "./document";
 
 /**
- * The total-sell report as a print document: one table per day, laid two
- * across the page. Page size and margins stay the print module's business.
+ * "Monday, June 1, 2026" from the report's DD-MM-YYYY, in the app's
+ * language. Falls back to the raw string if it ever fails to parse.
+ */
+function longDate(ddMmYyyy: string): string {
+  const [d, m, y] = ddMmYyyy.split("-").map(Number);
+  if (!d || !m || !y) return ddMmYyyy;
+  const date = new Date(y, m - 1, d);
+  if (Number.isNaN(date.getTime())) return ddMmYyyy;
+  return date.toLocaleDateString(
+    currentLang.value === "bn" ? "bn-BD" : "en-US",
+    { weekday: "long", year: "numeric", month: "long", day: "numeric" }
+  );
+}
+
+/**
+ * The total-sell report as a print document: one table per day, poured down
+ * the left column then the right. Page size, margins and the column flow
+ * itself stay the print module's business.
  */
 export function buildTotalSellDocument(
-  report: TotalSellReport,
-  range: { fromText: string; toText: string }
+  report: TotalSellReport
 ): PrintDocument {
   const title = t("v2_total_sell");
 
@@ -17,37 +32,37 @@ export function buildTotalSellDocument(
       const rows = day.rows
         .map(
           (r) => `<tr>
-            <td>${r.productId}</td>
-            <td>${r.productNameBn ?? ""}</td>
-            <td>${r.quantity}</td>
+            <td class="id">${r.productId}</td>
+            <td class="name">${r.productNameBn ?? ""}</td>
+            <td class="qty">${r.quantity}</td>
+            <td class="unit">${r.unit ?? ""}</td>
           </tr>`
         )
         .join("");
       return `<section class="day">
-        <h2>${day.date}</h2>
+        <h2>${t("date")} : ${longDate(day.date)}</h2>
         <table>
+          <colgroup>
+            <col class="c-id" />
+            <col class="c-name" />
+            <col class="c-qty" />
+            <col class="c-unit" />
+          </colgroup>
           <thead>
             <tr>
-              <th>${t("item_id")}</th>
-              <th>${t("item_name")}</th>
-              <th>${t("amount")}</th>
+              <th class="id">${t("item_id")}</th>
+              <th class="name">${t("item_name")}</th>
+              <th class="amount" colspan="2">${t("amount")}</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
-          <tfoot>
-            <tr>
-              <td colspan="2">${t("total")}</td>
-              <td>${day.totalQuantity}</td>
-            </tr>
-          </tfoot>
         </table>
       </section>`;
     })
     .join("");
 
   const bodyHtml = `
-    <h1>${title}</h1>
-    <div class="meta">${t("from")} ${range.fromText} ${t("to")} ${range.toText}</div>
+    <h1>${title} :</h1>
     ${
       report.days.length
         ? `<div class="days">${daysHtml}</div>`
@@ -55,22 +70,32 @@ export function buildTotalSellDocument(
     }
   `;
 
-  // Two days per row rather than a newspaper column flow: the preview
-  // renders the document continuously and slices it into sheets, and CSS
-  // multi-column balances across the whole document, so a column layout
-  // would disagree with the printed pages past the first sheet.
+  // A day's table is free to break across a column or page boundary — only
+  // its heading is pinned to the rows below it.
+  //
+  // Amount is one centred header over two equal cells: the number ranges
+  // right and the unit ranges left, so the digits line up on a common
+  // vertical no matter how long the unit reads. The widths live on the
+  // colgroup because under `table-layout: fixed` a colspan header cell would
+  // otherwise decide how that band is divided.
   const styleCss = `
-    h1 { font-size: 18px; margin: 0 0 4px; }
-    .meta { font-size: 12px; color: #555; margin-bottom: 10px; }
+    h1 { font-size: 18px; margin: 0 0 8px; column-span: all; }
     .empty { font-size: 12px; color: #6b7280; text-align: center; padding: 8mm 0; }
-    .days { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; align-items: start; }
-    .day { break-inside: avoid; page-break-inside: avoid; }
-    .day h2 { font-size: 12px; margin: 0 0 2px; }
-    .day table { width: 100%; border-collapse: collapse; font-size: 10px; }
-    .day th, .day td { border: 1px solid #999; padding: 2px 4px; text-align: center; }
-    .day th { background: #f3f4f6; }
-    .day tfoot td { font-weight: 600; }
+    .day { margin-bottom: 6mm; }
+    .day h2 { font-size: 12px; font-weight: 600; margin: 0 0 2px; break-after: avoid; page-break-after: avoid; }
+    .day table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 10px; }
+    .day th, .day td { border: none; border-bottom: 1px solid #999; padding: 3px 4px; overflow-wrap: break-word; }
+    .day th { font-weight: 600; }
+    .day .c-id { width: 16%; }
+    .day .c-name { width: 44%; }
+    .day .c-qty { width: 20%; }
+    .day .c-unit { width: 20%; }
+    .day .id { text-align: left; }
+    .day .name { text-align: left; }
+    .day .amount { text-align: center; }
+    .day .qty { text-align: right; white-space: nowrap; padding-right: 2px; }
+    .day .unit { text-align: left; white-space: nowrap; padding-left: 2px; }
   `;
 
-  return { title, bodyHtml, styleCss };
+  return { title, bodyHtml, styleCss, columns: 2 };
 }

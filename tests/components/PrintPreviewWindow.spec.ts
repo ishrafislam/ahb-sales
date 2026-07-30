@@ -67,6 +67,30 @@ describe("Print preview window", () => {
     wrapper.unmount();
   });
 
+  it("slices a normal document on the vertical axis", async () => {
+    const wrapper = await mountView();
+    const style = wrapper.find("iframe").attributes("style") ?? "";
+
+    expect(style).toContain("margin-top");
+    expect(style).not.toContain("margin-left");
+    wrapper.unmount();
+  });
+
+  it("slices a two-column document on the horizontal axis", async () => {
+    getPrintJob.mockResolvedValue({
+      doc: { ...doc, columns: 2 },
+      margins: { top: 12, bottom: 12, left: 12, right: 12 },
+    });
+    const wrapper = await mountView();
+    const style = wrapper.find("iframe").attributes("style") ?? "";
+
+    expect(style).toContain("margin-left");
+    expect(style).not.toContain("margin-top");
+    // Composed for the preview, so the columns overflow sideways
+    expect(srcdoc(wrapper)).toContain("column-width");
+    wrapper.unmount();
+  });
+
   it("starts at 100% and steps with the + and − buttons", async () => {
     const wrapper = await mountView();
     expect(percent(wrapper)).toBe("100%");

@@ -19,8 +19,9 @@ describe("Total sell range window", () => {
       days: [
         {
           date: "30-07-2026",
-          rows: [{ productId: 1, productNameBn: "চাল", quantity: 15 }],
-          totalQuantity: 15,
+          rows: [
+            { productId: 1, productNameBn: "চাল", unit: "kg", quantity: 15 },
+          ],
         },
       ],
     });
@@ -165,10 +166,12 @@ describe("Total sell range window", () => {
       bodyHtml: string;
     };
     expect(doc.title).toBe("Total Sell");
-    expect(doc.bodyHtml).toContain("30-07-2026");
+    expect(doc.bodyHtml).toContain("Date : Thursday, July 30, 2026");
     expect(doc.bodyHtml).toContain("চাল");
-    expect(doc.bodyHtml).toContain("15");
-    expect(doc.bodyHtml).toContain("10/07/2026");
+    expect(doc.bodyHtml).toContain('<td class="qty">15</td>');
+    expect(doc.bodyHtml).toContain('<td class="unit">kg</td>');
+    // The range itself is not printed
+    expect(doc.bodyHtml).not.toContain("10/07/2026");
     expect(close).toHaveBeenCalled();
     wrapper.unmount();
   });

@@ -18,16 +18,14 @@
           :style="{ width: `${pageWidthMm}mm`, height: `${pageHeightMm}mm` }"
         >
           <!-- One composed document, one viewport per sheet: the iframe is
-               shifted up so each sheet shows its slice. -->
+               shifted so each sheet shows its slice. A normal document grows
+               downwards; a two-column one overflows sideways, so it is
+               sliced on the other axis. -->
           <iframe
             :ref="page === 1 ? setFirstFrame : undefined"
             class="border-0 block"
             :srcdoc="composedHtml"
-            :style="{
-              width: `${pageWidthMm}mm`,
-              height: `${pageHeightMm * pageCount}mm`,
-              marginTop: `${-(page - 1) * pageHeightMm}mm`,
-            }"
+            :style="frameStyle(page)"
             :title="`${jobTitle} ${page}`"
           ></iframe>
         </div>
@@ -110,8 +108,27 @@ const pageWidthMm = computed(() => pageDims.value.width);
 const pageHeightMm = computed(() => pageDims.value.height);
 
 const composedHtml = computed(() =>
-  doc.value ? composePrintHtml(doc.value, margins.value) : ""
+  doc.value ? composePrintHtml(doc.value, margins.value, "preview") : ""
 );
+
+// A two-column document flows sideways in the preview, so its sheets are
+// horizontal slices rather than vertical ones
+const horizontal = computed(() => doc.value?.columns === 2);
+
+function frameStyle(page: number) {
+  if (horizontal.value) {
+    return {
+      width: `${pageWidthMm.value * pageCount.value}mm`,
+      height: `${pageHeightMm.value}mm`,
+      marginLeft: `${-(page - 1) * pageWidthMm.value}mm`,
+    };
+  }
+  return {
+    width: `${pageWidthMm.value}mm`,
+    height: `${pageHeightMm.value * pageCount.value}mm`,
+    marginTop: `${-(page - 1) * pageHeightMm.value}mm`,
+  };
+}
 
 function setFirstFrame(el: unknown) {
   firstFrame.value = (el as HTMLIFrameElement | null) ?? null;
@@ -145,9 +162,18 @@ function onWheel(e: WheelEvent) {
  */
 async function measure() {
   await nextTick();
-  const frame = firstFrame.value;
-  const height = frame?.contentDocument?.documentElement?.scrollHeight ?? 0;
-  pageCount.value = pageCountFor(height, mmToPx(pageHeightMm.value));
+  const root = firstFrame.value?.contentDocument?.documentElement;
+  if (horizontal.value) {
+    pageCount.value = pageCountFor(
+      root?.scrollWidth ?? 0,
+      mmToPx(pageWidthMm.value)
+    );
+    return;
+  }
+  pageCount.value = pageCountFor(
+    root?.scrollHeight ?? 0,
+    mmToPx(pageHeightMm.value)
+  );
 }
 
 let off: null | (() => void) = null;
