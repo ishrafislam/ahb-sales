@@ -2,12 +2,12 @@
   <div
     class="h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 transition-colors"
   >
-    <ReportRange report="total-sell" />
+    <ReportRange report="daily-report" />
   </div>
 </template>
 
 <script setup lang="ts">
-defineOptions({ name: "AhbTotalSellRangeWindow" });
+defineOptions({ name: "AhbDailyReportRangeWindow" });
 import { onMounted, watchEffect } from "vue";
 import { t, initI18n } from "./i18n";
 import ReportRange from "./views/ReportRange.vue";
@@ -17,6 +17,6 @@ onMounted(() => {
 });
 
 watchEffect(() => {
-  document.title = t("total_sell_title");
+  document.title = t("v2_daily_report");
 });
 </script>

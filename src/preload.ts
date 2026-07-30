@@ -90,6 +90,7 @@ type AppAPI = {
   openPurchaseHistoryWindow: (productId?: number) => Promise<void>;
   openSalesHistoryWindow: (productId?: number) => Promise<void>;
   openTotalSellWindow: () => Promise<void>;
+  openDailyReportWindow: () => Promise<void>;
   // Printing
   openPrintPreview: (doc: PrintDocument) => Promise<string>;
   getPrintJob: (id: string) => Promise<PrintJob | null>;
@@ -215,6 +216,7 @@ const api: AppAPI = {
   openSalesHistoryWindow: (productId) =>
     ipcRenderer.invoke("window:open-sales-history", productId),
   openTotalSellWindow: () => ipcRenderer.invoke("window:open-total-sell"),
+  openDailyReportWindow: () => ipcRenderer.invoke("window:open-daily-report"),
   openPrintPreview: (doc) => ipcRenderer.invoke("print:create-job", doc),
   getPrintJob: (id) => ipcRenderer.invoke("print:get-job", id),
   setPrintMargins: (id, margins) =>

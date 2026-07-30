@@ -213,6 +213,7 @@ const purchaseEntryWindows = new Map<number, BrowserWindow>();
 const purchaseHistoryWindows = new Map<number, BrowserWindow>();
 const salesHistoryWindows = new Map<number, BrowserWindow>();
 const totalSellWindows = new Map<number, BrowserWindow>();
+const dailyReportWindows = new Map<number, BrowserWindow>();
 // Print windows are keyed by job id, not by opener: printing twice from the
 // same screen must give two previews, not refocus the first.
 const printPreviewWindows = new Map<string, BrowserWindow>();
@@ -452,6 +453,16 @@ async function openTotalSellWindow(
   sender: Electron.WebContents
 ): Promise<void> {
   await openChildWindow(sender, totalSellWindows, "total-sell", {
+    width: 460,
+    height: 440,
+    resizable: false,
+  });
+}
+
+async function openDailyReportWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, dailyReportWindows, "daily-report", {
     width: 460,
     height: 440,
     resizable: false,
@@ -729,6 +740,10 @@ ipcMain.handle("window:open-sales-history", async (e, productId?: number) => {
 
 ipcMain.handle("window:open-total-sell", async (e) => {
   await openTotalSellWindow(e.sender);
+});
+
+ipcMain.handle("window:open-daily-report", async (e) => {
+  await openDailyReportWindow(e.sender);
 });
 
 // -----------------------

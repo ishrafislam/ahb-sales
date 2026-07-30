@@ -11,7 +11,6 @@ describe("useModalStore", () => {
     const store = useModalStore();
 
     expect(store.showReportMoneyCustomer).toBe(false);
-    expect(store.showReportMoneyDayWise).toBe(false);
     expect(store.showReportDailyPayment).toBe(false);
     expect(store.showSettings).toBe(false);
     expect(store.showAbout).toBe(false);
@@ -22,7 +21,7 @@ describe("useModalStore", () => {
 
     expect(store.isAnyModalOpen()).toBe(false);
 
-    store.showReportMoneyDayWise = true;
+    store.showReportDailyPayment = true;
     expect(store.isAnyModalOpen()).toBe(true);
 
     store.closeAll();
@@ -33,12 +32,12 @@ describe("useModalStore", () => {
     const store = useModalStore();
 
     // Open multiple modals
-    store.showReportMoneyDayWise = true;
+    store.showReportDailyPayment = true;
     store.showSettings = true;
 
     store.closeAll();
 
-    expect(store.showReportMoneyDayWise).toBe(false);
+    expect(store.showReportDailyPayment).toBe(false);
     expect(store.showSettings).toBe(false);
     expect(store.isAnyModalOpen()).toBe(false);
   });
@@ -46,12 +45,12 @@ describe("useModalStore", () => {
   describe("navigateTo", () => {
     it("should navigate to dashboard (close all)", () => {
       const store = useModalStore();
-      store.showReportMoneyDayWise = true;
+      store.showReportDailyPayment = true;
       store.showSettings = true;
 
       store.navigateTo("dashboard");
 
-      expect(store.showReportMoneyDayWise).toBe(false);
+      expect(store.showReportDailyPayment).toBe(false);
       expect(store.showSettings).toBe(false);
       expect(store.isAnyModalOpen()).toBe(false);
     });
@@ -62,14 +61,6 @@ describe("useModalStore", () => {
       store.navigateTo("report-money-customer");
 
       expect(store.showReportMoneyCustomer).toBe(true);
-    });
-
-    it("should navigate to report money daywise", () => {
-      const store = useModalStore();
-
-      store.navigateTo("report-money-daywise");
-
-      expect(store.showReportMoneyDayWise).toBe(true);
     });
 
     it("should navigate to report daily payment", () => {
@@ -93,10 +84,10 @@ describe("useModalStore", () => {
       store.navigateTo("settings");
       expect(store.showSettings).toBe(true);
 
-      store.navigateTo("report-money-daywise");
+      store.navigateTo("report-money-customer");
 
       expect(store.showSettings).toBe(false);
-      expect(store.showReportMoneyDayWise).toBe(true);
+      expect(store.showReportMoneyCustomer).toBe(true);
     });
   });
 

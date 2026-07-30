@@ -697,7 +697,10 @@ const reportButtons: {
     key: "v2_total_sell",
     handler: () => void window.ahb.openTotalSellWindow(),
   },
-  { key: "v2_daily_report", page: "report-money-daywise" },
+  {
+    key: "v2_daily_report",
+    handler: () => void window.ahb.openDailyReportWindow(),
+  },
   { key: "v2_client_report", page: "report-money-customer" },
 ];
 

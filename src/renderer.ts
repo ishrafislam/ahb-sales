@@ -42,6 +42,7 @@ import SalesHistoryWindow from "./SalesHistoryWindow.vue";
 import PrintPreviewWindow from "./PrintPreviewWindow.vue";
 import PrintMarginsWindow from "./PrintMarginsWindow.vue";
 import TotalSellRangeWindow from "./TotalSellRangeWindow.vue";
+import DailyReportRangeWindow from "./DailyReportRangeWindow.vue";
 
 void initTheme();
 const pinia = createPinia();
@@ -60,6 +61,7 @@ const routes = [
   ["#print-preview", PrintPreviewWindow],
   ["#print-margins", PrintMarginsWindow],
   ["#total-sell", TotalSellRangeWindow],
+  ["#daily-report", DailyReportRangeWindow],
   ["#edit-payment", EditPaymentWindow],
   ["#payment", PaymentWindow],
 ] as const;

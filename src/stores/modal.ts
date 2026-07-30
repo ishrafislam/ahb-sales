@@ -7,7 +7,6 @@ import { ref } from "vue";
 export const useModalStore = defineStore("modal", () => {
   // Modal visibility flags
   const showReportMoneyCustomer = ref(false);
-  const showReportMoneyDayWise = ref(false);
   const showReportDailyPayment = ref(false);
   const showSettings = ref(false);
   const showAbout = ref(false);
@@ -17,7 +16,6 @@ export const useModalStore = defineStore("modal", () => {
    */
   const isAnyModalOpen = () =>
     showReportMoneyCustomer.value ||
-    showReportMoneyDayWise.value ||
     showReportDailyPayment.value ||
     showSettings.value ||
     showAbout.value;
@@ -27,7 +25,6 @@ export const useModalStore = defineStore("modal", () => {
    */
   const closeAll = () => {
     showReportMoneyCustomer.value = false;
-    showReportMoneyDayWise.value = false;
     showReportDailyPayment.value = false;
     showSettings.value = false;
     showAbout.value = false;
@@ -40,7 +37,6 @@ export const useModalStore = defineStore("modal", () => {
     page:
       | "dashboard"
       | "report-money-customer"
-      | "report-money-daywise"
       | "report-daily-payment"
       | "settings"
   ) => {
@@ -52,9 +48,6 @@ export const useModalStore = defineStore("modal", () => {
         break;
       case "report-money-customer":
         showReportMoneyCustomer.value = true;
-        break;
-      case "report-money-daywise":
-        showReportMoneyDayWise.value = true;
         break;
       case "report-daily-payment":
         showReportDailyPayment.value = true;
@@ -68,7 +61,6 @@ export const useModalStore = defineStore("modal", () => {
   return {
     // State
     showReportMoneyCustomer,
-    showReportMoneyDayWise,
     showReportDailyPayment,
     showSettings,
     showAbout,

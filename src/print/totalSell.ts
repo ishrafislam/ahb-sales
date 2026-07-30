@@ -1,21 +1,7 @@
 import type { TotalSellReport } from "../main/data";
-import { t, currentLang } from "../i18n";
+import { t } from "../i18n";
 import type { PrintDocument } from "./document";
-
-/**
- * "Monday, June 1, 2026" from the report's DD-MM-YYYY, in the app's
- * language. Falls back to the raw string if it ever fails to parse.
- */
-function longDate(ddMmYyyy: string): string {
-  const [d, m, y] = ddMmYyyy.split("-").map(Number);
-  if (!d || !m || !y) return ddMmYyyy;
-  const date = new Date(y, m - 1, d);
-  if (Number.isNaN(date.getTime())) return ddMmYyyy;
-  return date.toLocaleDateString(
-    currentLang.value === "bn" ? "bn-BD" : "en-US",
-    { weekday: "long", year: "numeric", month: "long", day: "numeric" }
-  );
-}
+import { longDate } from "./format";
 
 /**
  * The total-sell report as a print document: one table per day, poured down

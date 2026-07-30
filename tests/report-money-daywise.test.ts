@@ -4,6 +4,7 @@ import {
   addCustomer,
   addProduct,
   postInvoice,
+  recordPayment,
   type AhbDataV1,
   reportMoneyTransactionsDayWise,
 } from "../src/main/data";
@@ -110,6 +111,56 @@ describe("reportMoneyTransactionsDayWise", () => {
     expect(k.netBill).toBe(150);
     expect(k.paid).toBe(150);
     expect(k.due).toBe(0);
+  });
+
+  it("counts a standalone deposit as a row of its own", () => {
+    const data = setupData();
+    // Rahim owes 140 from day 1 and pays some of it back on day 4
+    recordPayment(data, 1, 90, "2025-01-04T09:00:00.000Z");
+    const rep = reportMoneyTransactionsDayWise(
+      data,
+      "2025-01-01",
+      "2025-01-04"
+    );
+
+    const day = rep.days.find((d) => d.date === "04-01-2025")!;
+    expect(day.rows).toHaveLength(1);
+    const r = day.rows[0]!;
+    expect(r.customerId).toBe(1);
+    expect(r.bill).toBe(0);
+    expect(r.netBill).toBe(0);
+    expect(r.paid).toBe(90);
+    // No invoice, so there is no previous-due snapshot to report
+    expect(r.hasInvoice).toBe(false);
+    expect(day.totals.paid).toBe(90);
+  });
+
+  it("adds a deposit to the customer's row when they were invoiced too", () => {
+    const data = setupData();
+    recordPayment(data, 1, 40, "2025-01-02T16:00:00.000Z");
+    const rep = reportMoneyTransactionsDayWise(
+      data,
+      "2025-01-01",
+      "2025-01-03"
+    );
+
+    const r = rep.days
+      .find((d) => d.date === "02-01-2025")!
+      .rows.find((x) => x.customerId === 1)!;
+    expect(r.paid).toBe(190); // 150 on the invoices + the 40 deposit
+    expect(r.hasInvoice).toBe(true);
+  });
+
+  it("ignores deposits outside the range", () => {
+    const data = setupData();
+    recordPayment(data, 1, 90, "2025-01-09T09:00:00.000Z");
+    const rep = reportMoneyTransactionsDayWise(
+      data,
+      "2025-01-01",
+      "2025-01-03"
+    );
+
+    expect(rep.days.map((d) => d.date)).toEqual(["03-01-2025", "02-01-2025"]);
   });
 
   it("returns empty when no invoices in range", () => {

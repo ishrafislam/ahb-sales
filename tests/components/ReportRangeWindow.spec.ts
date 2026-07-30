@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mount } from "@vue/test-utils";
-import TotalSellRange from "../../src/views/TotalSellRange.vue";
+import ReportRange from "../../src/views/ReportRange.vue";
 import { currentLang } from "../../src/i18n";
 
-describe("Total sell range window", () => {
+describe("Report range window", () => {
   const reportTotalSell = vi.fn();
+  const reportMoneyTransactionsDayWise = vi.fn();
   const openPrintPreview = vi.fn();
   const close = vi.fn();
 
@@ -25,10 +26,39 @@ describe("Total sell range window", () => {
         },
       ],
     });
+    reportMoneyTransactionsDayWise.mockReset().mockResolvedValue({
+      days: [
+        {
+          date: "30-07-2026",
+          rows: [
+            {
+              customerId: 40,
+              customerName: "আলাউদ্দিন বেকারী",
+              bill: 8220,
+              discount: 0,
+              netBill: 8220,
+              paid: 8220,
+              due: 0,
+              previousDue: 0,
+              totalDue: 0,
+              hasInvoice: true,
+            },
+          ],
+          totals: {
+            bill: 8220,
+            discount: 0,
+            netBill: 8220,
+            paid: 8220,
+            due: 0,
+          },
+        },
+      ],
+    });
     openPrintPreview.mockReset().mockResolvedValue("job-1");
     close.mockReset();
     (window as unknown as { ahb: unknown }).ahb = {
       reportTotalSell,
+      reportMoneyTransactionsDayWise,
       openPrintPreview,
     };
     vi.spyOn(window, "close").mockImplementation(close);
@@ -38,8 +68,8 @@ describe("Total sell range window", () => {
     vi.useRealTimers();
   });
 
-  function mountView() {
-    return mount(TotalSellRange, { attachTo: document.body });
+  function mountView(report: "total-sell" | "daily-report" = "total-sell") {
+    return mount(ReportRange, { attachTo: document.body, props: { report } });
   }
 
   type View = ReturnType<typeof mountView>;
@@ -176,12 +206,39 @@ describe("Total sell range window", () => {
     wrapper.unmount();
   });
 
+  it("builds the daily report instead when that is the window's report", async () => {
+    const wrapper = mountView("daily-report");
+    await wrapper.find("#range-start").setValue("10/07/2026");
+
+    await button(wrapper, "Okay").trigger("click");
+    await vi.runAllTimersAsync();
+
+    expect(reportMoneyTransactionsDayWise).toHaveBeenCalledWith(
+      "2026-07-10",
+      "2026-07-30"
+    );
+    expect(reportTotalSell).not.toHaveBeenCalled();
+    const doc = openPrintPreview.mock.calls[0]![0] as {
+      title: string;
+      bodyHtml: string;
+      columns?: number;
+    };
+    expect(doc.title).toBe("Daily Report");
+    expect(doc.bodyHtml).toContain("আলাউদ্দিন বেকারী");
+    expect(doc.bodyHtml).toContain('<td class="cid">40</td>');
+    // The ledger is too wide to split the page
+    expect(doc.columns).toBeUndefined();
+    expect(close).toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
   it("Cancel closes without reporting", async () => {
     const wrapper = mountView();
     await button(wrapper, "Cancel").trigger("click");
 
     expect(close).toHaveBeenCalled();
     expect(reportTotalSell).not.toHaveBeenCalled();
+    expect(reportMoneyTransactionsDayWise).not.toHaveBeenCalled();
     expect(openPrintPreview).not.toHaveBeenCalled();
     wrapper.unmount();
   });

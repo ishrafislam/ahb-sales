@@ -10,7 +10,6 @@ type NavigationPage =
   | "product-sales-history"
   | "product-purchase-history"
   | "report-money-customer"
-  | "report-money-daywise"
   | "report-daily-payment";
 
 describe("QuickActions.vue", () => {

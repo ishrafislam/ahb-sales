@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-defineOptions({ name: "AhbTotalSellRange" });
+defineOptions({ name: "AhbReportRange" });
 import { ref, computed } from "vue";
 import { t } from "../i18n";
 import {
@@ -109,6 +109,11 @@ import {
 } from "../utils/dateRange";
 import { toYmd } from "../utils/date";
 import { buildTotalSellDocument } from "../print/totalSell";
+import { buildDailyReportDocument } from "../print/dailyReport";
+
+// The window is the same for every ranged report; only what Okay builds
+// differs.
+const props = defineProps<{ report: "total-sell" | "daily-report" }>();
 
 const startText = ref(formatDdMmYyyy(new Date()));
 const endText = ref(formatDdMmYyyy(new Date()));
@@ -158,11 +163,15 @@ async function okay() {
   if (error.value || running.value) return;
   running.value = true;
   try {
-    const report = await window.ahb.reportTotalSell(
-      toYmd(startDate.value!),
-      toYmd(endDate.value!)
-    );
-    await window.ahb.openPrintPreview(buildTotalSellDocument(report));
+    const from = toYmd(startDate.value!);
+    const to = toYmd(endDate.value!);
+    const doc =
+      props.report === "total-sell"
+        ? buildTotalSellDocument(await window.ahb.reportTotalSell(from, to))
+        : buildDailyReportDocument(
+            await window.ahb.reportMoneyTransactionsDayWise(from, to)
+          );
+    await window.ahb.openPrintPreview(doc);
     window.close();
   } finally {
     running.value = false;

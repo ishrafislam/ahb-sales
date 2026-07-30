@@ -40,14 +40,6 @@
       <ReportMoneyCustomer />
     </BaseModal>
     <BaseModal
-      v-if="modalStore.showReportMoneyDayWise"
-      :title="t('report_money_daywise_title')"
-      :max-width="'5xl'"
-      @close="modalStore.closeAll"
-    >
-      <ReportMoneyDayWise />
-    </BaseModal>
-    <BaseModal
       v-if="modalStore.showReportDailyPayment"
       :title="t('report_daily_payment_title')"
       :max-width="'4xl'"
@@ -95,7 +87,6 @@ import { t, initI18n } from "./i18n";
 import Dashboard from "./views/Dashboard.vue";
 import BaseModal from "./components/BaseModal.vue";
 import ReportMoneyCustomer from "./views/ReportMoneyCustomer.vue";
-import ReportMoneyDayWise from "./views/ReportMoneyDayWise.vue";
 import ReportDailyPayment from "./views/ReportDailyPayment.vue";
 import SettingsModal from "./views/SettingsModal.vue";
 import AboutModal from "./views/AboutModal.vue";
@@ -255,7 +246,6 @@ function onNavigate(
     | "purchase-entry"
     | "reports"
     | "report-money-customer"
-    | "report-money-daywise"
     | "report-daily-payment"
     | "settings"
     | string,
@@ -287,10 +277,6 @@ function onNavigate(
   }
   if (page === "report-money-customer") {
     modalStore.navigateTo("report-money-customer");
-    return;
-  }
-  if (page === "report-money-daywise") {
-    modalStore.navigateTo("report-money-daywise");
     return;
   }
   if (page === "report-daily-payment") {

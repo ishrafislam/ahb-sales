@@ -901,6 +901,7 @@ export type MoneyTxnDayWiseRow = {
   due: number; // netBill - paid (ceil2, non-negative)
   previousDue: number; // from earliest invoice for this customer on the day
   totalDue: number; // previousDue + due
+  hasInvoice: boolean; // false when the day holds only a standalone payment
 };
 
 export type MoneyTxnDay = {
@@ -937,11 +938,38 @@ export function reportMoneyTransactionsDayWise(
     netBill: number;
     paid: number;
     due: number;
-    earliestIso: string;
+    earliestIso?: string;
     earliestPrevDue: number;
+    hasInvoice: boolean;
   };
 
   const dayMap = new Map<string, Map<number, Acc>>(); // ymd -> customerId (0=anon) -> Acc
+
+  // A payment-only accumulator carries no previous-due snapshot: a Payment
+  // records nothing but the amount, and the customer's outstanding is today's
+  // figure rather than that day's.
+  function accFor(ymd: string, customerId: number): Acc {
+    let custMap = dayMap.get(ymd);
+    if (!custMap) {
+      custMap = new Map();
+      dayMap.set(ymd, custMap);
+    }
+    let acc = custMap.get(customerId);
+    if (!acc) {
+      acc = {
+        bill: 0,
+        discount: 0,
+        netBill: 0,
+        paid: 0,
+        due: 0,
+        earliestPrevDue: 0,
+        hasInvoice: false,
+      };
+      custMap.set(customerId, acc);
+    }
+    return acc;
+  }
+
   for (const inv of data.invoices ?? []) {
     const ymd = isoToYmd(inv.date);
     if (ymd < start || ymd > end) continue;
@@ -957,34 +985,32 @@ export function reportMoneyTransactionsDayWise(
     const paid = ceil2(inv.paid || 0);
     const due = Math.max(0, ceil2(net - paid));
 
-    let custMap = dayMap.get(ymd);
-    if (!custMap) {
-      custMap = new Map();
-      dayMap.set(ymd, custMap);
-    }
-    const cid = inv.customerId ?? 0;
-    let acc = custMap.get(cid);
-    if (!acc) {
-      acc = {
-        bill: 0,
-        discount: 0,
-        netBill: 0,
-        paid: 0,
-        due: 0,
-        earliestIso: inv.date,
-        earliestPrevDue: ceil2(inv.previousDue || 0),
-      };
-      custMap.set(cid, acc);
+    const acc = accFor(ymd, inv.customerId ?? 0);
+    if (!acc.hasInvoice) {
+      acc.hasInvoice = true;
+      acc.earliestIso = inv.date;
+      acc.earliestPrevDue = ceil2(inv.previousDue || 0);
     }
     acc.bill = ceil2(acc.bill + subtotal);
     acc.discount = ceil2(acc.discount + discount);
     acc.netBill = ceil2(acc.netBill + net);
     acc.paid = ceil2(acc.paid + paid);
     acc.due = ceil2(acc.due + due);
-    if (inv.date < acc.earliestIso) {
+    if (acc.earliestIso && inv.date < acc.earliestIso) {
       acc.earliestIso = inv.date;
       acc.earliestPrevDue = ceil2(inv.previousDue || 0);
     }
+  }
+
+  // Deposits taken against an old due carry no invoice, so they would
+  // otherwise be missing from the day's paid column entirely.
+  for (const p of data.payments ?? []) {
+    const ymd = isoToYmd(p.date);
+    if (ymd < start || ymd > end) continue;
+    const amount = ceil2(p.amount || 0);
+    if (amount <= 0) continue;
+    const acc = accFor(ymd, p.customerId);
+    acc.paid = ceil2(acc.paid + amount);
   }
 
   const days: MoneyTxnDay[] = [];
@@ -1003,6 +1029,7 @@ export function reportMoneyTransactionsDayWise(
         due: acc.due,
         previousDue,
         totalDue,
+        hasInvoice: acc.hasInvoice,
       });
     }
     // Sort rows by customer name/id for consistency
