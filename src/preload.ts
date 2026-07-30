@@ -2,6 +2,11 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 import { contextBridge, ipcRenderer } from "electron";
 import type { Product, Customer, Invoice } from "./main/data";
+import type {
+  PrintDocument,
+  PrintJob,
+  PrintMargins,
+} from "./print/document";
 
 type AppAPI = {
   // File operations
@@ -80,6 +85,21 @@ type AppAPI = {
   openPurchaseEntryWindow: (productId?: number) => Promise<void>;
   openPurchaseHistoryWindow: (productId?: number) => Promise<void>;
   openSalesHistoryWindow: (productId?: number) => Promise<void>;
+  // Printing
+  openPrintPreview: (doc: PrintDocument) => Promise<string>;
+  getPrintJob: (id: string) => Promise<PrintJob | null>;
+  setPrintMargins: (
+    id: string,
+    margins: PrintMargins
+  ) => Promise<PrintMargins | null>;
+  onPrintMarginsChanged: (
+    cb: (payload: { id: string; margins: PrintMargins }) => void
+  ) => () => void;
+  openPrintMargins: (jobId: string) => Promise<void>;
+  runPrint: (
+    id: string,
+    margins: PrintMargins
+  ) => Promise<{ success: boolean; reason?: string }>;
   onLoadHistoryCustomer: (cb: (id: number) => void) => () => void;
   onOpenSettings: (cb: () => void) => () => void;
   onOpenAbout: (cb: () => void) => () => void;
@@ -187,6 +207,22 @@ const api: AppAPI = {
     ipcRenderer.invoke("window:open-purchase-history", productId),
   openSalesHistoryWindow: (productId) =>
     ipcRenderer.invoke("window:open-sales-history", productId),
+  openPrintPreview: (doc) => ipcRenderer.invoke("print:create-job", doc),
+  getPrintJob: (id) => ipcRenderer.invoke("print:get-job", id),
+  setPrintMargins: (id, margins) =>
+    ipcRenderer.invoke("print:set-margins", id, margins),
+  onPrintMarginsChanged: (cb) => {
+    const listener = (
+      _: unknown,
+      payload: { id: string; margins: PrintMargins }
+    ) => cb(payload);
+    ipcRenderer.on("print:margins-changed", listener);
+    return () =>
+      ipcRenderer.removeListener("print:margins-changed", listener);
+  },
+  openPrintMargins: (jobId) =>
+    ipcRenderer.invoke("window:open-print-margins", jobId),
+  runPrint: (id, margins) => ipcRenderer.invoke("print:run", id, margins),
   onLoadHistoryCustomer: (cb) => {
     const listener = (_: unknown, id: number) => cb(id);
     ipcRenderer.on("history:load-customer", listener);

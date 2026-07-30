@@ -24,3 +24,17 @@ export const TOAST_DURATION_UPDATE_LONG = 4000;
 
 // Print delay (milliseconds)
 export const PRINT_WINDOW_DELAY = 100;
+
+// Page geometry (millimetres)
+export const A4_WIDTH_MM = 210;
+export const A4_HEIGHT_MM = 297;
+export const MIN_MARGIN_MM = 0;
+export const MAX_MARGIN_MM = 50;
+
+// Print preview zoom
+export const ZOOM_MIN = 0.25;
+export const ZOOM_MAX = 4;
+export const ZOOM_STEP = 0.1;
+
+// Guard against a runaway document filling the preview with sheets
+export const MAX_PREVIEW_PAGES = 50;

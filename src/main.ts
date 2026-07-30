@@ -17,6 +17,8 @@ import { SettingsService } from "./main/services/SettingsService";
 import { MenuService } from "./main/services/MenuService";
 import { UpdateService } from "./main/services/UpdateService";
 import { DataService } from "./main/services/DataService";
+import { PrintService } from "./main/services/PrintService";
+import type { PrintDocument, PrintMargins } from "./print/document";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -47,6 +49,9 @@ function getCtx(sender: Electron.WebContents): WindowContext {
 
 const settingsService = new SettingsService();
 const updateService = new UpdateService();
+// Print jobs belong to the app, not to a document, so one service serves all
+// windows.
+const printService = new PrintService(settingsService);
 
 const menuService = new MenuService(
   () => {
@@ -207,6 +212,10 @@ const productsWindows = new Map<number, BrowserWindow>();
 const purchaseEntryWindows = new Map<number, BrowserWindow>();
 const purchaseHistoryWindows = new Map<number, BrowserWindow>();
 const salesHistoryWindows = new Map<number, BrowserWindow>();
+// Print windows are keyed by job id, not by opener: printing twice from the
+// same screen must give two previews, not refocus the first.
+const printPreviewWindows = new Map<string, BrowserWindow>();
+const printMarginsWindows = new Map<string, BrowserWindow>();
 
 // Child window sharing the parent's file/data services so all data IPC
 // routed by sender id operates on the same open document.
@@ -259,6 +268,13 @@ async function openChildWindow(
     parentCtx.fileService.detachWindow(win);
   });
 
+  await loadWindowRoute(win, hash);
+}
+
+async function loadWindowRoute(
+  win: BrowserWindow,
+  hash: string
+): Promise<void> {
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     await win.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}#${hash}`);
   } else {
@@ -335,6 +351,88 @@ async function openPurchaseHistoryWindow(
     height: 720,
     resizable: true,
   });
+}
+
+// The preview owns the job: closing it throws the document away and takes
+// any open margins dialog with it.
+async function openPrintPreviewWindow(
+  sender: Electron.WebContents,
+  doc: PrintDocument
+): Promise<string> {
+  const parentCtx = getCtx(sender);
+  const topLevelParent = parentCtx.win.getParentWindow() ?? parentCtx.win;
+  const id = printService.createJob(doc);
+
+  const win = new BrowserWindow({
+    width: 900,
+    height: 900,
+    resizable: true,
+    parent: topLevelParent,
+    title: app.getName(),
+    webPreferences: { preload: path.join(__dirname, "preload.js") },
+  });
+
+  const webContentsId = win.webContents.id;
+  contexts.set(webContentsId, {
+    win,
+    fileService: parentCtx.fileService,
+    dataService: parentCtx.dataService,
+  });
+  parentCtx.fileService.attachWindow(win);
+  printPreviewWindows.set(id, win);
+
+  win.on("closed", () => {
+    contexts.delete(webContentsId);
+    printPreviewWindows.delete(id);
+    parentCtx.fileService.detachWindow(win);
+    const margins = printMarginsWindows.get(id);
+    if (margins && !margins.isDestroyed()) margins.close();
+    printService.disposeJob(id);
+  });
+
+  await loadWindowRoute(win, `print-preview/${id}`);
+  return id;
+}
+
+async function openPrintMarginsWindow(
+  sender: Electron.WebContents,
+  jobId: string
+): Promise<void> {
+  const existing = printMarginsWindows.get(jobId);
+  if (existing && !existing.isDestroyed()) {
+    existing.restore();
+    existing.focus();
+    return;
+  }
+
+  const parentCtx = getCtx(sender);
+  const win = new BrowserWindow({
+    width: 380,
+    height: 380,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    parent: printPreviewWindows.get(jobId) ?? parentCtx.win,
+    title: app.getName(),
+    webPreferences: { preload: path.join(__dirname, "preload.js") },
+  });
+
+  const webContentsId = win.webContents.id;
+  contexts.set(webContentsId, {
+    win,
+    fileService: parentCtx.fileService,
+    dataService: parentCtx.dataService,
+  });
+  parentCtx.fileService.attachWindow(win);
+  printMarginsWindows.set(jobId, win);
+
+  win.on("closed", () => {
+    contexts.delete(webContentsId);
+    printMarginsWindows.delete(jobId);
+    parentCtx.fileService.detachWindow(win);
+  });
+
+  await loadWindowRoute(win, `print-margins/${jobId}`);
 }
 
 async function openSalesHistoryWindow(
@@ -612,6 +710,39 @@ ipcMain.handle(
 
 ipcMain.handle("window:open-sales-history", async (e, productId?: number) => {
   await openSalesHistoryWindow(e.sender, productId);
+});
+
+// -----------------------
+// Printing
+// -----------------------
+
+ipcMain.handle("print:create-job", async (e, doc: PrintDocument) =>
+  openPrintPreviewWindow(e.sender, doc)
+);
+
+ipcMain.handle("print:get-job", async (_e, id: string) =>
+  printService.getJob(id)
+);
+
+ipcMain.handle(
+  "print:set-margins",
+  async (_e, id: string, margins: PrintMargins) => {
+    const applied = printService.setMargins(id, margins);
+    if (!applied) return null;
+    // The preview redraws from this, so every window hears about it
+    BrowserWindow.getAllWindows().forEach((w) =>
+      w.webContents.send("print:margins-changed", { id, margins: applied })
+    );
+    return applied;
+  }
+);
+
+ipcMain.handle("print:run", async (_e, id: string, margins: PrintMargins) =>
+  printService.print(id, margins)
+);
+
+ipcMain.handle("window:open-print-margins", async (e, jobId: string) => {
+  await openPrintMarginsWindow(e.sender, jobId);
 });
 
 // Updates & app info (global)

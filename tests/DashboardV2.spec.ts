@@ -783,6 +783,97 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     wrapper.unmount();
   });
 
+  it("Single Print sends the posted receipt to the print preview", async () => {
+    getCustomerById.mockResolvedValue({
+      nameBn: "রহিম",
+      address: "ঢাকা",
+      outstanding: 100,
+    });
+    const invoice = {
+      id: "inv-1",
+      no: 42,
+      date: "2026-07-30T10:00:00.000Z",
+      customerId: 12,
+      lines: [
+        { productId: 5, quantity: 2, unit: "kg", rate: 10.5, lineTotal: 21 },
+      ],
+      totals: { subtotal: 21, net: 20 },
+      discount: 1,
+      paid: 0,
+      previousDue: 100,
+      currentDue: 120,
+      notes: "first purchase",
+    };
+    const postInvoice = vi.fn(async () => invoice);
+    const openPrintPreview = vi.fn(async () => "job-1");
+    const getInvoiceById = vi.fn(async () => invoice);
+    const { wrapper, postButton } = await setupPostableEntry(
+      postInvoice,
+      vi.fn(),
+      { openPrintPreview, getInvoiceById }
+    );
+    const singlePrint = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Single Print")!;
+
+    // Nothing posted yet
+    expect((singlePrint.element as HTMLButtonElement).disabled).toBe(true);
+    await singlePrint.trigger("click");
+    expect(openPrintPreview).not.toHaveBeenCalled();
+
+    await postButton.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+    expect((singlePrint.element as HTMLButtonElement).disabled).toBe(false);
+
+    await singlePrint.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(getInvoiceById).toHaveBeenCalledWith("inv-1");
+    expect(openPrintPreview).toHaveBeenCalledTimes(1);
+    const doc = openPrintPreview.mock.calls[0]![0] as {
+      title: string;
+      bodyHtml: string;
+    };
+    expect(doc.title).toContain("42");
+    // Product name and unit come from the entry rows, the customer from the form
+    expect(doc.bodyHtml).toContain("চাল");
+    expect(doc.bodyHtml).toContain("2 kg");
+    expect(doc.bodyHtml).toContain("রহিম");
+    wrapper.unmount();
+  });
+
+  it("leaves Direct Print and Select Print unwired", async () => {
+    const postInvoice = vi.fn(async () => ({
+      id: "inv-1",
+      no: 42,
+      date: "2026-07-30T10:00:00.000Z",
+      customerId: 12,
+      lines: [],
+      totals: { subtotal: 21, net: 20 },
+      discount: 1,
+      paid: 0,
+      previousDue: 100,
+      currentDue: 120,
+    }));
+    const openPrintPreview = vi.fn(async () => "job-1");
+    const { wrapper, postButton } = await setupPostableEntry(
+      postInvoice,
+      vi.fn(),
+      { openPrintPreview, getInvoiceById: vi.fn() }
+    );
+    await postButton.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+
+    for (const label of ["Direct Print", "Select Print"]) {
+      const btn = wrapper.findAll("button").find((b) => b.text() === label)!;
+      expect(btn).toBeTruthy();
+      await btn.trigger("click");
+    }
+    await new Promise((r) => setTimeout(r, 0));
+    expect(openPrintPreview).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
   it("refreshes deposit, status and receivable when a payment is recorded", async () => {
     getCustomerById.mockResolvedValue({
       nameBn: "রহিম",

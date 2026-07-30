@@ -2,12 +2,15 @@ import { app, nativeTheme, BrowserWindow } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { logger } from "./Logger";
+import { normalizeMargins, type PrintMargins } from "../../print/document";
 
 export type ThemeSource = "system" | "light" | "dark";
 
 export type AppSettings = {
   language?: "bn" | "en";
   themeSource?: ThemeSource;
+  /** Last margins used in the print preview, reused as the default */
+  printMargins?: PrintMargins;
 };
 
 export class SettingsService {
@@ -26,6 +29,7 @@ export class SettingsService {
       return {
         language: parsed.language,
         themeSource: parsed.themeSource ?? "system",
+        printMargins: parsed.printMargins,
       };
     } catch {
       return { themeSource: "system" };
@@ -45,6 +49,14 @@ export class SettingsService {
     } catch (e) {
       logger.error("Failed to save settings", "SettingsService", e);
     }
+  }
+
+  getPrintMargins(): PrintMargins {
+    return normalizeMargins(this.loadSettings().printMargins);
+  }
+
+  setPrintMargins(margins: PrintMargins): void {
+    this.saveSettings({ printMargins: normalizeMargins(margins) });
   }
 
   private effectiveTheme(source: ThemeSource): "light" | "dark" {

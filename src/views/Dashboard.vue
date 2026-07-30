@@ -133,12 +133,14 @@
           class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-3 grid grid-cols-3 gap-2"
         >
           <button
-            v-for="key in printButtons"
-            :key="key"
+            v-for="btn in printButtons"
+            :key="btn.key"
             type="button"
             :class="[buttonClass, 'min-h-[3.5rem] px-1 py-1']"
+            :disabled="btn.enabled ? !btn.enabled.value : false"
+            @click="btn.handler?.()"
           >
-            {{ t(key) }}
+            {{ t(btn.key) }}
           </button>
         </div>
 
@@ -296,6 +298,10 @@ import {
   MIN_CUSTOMER_ID,
   MAX_CUSTOMER_ID,
 } from "../constants/business";
+import {
+  buildInvoiceDocument,
+  type ProductInfo,
+} from "../print/invoice";
 
 const emit = defineEmits<{
   (e: "navigate", view: string, opts?: { customerId?: number }): void;
@@ -590,7 +596,57 @@ const inputClass =
 const buttonClass =
   "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm leading-tight dark:text-gray-100";
 
-const printButtons = ["v2_single_print", "v2_direct_print", "v2_select_print"];
+// Only Single Print is wired so far; the other two carry no handler yet.
+const printButtons: Array<{
+  key: string;
+  handler?: () => void;
+  enabled?: { value: boolean };
+}> = [
+  { key: "v2_single_print", handler: () => void onSinglePrint(), enabled: posted },
+  { key: "v2_direct_print" },
+  { key: "v2_select_print" },
+];
+
+/** Send the posted invoice's receipt to the print preview window. */
+async function onSinglePrint() {
+  if (mode.value !== "posted" || postedInvoiceId.value === null) return;
+  const inv = await window.ahb.getInvoiceById(postedInvoiceId.value);
+  if (!inv) return;
+
+  // Names and units for the receipt lines: the entry rows already hold the
+  // products that were posted, and anything missing is fetched by id.
+  const products: Record<number, ProductInfo> = {};
+  for (const row of entryRows.value) {
+    if (row.product) {
+      products[row.product.id] = {
+        name: row.product.nameBn,
+        unit: row.product.unit,
+      };
+    }
+  }
+  for (const ln of inv.lines) {
+    if (products[ln.productId]) continue;
+    const p = await window.ahb.getProductById(ln.productId);
+    if (p) products[ln.productId] = { name: p.nameBn, unit: p.unit };
+  }
+
+  // The receipt dates the previous due from the customer's prior invoice.
+  // listInvoicesByCustomer comes back newest-first by invoice number.
+  let previousDueDate: string | undefined;
+  if (inv.customerId != null) {
+    const list = await window.ahb.listInvoicesByCustomer(inv.customerId);
+    previousDueDate = list.find((i) => i.no < inv.no)?.date;
+  }
+
+  void window.ahb.openPrintPreview(
+    buildInvoiceDocument(inv, {
+      businessName: BUSINESS_NAME,
+      customerName: customerNameText.value || String(inv.customerId ?? ""),
+      products,
+      previousDueDate,
+    })
+  );
+}
 
 function parseCustomerId(): number | undefined {
   const id = Number.parseInt(customerId.value, 10);

@@ -39,27 +39,27 @@ import ProductsWindow from "./ProductsWindow.vue";
 import PurchaseEntryWindow from "./PurchaseEntryWindow.vue";
 import PurchaseHistoryWindow from "./PurchaseHistoryWindow.vue";
 import SalesHistoryWindow from "./SalesHistoryWindow.vue";
+import PrintPreviewWindow from "./PrintPreviewWindow.vue";
+import PrintMarginsWindow from "./PrintMarginsWindow.vue";
 
 void initTheme();
 const pinia = createPinia();
 const mount = document.createElement("div");
 document.body.appendChild(mount);
 const hash = window.location.hash;
-const root = hash.startsWith("#customer-history")
-  ? CustomerHistoryWindow
-  : hash.startsWith("#customers")
-    ? CustomersWindow
-    : hash.startsWith("#products")
-      ? ProductsWindow
-      : hash.startsWith("#purchase-entry")
-        ? PurchaseEntryWindow
-        : hash.startsWith("#purchase-history")
-          ? PurchaseHistoryWindow
-          : hash.startsWith("#sales-history")
-            ? SalesHistoryWindow
-            : hash.startsWith("#edit-payment")
-              ? EditPaymentWindow
-              : hash.startsWith("#payment")
-                ? PaymentWindow
-                : App;
+// Longest-matching prefixes first: "#payment" would otherwise swallow
+// "#edit-payment" and so on.
+const routes = [
+  ["#customer-history", CustomerHistoryWindow],
+  ["#customers", CustomersWindow],
+  ["#products", ProductsWindow],
+  ["#purchase-entry", PurchaseEntryWindow],
+  ["#purchase-history", PurchaseHistoryWindow],
+  ["#sales-history", SalesHistoryWindow],
+  ["#print-preview", PrintPreviewWindow],
+  ["#print-margins", PrintMarginsWindow],
+  ["#edit-payment", EditPaymentWindow],
+  ["#payment", PaymentWindow],
+] as const;
+const root = routes.find(([prefix]) => hash.startsWith(prefix))?.[1] ?? App;
 createApp(root).use(pinia).mount(mount);

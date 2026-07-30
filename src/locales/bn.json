@@ -196,5 +196,13 @@
   "last_purchase_amount": "সর্বশেষ ক্রয়ের পরিমাণ",
   "purchase_entry": "ক্রয় এন্ট্রি",
   "purchase_entry_title": "ক্রয় এন্ট্রি",
-  "amount": "পরিমাণ"
+  "amount": "পরিমাণ",
+  "print_preview_title": "প্রিন্ট প্রিভিউ",
+  "page_margins_title": "পৃষ্ঠার মার্জিন",
+  "margins_hint": "মার্জিন মিলিমিটারে এবং প্রতিটি পৃষ্ঠায় প্রযোজ্য।",
+  "margin_top": "উপরে",
+  "margin_bottom": "নিচে",
+  "margin_left": "বামে",
+  "margin_right": "ডানে",
+  "print_failed": "প্রিন্ট করা যায়নি: {reason}"
 }

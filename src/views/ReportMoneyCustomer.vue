@@ -160,10 +160,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { t } from "../i18n";
-import {
-  TOAST_DURATION_ERROR,
-  PRINT_WINDOW_DELAY,
-} from "../constants/business";
+import { TOAST_DURATION_ERROR } from "../constants/business";
 
 import { todayYmd } from "../utils/date";
 
@@ -207,23 +204,17 @@ async function load() {
   }
 }
 function printReport() {
-  const page = "@page { size: A4 portrait; margin: 12mm; }";
-  const style = `
-    <style>
-      ${page}
-      * { box-sizing: border-box; }
-      body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji"; padding: 16px; }
-      h1 { font-size: 18px; margin: 0 0 8px; }
-      .meta { font-size: 12px; color: #555; margin-bottom: 12px; }
-      table { width: 100%; border-collapse: collapse; font-size: 12px; }
-      th, td { border: 1px solid #e5e7eb; padding: 6px 8px; }
-      th { background: #f8fafc; text-align: left; }
-      tfoot td { font-weight: 600; }
-      @media print { body { padding: 0; } }
-    </style>
+  // Page geometry and margins belong to the print module now; this only
+  // describes the report itself.
+  const styleCss = `
+    h1 { font-size: 18px; margin: 0 0 8px; }
+    .meta { font-size: 12px; color: #555; margin-bottom: 12px; }
+    table { font-size: 12px; }
+    th, td { border: 1px solid #e5e7eb; padding: 6px 8px; }
+    th { background: #f8fafc; text-align: left; }
+    tfoot td { font-weight: 600; }
   `;
   const title = t("report_money_customer_title");
-  const head = `<head><meta charset="utf-8" />${style}<title>${title}</title></head>`;
   const rowsHtml = rows.value
     .map((r) => {
       const name =
@@ -240,8 +231,7 @@ function printReport() {
   </tr>`;
     })
     .join("");
-  const body = `
-  <body>
+  const bodyHtml = `
     <h1>${title}</h1>
     <div class="meta">${t("from")} ${from.value} ${t("to")} ${to.value}</div>
     <table>
@@ -266,18 +256,8 @@ function printReport() {
           <td colspan="2"></td>
         </tr>
       </tfoot>
-    </table>
-  </body>`;
-  const w = window.open("", "_blank");
-  if (!w) return;
-  w.document.open();
-  w.document.write(`<html>${head}${body}</html>`);
-  w.document.close();
-  w.focus();
-  setTimeout(() => {
-    w.print();
-    w.close();
-  }, PRINT_WINDOW_DELAY);
+    </table>`;
+  void window.ahb.openPrintPreview({ title, bodyHtml, styleCss });
 }
 
 onMounted(() => {
