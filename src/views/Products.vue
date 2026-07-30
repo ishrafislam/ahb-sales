@@ -172,7 +172,12 @@
       </p>
 
       <div class="mt-auto flex justify-end gap-3 pt-4">
-        <button type="button" :class="buttonClass">
+        <button
+          type="button"
+          :class="buttonClass"
+          :disabled="!exists"
+          @click="openPurchaseEntry"
+        >
           {{ t("purchase_entry") }}
         </button>
         <button
@@ -358,6 +363,11 @@ async function save() {
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
   }
+}
+
+// Opens on the item being shown here
+function openPurchaseEntry() {
+  void window.ahb.openPurchaseEntryWindow(selectedId.value);
 }
 
 function close() {

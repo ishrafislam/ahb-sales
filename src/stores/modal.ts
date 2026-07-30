@@ -8,7 +8,6 @@ export const useModalStore = defineStore("modal", () => {
   // Modal visibility flags
   const showSalesHistory = ref(false);
   const showPurchaseHistory = ref(false);
-  const showPurchaseEntry = ref(false);
   const showReportMoneyCustomer = ref(false);
   const showReportMoneyDayWise = ref(false);
   const showReportDailyPayment = ref(false);
@@ -21,7 +20,6 @@ export const useModalStore = defineStore("modal", () => {
   const isAnyModalOpen = () =>
     showSalesHistory.value ||
     showPurchaseHistory.value ||
-    showPurchaseEntry.value ||
     showReportMoneyCustomer.value ||
     showReportMoneyDayWise.value ||
     showReportDailyPayment.value ||
@@ -34,7 +32,6 @@ export const useModalStore = defineStore("modal", () => {
   const closeAll = () => {
     showSalesHistory.value = false;
     showPurchaseHistory.value = false;
-    showPurchaseEntry.value = false;
     showReportMoneyCustomer.value = false;
     showReportMoneyDayWise.value = false;
     showReportDailyPayment.value = false;
@@ -50,7 +47,6 @@ export const useModalStore = defineStore("modal", () => {
       | "dashboard"
       | "product-sales-history"
       | "product-purchase-history"
-      | "purchase-entry"
       | "report-money-customer"
       | "report-money-daywise"
       | "report-daily-payment"
@@ -67,9 +63,6 @@ export const useModalStore = defineStore("modal", () => {
         break;
       case "product-purchase-history":
         showPurchaseHistory.value = true;
-        break;
-      case "purchase-entry":
-        showPurchaseEntry.value = true;
         break;
       case "report-money-customer":
         showReportMoneyCustomer.value = true;
@@ -90,7 +83,6 @@ export const useModalStore = defineStore("modal", () => {
     // State
     showSalesHistory,
     showPurchaseHistory,
-    showPurchaseEntry,
     showReportMoneyCustomer,
     showReportMoneyDayWise,
     showReportDailyPayment,

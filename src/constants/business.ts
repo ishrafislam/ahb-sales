@@ -9,6 +9,9 @@ export const BUSINESS_PHONES = [
 export const MIN_PRODUCT_ID = 1;
 export const MAX_PRODUCT_ID = 1000;
 
+// Purchase entry constraints
+export const MAX_PURCHASE_QUANTITY = 1_000_000;
+
 // Customer ID constraints
 export const MIN_CUSTOMER_ID = 1;
 export const MAX_CUSTOMER_ID = 1000;

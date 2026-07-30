@@ -281,8 +281,12 @@ export class DataService {
   postPurchase(payload: Parameters<typeof postPurchase>[1]) {
     const purchase = postPurchase(this.getData(), payload);
 
-    // Update product index
-    const prod = this.index.getProduct(purchase.productId);
+    // Update product index. postPurchase replaces the entry in `data` to bump
+    // stock, so the fresh object has to be re-read from there rather than
+    // pulled back out of the index.
+    const prod = this.getData().products.find(
+      (p) => p.id === purchase.productId
+    );
     if (prod) this.index.updateProduct(prod);
 
     this.fileService.notifyDataChanged({

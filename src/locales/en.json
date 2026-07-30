@@ -22,7 +22,6 @@
   "product_sales_history_title": "Sales History",
   "product_purchase_history_title": "Purchase History",
   "customer_history_title": "Customer History",
-  "product_purchase_title": "Product Purchase",
   "report_money_customer_title": "Money Transaction — Customer Based",
   "report_money_daywise_title": "Money Transaction — Day Wise",
   "report_daily_payment_title": "Daily Payment Report",
@@ -68,8 +67,6 @@
   "product_name": "Product Name",
   "quantity": "Quantity",
   "stock_managed_note": "For existing products, stock is managed via sales (decrease) and product purchases (increase).",
-  "add_to_stock": "Add to Stock",
-  "no_product_found": "No product found for this ID. Please select an existing product.",
   "invoice_no": "Invoice #",
   "total": "Total",
   "no_sales": "No sales",
@@ -196,5 +193,7 @@
   "item_details": "Item Details",
   "last_purchase_date": "Last Purchase Date",
   "last_purchase_amount": "Last Purchase Amount",
-  "purchase_entry": "Purchase Entry"
+  "purchase_entry": "Purchase Entry",
+  "purchase_entry_title": "Purchase Entry",
+  "amount": "Amount"
 }

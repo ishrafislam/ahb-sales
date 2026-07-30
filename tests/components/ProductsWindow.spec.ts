@@ -18,6 +18,7 @@ describe("Products window", () => {
   const listProductPurchases = vi.fn();
   const addProduct = vi.fn();
   const updateProduct = vi.fn();
+  const openPurchaseEntryWindow = vi.fn();
   const close = vi.fn();
 
   beforeEach(() => {
@@ -44,12 +45,14 @@ describe("Products window", () => {
     listProductPurchases.mockReset().mockResolvedValue([]);
     addProduct.mockReset().mockResolvedValue({});
     updateProduct.mockReset().mockResolvedValue({});
+    openPurchaseEntryWindow.mockReset().mockResolvedValue(undefined);
     close.mockReset();
     (window as unknown as { ahb: unknown }).ahb = {
       listProducts,
       listProductPurchases,
       addProduct,
       updateProduct,
+      openPurchaseEntryWindow,
       onDataChanged: vi.fn(() => () => undefined),
     };
     vi.spyOn(window, "close").mockImplementation(close);
@@ -279,6 +282,26 @@ describe("Products window", () => {
 
     expect(wrapper.text()).toContain("Product not found");
     expect(field(wrapper, "item-name").disabled).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("Purchase Entry opens the window on the selected item", async () => {
+    const wrapper = await mountView();
+    await selectRow(wrapper, 3);
+    await button(wrapper, "Purchase Entry")!.trigger("click");
+
+    expect(openPurchaseEntryWindow).toHaveBeenCalledWith(3);
+    wrapper.unmount();
+  });
+
+  it("disables Purchase Entry on an empty slot", async () => {
+    const wrapper = await mountView();
+    await selectRow(wrapper, 2);
+
+    const entry = button(wrapper, "Purchase Entry")!;
+    expect((entry.element as HTMLButtonElement).disabled).toBe(true);
+    await entry.trigger("click");
+    expect(openPurchaseEntryWindow).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 

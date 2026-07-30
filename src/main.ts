@@ -204,6 +204,7 @@ const paymentWindows = new Map<number, BrowserWindow>();
 const editPaymentWindows = new Map<number, BrowserWindow>();
 const customersWindows = new Map<number, BrowserWindow>();
 const productsWindows = new Map<number, BrowserWindow>();
+const purchaseEntryWindows = new Map<number, BrowserWindow>();
 
 // Child window sharing the parent's file/data services so all data IPC
 // routed by sender id operates on the same open document.
@@ -305,6 +306,19 @@ async function openProductsWindow(
   await openChildWindow(sender, productsWindows, "products", {
     width: 900,
     height: 720,
+    resizable: true,
+  });
+}
+
+async function openPurchaseEntryWindow(
+  sender: Electron.WebContents,
+  productId?: number
+): Promise<void> {
+  // The item form passes the row it is showing so the window opens on it
+  const hash = productId ? `purchase-entry/${productId}` : "purchase-entry";
+  await openChildWindow(sender, purchaseEntryWindows, hash, {
+    width: 1180,
+    height: 760,
     resizable: true,
   });
 }
@@ -555,6 +569,13 @@ ipcMain.handle("window:open-customers", async (e) => {
 ipcMain.handle("window:open-products", async (e) => {
   await openProductsWindow(e.sender);
 });
+
+ipcMain.handle(
+  "window:open-purchase-entry",
+  async (e, productId?: number) => {
+    await openPurchaseEntryWindow(e.sender, productId);
+  }
+);
 
 // Updates & app info (global)
 ipcMain.handle("app:check-for-updates", async () =>
