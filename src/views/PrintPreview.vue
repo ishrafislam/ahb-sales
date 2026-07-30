@@ -27,6 +27,7 @@
             :srcdoc="composedHtml"
             :style="frameStyle(page)"
             :title="`${jobTitle} ${page}`"
+            @load="onFrameLoad(page)"
           ></iframe>
         </div>
       </div>
@@ -111,22 +112,13 @@ const composedHtml = computed(() =>
   doc.value ? composePrintHtml(doc.value, margins.value, "preview") : ""
 );
 
-// A two-column document flows sideways in the preview, so its sheets are
-// horizontal slices rather than vertical ones
-const horizontal = computed(() => doc.value?.columns === 2);
-
+// Every document flows into page-tall columns that overflow sideways, so a
+// sheet is always the horizontal slice one page wide
 function frameStyle(page: number) {
-  if (horizontal.value) {
-    return {
-      width: `${pageWidthMm.value * pageCount.value}mm`,
-      height: `${pageHeightMm.value}mm`,
-      marginLeft: `${-(page - 1) * pageWidthMm.value}mm`,
-    };
-  }
   return {
-    width: `${pageWidthMm.value}mm`,
-    height: `${pageHeightMm.value * pageCount.value}mm`,
-    marginTop: `${-(page - 1) * pageHeightMm.value}mm`,
+    width: `${pageWidthMm.value * pageCount.value}mm`,
+    height: `${pageHeightMm.value}mm`,
+    marginLeft: `${-(page - 1) * pageWidthMm.value}mm`,
   };
 }
 
@@ -156,23 +148,29 @@ function onWheel(e: WheelEvent) {
 }
 
 /**
+ * Measure once the first sheet's document has parsed. An srcdoc iframe loads
+ * in its own task: before that its documentElement is still empty and
+ * scrollHeight reports the iframe's own height, which reads as exactly one
+ * page and silently clips the rest of the report.
+ *
+ * Measuring here rather than after the resize is deliberate: the frame is
+ * still one page big, so the document overflows and reports its true extent.
+ */
+function onFrameLoad(page: number) {
+  if (page === 1) void measure();
+}
+
+/**
  * Measure the rendered document and work out how many sheets it fills. The
- * sheets are viewports onto one render, so a break can land mid-row here even
- * though the printer keeps rows whole.
+ * columns overflow to the right, so how far the document reaches sideways is
+ * how many pages it takes.
  */
 async function measure() {
   await nextTick();
   const root = firstFrame.value?.contentDocument?.documentElement;
-  if (horizontal.value) {
-    pageCount.value = pageCountFor(
-      root?.scrollWidth ?? 0,
-      mmToPx(pageWidthMm.value)
-    );
-    return;
-  }
   pageCount.value = pageCountFor(
-    root?.scrollHeight ?? 0,
-    mmToPx(pageHeightMm.value)
+    root?.scrollWidth ?? 0,
+    mmToPx(pageWidthMm.value)
   );
 }
 
@@ -183,14 +181,11 @@ onMounted(async () => {
     doc.value = job.doc;
     margins.value = normalizeMargins(job.margins);
   }
-  // The iframe needs a tick to lay the document out before it can be measured
-  await nextTick();
-  setTimeout(() => void measure(), 0);
-
+  // Measuring is left to the sheet's load event, both now and after a margin
+  // change: new margins mean new srcdoc, which reloads the frame.
   off = window.ahb.onPrintMarginsChanged((payload) => {
     if (payload.id !== jobId) return;
     margins.value = normalizeMargins(payload.margins);
-    setTimeout(() => void measure(), 0);
   });
 });
 onUnmounted(() => {

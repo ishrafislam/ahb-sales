@@ -107,6 +107,16 @@ describe("composePrintHtml", () => {
     expect(html).toContain("break-inside: avoid");
   });
 
+  it("stops a table head or foot repeating on every fragment", () => {
+    // Paged media repeats both; the preview's columns repeat neither, and a
+    // repeated tfoot prints a table's totals partway through it
+    for (const mode of ["print", "preview"] as const) {
+      expect(composePrintHtml(doc, DEFAULT_MARGINS, mode)).toContain(
+        "thead, tfoot { display: table-row-group; }"
+      );
+    }
+  });
+
   it("escapes the title and clamps stray margins", () => {
     const html = composePrintHtml(doc, { top: 999 } as never);
 
@@ -114,11 +124,26 @@ describe("composePrintHtml", () => {
     expect(html).toContain(`padding: ${MAX_MARGIN_MM}mm`);
   });
 
-  it("leaves a single-column document identical in both modes", () => {
-    expect(composePrintHtml(doc, DEFAULT_MARGINS, "preview")).toBe(
-      composePrintHtml(doc, DEFAULT_MARGINS, "print")
+  it("leaves a single-column document to the printer's own pagination", () => {
+    expect(composePrintHtml(doc, DEFAULT_MARGINS, "print")).not.toContain(
+      "column-"
     );
-    expect(composePrintHtml(doc, DEFAULT_MARGINS)).not.toContain("column-");
+  });
+
+  it("previews a single-column document as one page-wide column", () => {
+    const margins = { top: 40, bottom: 40, left: 20, right: 10 };
+    const html = composePrintHtml(doc, margins, "preview");
+    const content = pageContentSizeMm({}, margins);
+
+    // One column to a page, overflowing sideways, so the preview breaks
+    // between rows the way the printer will rather than slicing through them
+    expect(html).toContain(`column-width: ${content.width}mm`);
+    expect(html).toContain(`column-gap: ${20 + 10}mm`);
+    // The whole page, not the content box: box-sizing takes the margins out
+    // of it, and a short column would break earlier than the paper does
+    expect(html).toContain(`height: ${A4_HEIGHT_MM}mm`);
+    expect(html).toContain("column-fill: auto");
+    expect(html).not.toContain("column-count");
   });
 
   it("fills column by column when printing two columns", () => {
@@ -140,9 +165,8 @@ describe("composePrintHtml", () => {
     const html = composePrintHtml({ ...doc, columns: 2 }, margins, "preview");
     const content = pageContentSizeMm({}, margins);
 
-    // One page's content height, so the columns spill into the next page
-    expect(html).toContain(`height: ${content.height}mm`);
-    expect(html).toContain(`height: ${A4_HEIGHT_MM - 80}mm`);
+    // One page tall, so the columns spill into the next page
+    expect(html).toContain(`height: ${A4_HEIGHT_MM}mm`);
     expect(html).toContain("width: auto");
     expect(html).toContain(`column-gap: ${20 + 10}mm`);
     expect(html).toContain(

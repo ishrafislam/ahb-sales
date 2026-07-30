@@ -67,27 +67,45 @@ describe("Print preview window", () => {
     wrapper.unmount();
   });
 
-  it("slices a normal document on the vertical axis", async () => {
-    const wrapper = await mountView();
-    const style = wrapper.find("iframe").attributes("style") ?? "";
-
-    expect(style).toContain("margin-top");
-    expect(style).not.toContain("margin-left");
-    wrapper.unmount();
-  });
-
-  it("slices a two-column document on the horizontal axis", async () => {
-    getPrintJob.mockResolvedValue({
-      doc: { ...doc, columns: 2 },
-      margins: { top: 12, bottom: 12, left: 12, right: 12 },
-    });
+  it("slices every document on the horizontal axis", async () => {
     const wrapper = await mountView();
     const style = wrapper.find("iframe").attributes("style") ?? "";
 
     expect(style).toContain("margin-left");
     expect(style).not.toContain("margin-top");
-    // Composed for the preview, so the columns overflow sideways
+    // Even a one-column document flows into page-tall columns
     expect(srcdoc(wrapper)).toContain("column-width");
+    wrapper.unmount();
+  });
+
+  // jsdom lays nothing out, so the extent has to be stood in for. The point
+  // under test is that the measurement happens on load at all: an srcdoc
+  // iframe is still empty on the tick after mount, where it reports the
+  // frame's own height and reads as exactly one page.
+  function stubExtent(wrapper: View, axis: "scrollWidth", px: number) {
+    const frame = wrapper.find("iframe").element as HTMLIFrameElement;
+    const root = frame.contentDocument!.documentElement;
+    Object.defineProperty(root, axis, { value: px, configurable: true });
+    return frame;
+  }
+
+  it("paginates a long document once the sheet has loaded", async () => {
+    const wrapper = await mountView();
+    expect(wrapper.findAll('[data-role="sheet"]')).toHaveLength(1);
+
+    const frame = stubExtent(wrapper, "scrollWidth", 2000);
+    frame.dispatchEvent(new Event("load"));
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+
+    // 2000px over an A4 width of ~793.7px
+    expect(wrapper.findAll('[data-role="sheet"]')).toHaveLength(3);
+    const styles = wrapper
+      .findAll("iframe")
+      .map((f) => f.attributes("style") ?? "");
+    expect(styles[0]).toContain("margin-left: 0mm");
+    expect(styles[1]).toContain("margin-left: -210mm");
+    expect(styles[2]).toContain("margin-left: -420mm");
     wrapper.unmount();
   });
 

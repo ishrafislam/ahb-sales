@@ -92,9 +92,8 @@ export function pageContentSizeMm(
 /**
  * How many sheets a document of this size needs. Always at least one.
  *
- * A normal document grows downwards, so this measures height against page
- * height; a two-column document overflows sideways in the preview, so the
- * same sum runs on the width axis.
+ * In the preview every document overflows sideways, one page width at a
+ * time, so this always runs on the width axis.
  */
 export function pageCountFor(
   contentSizePx: number,
@@ -116,44 +115,69 @@ function escapeHtml(s: string): string {
 }
 
 /**
- * The gap between the two columns is the left plus the right margin.
+ * The gap between one column and the next is the left plus the right margin.
  *
  * That is not an aesthetic choice. In the preview the columns overflow
- * sideways, so the distance from one column to the one two along has to come
- * out at exactly one page width for every sheet to keep its margins — and
- * that only holds when the gap equals left + right. Print uses the same gap
- * so the two renderings stay identical.
+ * sideways, so the horizontal distance from one page's columns to the next
+ * page's has to come out at exactly one page width for every sheet to keep
+ * its margins. With n columns to a page that means
+ *
+ *   left + n·colW + (n−1)·gap + right = pageW = contentW + left + right
+ *
+ * and the space between the last column of one page and the first of the
+ * next is right + left — which, being one and the same column gap, pins
+ * gap = left + right whatever n is.
  */
 export function columnGapMm(margins: PrintMargins): number {
   return margins.left + margins.right;
 }
 
+/** Millimetres across for one column, given how many share a page. */
+function columnWidthMm(
+  doc: PrintDocument,
+  margins: PrintMargins,
+  columns: number
+): number {
+  const content = pageContentSizeMm(doc, margins);
+  const gap = columnGapMm(margins);
+  return Math.max(0, (content.width - (columns - 1) * gap) / columns);
+}
+
 /**
- * Two-column flow, rendered two ways from one layout.
+ * Column flow, rendered two ways from one layout.
  *
- * On paper, `column-fill: auto` fills the left column to the page bottom,
- * then the right, then starts a new page. The preview has no pages to fill,
- * so it pins the body to one page's content height instead: the columns then
- * overflow sideways, and each sheet is the horizontal slice of one page
- * width. Both renderings break in the same places, which is the point.
+ * On paper the printer fragments the document itself, and `column-fill: auto`
+ * is only needed to tell the two-column report to fill the left column to the
+ * page bottom before starting the right.
+ *
+ * The preview has no pages to fragment into, so it pins the body to one
+ * page's content height and lets the columns overflow sideways: each sheet is
+ * then the horizontal slice one page wide. A single-column document goes
+ * through exactly the same machinery with one column to a page — that is what
+ * makes the preview break between rows the way the printer does, instead of
+ * slicing through whatever happens to straddle the page boundary.
  */
 function columnCss(
   doc: PrintDocument,
   margins: PrintMargins,
   mode: "print" | "preview"
 ): string {
-  if (doc.columns !== 2) return "";
-  const content = pageContentSizeMm(doc, margins);
-  const gap = columnGapMm(margins);
+  const columns = doc.columns === 2 ? 2 : 1;
   if (mode === "print") {
+    if (columns !== 2) return "";
+    const gap = columnGapMm(margins);
     return `body { column-count: 2; column-gap: ${gap}mm; column-fill: auto; }`;
   }
-  const columnWidth = Math.max(0, (content.width - gap) / 2);
+  // The height is the whole page, not the content box: `box-sizing:
+  // border-box` is on, so the body's padding — which is where the margins
+  // live — comes out of it. Setting the content height here would make every
+  // column short by top + bottom and the preview would break earlier than
+  // the paper does.
   return `body {
       width: auto;
-      height: ${content.height}mm;
-      column-width: ${columnWidth}mm;
-      column-gap: ${gap}mm;
+      height: ${pageSizeMm(doc).height}mm;
+      column-width: ${columnWidthMm(doc, margins, columns)}mm;
+      column-gap: ${columnGapMm(margins)}mm;
       column-fill: auto;
     }`;
 }
@@ -185,6 +209,12 @@ export function composePrintHtml(
     }
     table { width: 100%; border-collapse: collapse; }
     tr, .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+    /* A thead repeats at the top of every page fragment and a tfoot at the
+       bottom of each — paged-media behaviour the preview's columns cannot
+       reproduce, and a repeated tfoot would print a table's totals partway
+       through it as though the table had ended. Pinning both to plain row
+       groups keeps paper and preview fragmenting identically. */
+    thead, tfoot { display: table-row-group; }
     ${columnCss(doc, m, mode)}
   `;
   const extra = doc.styleCss ? `<style>${doc.styleCss}</style>` : "";
