@@ -130,20 +130,34 @@ describe("composePrintHtml", () => {
     );
   });
 
+  it("states one column per page for each page the frame spans", () => {
+    // The count is stated rather than fitted by width: the fit lands on an
+    // exact integer, where a fraction of a pixel can drop a column
+    expect(composePrintHtml(doc, DEFAULT_MARGINS, "preview", 3)).toContain(
+      "column-count: 3"
+    );
+    expect(
+      composePrintHtml({ ...doc, columns: 2 }, DEFAULT_MARGINS, "preview", 3)
+    ).toContain("column-count: 6");
+    // A nonsense count still leaves one column
+    expect(composePrintHtml(doc, DEFAULT_MARGINS, "preview", 0)).toContain(
+      "column-count: 1"
+    );
+  });
+
   it("previews a single-column document as one page-wide column", () => {
     const margins = { top: 40, bottom: 40, left: 20, right: 10 };
     const html = composePrintHtml(doc, margins, "preview");
-    const content = pageContentSizeMm({}, margins);
 
     // One column to a page, overflowing sideways, so the preview breaks
     // between rows the way the printer will rather than slicing through them
-    expect(html).toContain(`column-width: ${content.width}mm`);
+    expect(html).toContain("column-count: 1");
     expect(html).toContain(`column-gap: ${20 + 10}mm`);
     // The whole page, not the content box: box-sizing takes the margins out
     // of it, and a short column would break earlier than the paper does
     expect(html).toContain(`height: ${A4_HEIGHT_MM}mm`);
     expect(html).toContain("column-fill: auto");
-    expect(html).not.toContain("column-count");
+    expect(html).not.toContain("column-width");
   });
 
   it("fills column by column when printing two columns", () => {
@@ -163,17 +177,15 @@ describe("composePrintHtml", () => {
   it("overflows sideways when previewing two columns", () => {
     const margins = { top: 40, bottom: 40, left: 20, right: 10 };
     const html = composePrintHtml({ ...doc, columns: 2 }, margins, "preview");
-    const content = pageContentSizeMm({}, margins);
 
     // One page tall, so the columns spill into the next page
     expect(html).toContain(`height: ${A4_HEIGHT_MM}mm`);
     expect(html).toContain("width: auto");
     expect(html).toContain(`column-gap: ${20 + 10}mm`);
-    expect(html).toContain(
-      `column-width: ${(content.width - 30) / 2}mm`
-    );
+    // Two columns to the page
+    expect(html).toContain("column-count: 2");
     expect(html).toContain("column-fill: auto");
-    expect(html).not.toContain("column-count");
+    expect(html).not.toContain("column-width");
   });
 
   it("honours landscape", () => {

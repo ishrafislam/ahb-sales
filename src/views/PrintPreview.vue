@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-1 min-h-0 flex-col">
+  <div class="relative flex flex-1 min-h-0 flex-col overflow-hidden">
     <!-- Sheet canvas: plain wheel scrolls this, Ctrl+wheel zooms -->
     <div
       ref="canvasRef"
@@ -22,16 +22,29 @@
                downwards; a two-column one overflows sideways, so it is
                sliced on the other axis. -->
           <iframe
-            :ref="page === 1 ? setFirstFrame : undefined"
             class="border-0 block"
             :srcdoc="composedHtml"
             :style="frameStyle(page)"
             :title="`${jobTitle} ${page}`"
-            @load="onFrameLoad(page)"
           ></iframe>
         </div>
       </div>
     </div>
+
+    <!-- Measured off-screen at exactly one page wide. The sheets' own frames
+         are as wide as the whole report, so a document that shrank — smaller
+         margins, say — would still fill its frame and the count could only
+         ever grow. -->
+    <iframe
+      ref="measureFrame"
+      class="absolute -left-[9999px] top-0 border-0"
+      aria-hidden="true"
+      tabindex="-1"
+      data-role="measure"
+      :srcdoc="measureHtml"
+      :style="{ width: `${pageWidthMm}mm`, height: `${pageHeightMm}mm` }"
+      @load="measure"
+    ></iframe>
 
     <!-- Zoom bar -->
     <div
@@ -100,7 +113,7 @@ const doc = ref<PrintDocument | null>(null);
 const margins = ref<PrintMargins>(normalizeMargins());
 const zoom = ref(1);
 const pageCount = ref(1);
-const firstFrame = ref<HTMLIFrameElement | null>(null);
+const measureFrame = ref<HTMLIFrameElement | null>(null);
 
 const jobTitle = computed(() => doc.value?.title || t("print_preview_title"));
 
@@ -108,8 +121,17 @@ const pageDims = computed(() => pageSizeMm(doc.value ?? {}));
 const pageWidthMm = computed(() => pageDims.value.width);
 const pageHeightMm = computed(() => pageDims.value.height);
 
+// A sheet's frame spans the whole report, so its composition states that
+// many columns; the measuring frame states one. The column width works out
+// the same either way, so both fragment identically.
 const composedHtml = computed(() =>
-  doc.value ? composePrintHtml(doc.value, margins.value, "preview") : ""
+  doc.value
+    ? composePrintHtml(doc.value, margins.value, "preview", pageCount.value)
+    : ""
+);
+
+const measureHtml = computed(() =>
+  doc.value ? composePrintHtml(doc.value, margins.value, "preview", 1) : ""
 );
 
 // Every document flows into page-tall columns that overflow sideways, so a
@@ -120,10 +142,6 @@ function frameStyle(page: number) {
     height: `${pageHeightMm.value}mm`,
     marginLeft: `${-(page - 1) * pageWidthMm.value}mm`,
   };
-}
-
-function setFirstFrame(el: unknown) {
-  firstFrame.value = (el as HTMLIFrameElement | null) ?? null;
 }
 
 function setZoom(z: number) {
@@ -148,26 +166,17 @@ function onWheel(e: WheelEvent) {
 }
 
 /**
- * Measure once the first sheet's document has parsed. An srcdoc iframe loads
- * in its own task: before that its documentElement is still empty and
- * scrollHeight reports the iframe's own height, which reads as exactly one
- * page and silently clips the rest of the report.
+ * Work out how many sheets the document fills, on the load event because an
+ * srcdoc iframe parses in its own task: before that its documentElement is
+ * empty and reports the frame's own size, which reads as exactly one page and
+ * would silently clip the rest of the report.
  *
- * Measuring here rather than after the resize is deliberate: the frame is
- * still one page big, so the document overflows and reports its true extent.
- */
-function onFrameLoad(page: number) {
-  if (page === 1) void measure();
-}
-
-/**
- * Measure the rendered document and work out how many sheets it fills. The
- * columns overflow to the right, so how far the document reaches sideways is
- * how many pages it takes.
+ * The columns overflow to the right, so how far the document reaches sideways
+ * is how many pages it takes.
  */
 async function measure() {
   await nextTick();
-  const root = firstFrame.value?.contentDocument?.documentElement;
+  const root = measureFrame.value?.contentDocument?.documentElement;
   pageCount.value = pageCountFor(
     root?.scrollWidth ?? 0,
     mmToPx(pageWidthMm.value)

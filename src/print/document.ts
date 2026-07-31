@@ -132,16 +132,6 @@ export function columnGapMm(margins: PrintMargins): number {
   return margins.left + margins.right;
 }
 
-/** Millimetres across for one column, given how many share a page. */
-function columnWidthMm(
-  doc: PrintDocument,
-  margins: PrintMargins,
-  columns: number
-): number {
-  const content = pageContentSizeMm(doc, margins);
-  const gap = columnGapMm(margins);
-  return Math.max(0, (content.width - (columns - 1) * gap) / columns);
-}
 
 /**
  * Column flow, rendered two ways from one layout.
@@ -160,14 +150,22 @@ function columnWidthMm(
 function columnCss(
   doc: PrintDocument,
   margins: PrintMargins,
-  mode: "print" | "preview"
+  mode: "print" | "preview",
+  pages: number
 ): string {
-  const columns = doc.columns === 2 ? 2 : 1;
+  const perPage = doc.columns === 2 ? 2 : 1;
   if (mode === "print") {
-    if (columns !== 2) return "";
+    if (perPage !== 2) return "";
     const gap = columnGapMm(margins);
     return `body { column-count: 2; column-gap: ${gap}mm; column-fill: auto; }`;
   }
+  // The count is stated rather than left to `column-width`, which would make
+  // the browser work out how many columns fit — and that sum lands on an
+  // exact integer here, so a fraction of a pixel either way can drop a
+  // column and blow the layout out to the full width. Stating it, across a
+  // frame of exactly `pages` pages, puts every column at pageWidth/perPage −
+  // gap wide however many pages there are.
+  //
   // The height is the whole page, not the content box: `box-sizing:
   // border-box` is on, so the body's padding — which is where the margins
   // live — comes out of it. Setting the content height here would make every
@@ -176,7 +174,7 @@ function columnCss(
   return `body {
       width: auto;
       height: ${pageSizeMm(doc).height}mm;
-      column-width: ${columnWidthMm(doc, margins, columns)}mm;
+      column-count: ${Math.max(1, Math.floor(pages)) * perPage};
       column-gap: ${columnGapMm(margins)}mm;
       column-fill: auto;
     }`;
@@ -190,7 +188,9 @@ function columnCss(
 export function composePrintHtml(
   doc: PrintDocument,
   margins: PrintMargins,
-  mode: "print" | "preview" = "print"
+  mode: "print" | "preview" = "print",
+  /** Preview only: how many pages wide the frame showing this will be. */
+  pages = 1
 ): string {
   const m = normalizeMargins(margins);
   const orientation = doc.orientation === "landscape" ? "landscape" : "portrait";
@@ -215,7 +215,7 @@ export function composePrintHtml(
        through it as though the table had ended. Pinning both to plain row
        groups keeps paper and preview fragmenting identically. */
     thead, tfoot { display: table-row-group; }
-    ${columnCss(doc, m, mode)}
+    ${columnCss(doc, m, mode, pages)}
   `;
   const extra = doc.styleCss ? `<style>${doc.styleCss}</style>` : "";
   return [

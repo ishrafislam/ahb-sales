@@ -53,8 +53,10 @@ describe("Print preview window", () => {
     wrapper.find("#zoom-slider").element as HTMLInputElement;
   const percent = (wrapper: View) =>
     wrapper.find('[data-role="zoom-percent"]').text();
+  const sheetFrames = (wrapper: View) =>
+    wrapper.findAll('[data-role="sheet"] iframe');
   const srcdoc = (wrapper: View) =>
-    wrapper.find("iframe").attributes("srcdoc") ?? "";
+    sheetFrames(wrapper)[0]?.attributes("srcdoc") ?? "";
 
   it("loads the job and renders a sheet with the composed document", async () => {
     const wrapper = await mountView();
@@ -69,12 +71,13 @@ describe("Print preview window", () => {
 
   it("slices every document on the horizontal axis", async () => {
     const wrapper = await mountView();
-    const style = wrapper.find("iframe").attributes("style") ?? "";
+    const style = sheetFrames(wrapper)[0]!.attributes("style") ?? "";
 
     expect(style).toContain("margin-left");
     expect(style).not.toContain("margin-top");
     // Even a one-column document flows into page-tall columns
-    expect(srcdoc(wrapper)).toContain("column-width");
+    expect(srcdoc(wrapper)).toContain("column-count");
+    expect(srcdoc(wrapper)).toContain("column-fill: auto");
     wrapper.unmount();
   });
 
@@ -83,11 +86,22 @@ describe("Print preview window", () => {
   // iframe is still empty on the tick after mount, where it reports the
   // frame's own height and reads as exactly one page.
   function stubExtent(wrapper: View, axis: "scrollWidth", px: number) {
-    const frame = wrapper.find("iframe").element as HTMLIFrameElement;
+    const frame = wrapper.find('[data-role="measure"]')
+      .element as HTMLIFrameElement;
     const root = frame.contentDocument!.documentElement;
     Object.defineProperty(root, axis, { value: px, configurable: true });
     return frame;
   }
+
+  it("measures off a frame one page wide, so the count can come down", async () => {
+    const wrapper = await mountView();
+    const frame = wrapper.find('[data-role="measure"]');
+
+    expect(frame.attributes("style")).toContain("width: 210mm");
+    // Composed for a single page, whatever the sheets show
+    expect(frame.attributes("srcdoc")).toContain("column-count: 1");
+    wrapper.unmount();
+  });
 
   it("paginates a long document once the sheet has loaded", async () => {
     const wrapper = await mountView();
@@ -100,9 +114,7 @@ describe("Print preview window", () => {
 
     // 2000px over an A4 width of ~793.7px
     expect(wrapper.findAll('[data-role="sheet"]')).toHaveLength(3);
-    const styles = wrapper
-      .findAll("iframe")
-      .map((f) => f.attributes("style") ?? "");
+    const styles = sheetFrames(wrapper).map((f) => f.attributes("style") ?? "");
     expect(styles[0]).toContain("margin-left: 0mm");
     expect(styles[1]).toContain("margin-left: -210mm");
     expect(styles[2]).toContain("margin-left: -420mm");
