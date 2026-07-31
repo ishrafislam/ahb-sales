@@ -10,7 +10,6 @@ describe("useModalStore", () => {
   it("should have all modals closed by default", () => {
     const store = useModalStore();
 
-    expect(store.showReportDailyPayment).toBe(false);
     expect(store.showSettings).toBe(false);
     expect(store.showAbout).toBe(false);
   });
@@ -20,7 +19,7 @@ describe("useModalStore", () => {
 
     expect(store.isAnyModalOpen()).toBe(false);
 
-    store.showReportDailyPayment = true;
+    store.showAbout = true;
     expect(store.isAnyModalOpen()).toBe(true);
 
     store.closeAll();
@@ -31,12 +30,12 @@ describe("useModalStore", () => {
     const store = useModalStore();
 
     // Open multiple modals
-    store.showReportDailyPayment = true;
+    store.showAbout = true;
     store.showSettings = true;
 
     store.closeAll();
 
-    expect(store.showReportDailyPayment).toBe(false);
+    expect(store.showAbout).toBe(false);
     expect(store.showSettings).toBe(false);
     expect(store.isAnyModalOpen()).toBe(false);
   });
@@ -44,22 +43,14 @@ describe("useModalStore", () => {
   describe("navigateTo", () => {
     it("should navigate to dashboard (close all)", () => {
       const store = useModalStore();
-      store.showReportDailyPayment = true;
+      store.showAbout = true;
       store.showSettings = true;
 
       store.navigateTo("dashboard");
 
-      expect(store.showReportDailyPayment).toBe(false);
+      expect(store.showAbout).toBe(false);
       expect(store.showSettings).toBe(false);
       expect(store.isAnyModalOpen()).toBe(false);
-    });
-
-    it("should navigate to report daily payment", () => {
-      const store = useModalStore();
-
-      store.navigateTo("report-daily-payment");
-
-      expect(store.showReportDailyPayment).toBe(true);
     });
 
     it("should navigate to settings", () => {
@@ -72,27 +63,23 @@ describe("useModalStore", () => {
 
     it("should close previous modal when navigating", () => {
       const store = useModalStore();
+      store.showAbout = true;
+
       store.navigateTo("settings");
+
+      expect(store.showAbout).toBe(false);
       expect(store.showSettings).toBe(true);
-
-      store.navigateTo("report-daily-payment");
-
-      expect(store.showSettings).toBe(false);
-      expect(store.showReportDailyPayment).toBe(true);
     });
   });
 
   it("should support multiple sequential navigations", () => {
     const store = useModalStore();
 
-    store.navigateTo("report-daily-payment");
-    expect(store.showReportDailyPayment).toBe(true);
-
     store.navigateTo("settings");
     expect(store.showSettings).toBe(true);
-    expect(store.showReportDailyPayment).toBe(false);
 
-    store.closeAll();
+    store.navigateTo("dashboard");
+    expect(store.showSettings).toBe(false);
     expect(store.isAnyModalOpen()).toBe(false);
   });
 });

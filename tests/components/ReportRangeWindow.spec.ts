@@ -91,7 +91,11 @@ describe("Report range window", () => {
   });
 
   function mountView(
-    report: "total-sell" | "daily-report" | "client-report" = "total-sell",
+    report:
+      | "total-sell"
+      | "daily-report"
+      | "client-report"
+      | "payment-report" = "total-sell",
     customerId?: number
   ) {
     return mount(ReportRange, {
@@ -256,6 +260,30 @@ describe("Report range window", () => {
     expect(doc.bodyHtml).toContain('<td class="cid">40</td>');
     // The ledger is too wide to split the page
     expect(doc.columns).toBeUndefined();
+    expect(close).toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("builds the payment sheet off the same day-wise report", async () => {
+    const wrapper = mountView("payment-report");
+
+    await button(wrapper, "Okay").trigger("click");
+    await vi.runAllTimersAsync();
+
+    expect(reportMoneyTransactionsDayWise).toHaveBeenCalledWith(
+      "2026-07-30",
+      "2026-07-30"
+    );
+    const doc = openPrintPreview.mock.calls[0]![0] as {
+      title: string;
+      bodyHtml: string;
+      columns?: number;
+    };
+    expect(doc.title).toBe("Daily Payment Report");
+    expect(doc.bodyHtml).toContain("আলাউদ্দিন বেকারী");
+    expect(doc.bodyHtml).toContain('<td class="amt">8,220.00</td>');
+    // Three narrow columns, so half a page each
+    expect(doc.columns).toBe(2);
     expect(close).toHaveBeenCalled();
     wrapper.unmount();
   });

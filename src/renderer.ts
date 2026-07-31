@@ -45,6 +45,7 @@ import TotalSellRangeWindow from "./TotalSellRangeWindow.vue";
 import DailyReportRangeWindow from "./DailyReportRangeWindow.vue";
 import ClientSelectWindow from "./ClientSelectWindow.vue";
 import ClientReportRangeWindow from "./ClientReportRangeWindow.vue";
+import PaymentReportRangeWindow from "./PaymentReportRangeWindow.vue";
 
 void initTheme();
 const pinia = createPinia();
@@ -67,6 +68,7 @@ const routes = [
   ["#client-select", ClientSelectWindow],
   ["#client-report", ClientReportRangeWindow],
   ["#edit-payment", EditPaymentWindow],
+  ["#payment-report", PaymentReportRangeWindow],
   ["#payment", PaymentWindow],
 ] as const;
 const root = routes.find(([prefix]) => hash.startsWith(prefix))?.[1] ?? App;

@@ -96,6 +96,7 @@ type AppAPI = {
   openSalesHistoryWindow: (productId?: number) => Promise<void>;
   openTotalSellWindow: () => Promise<void>;
   openDailyReportWindow: () => Promise<void>;
+  openPaymentReportWindow: () => Promise<void>;
   openClientSelectWindow: () => Promise<void>;
   openClientReportWindow: (customerId?: number) => Promise<void>;
   // Printing
@@ -226,6 +227,8 @@ const api: AppAPI = {
     ipcRenderer.invoke("window:open-sales-history", productId),
   openTotalSellWindow: () => ipcRenderer.invoke("window:open-total-sell"),
   openDailyReportWindow: () => ipcRenderer.invoke("window:open-daily-report"),
+  openPaymentReportWindow: () =>
+    ipcRenderer.invoke("window:open-payment-report"),
   openClientSelectWindow: () => ipcRenderer.invoke("window:open-client-select"),
   openClientReportWindow: (customerId) =>
     ipcRenderer.invoke("window:open-client-report", customerId),

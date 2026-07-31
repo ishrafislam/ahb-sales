@@ -111,12 +111,13 @@ import { toYmd } from "../utils/date";
 import { buildTotalSellDocument } from "../print/totalSell";
 import { buildDailyReportDocument } from "../print/dailyReport";
 import { buildClientReportDocument } from "../print/clientReport";
+import { buildPaymentReportDocument } from "../print/paymentReport";
 
 // The window is the same for every ranged report; only what Okay builds
 // differs. The client report also carries which client was picked, or none
 // for all of them.
 const props = defineProps<{
-  report: "total-sell" | "daily-report" | "client-report";
+  report: "total-sell" | "daily-report" | "client-report" | "payment-report";
   customerId?: number;
 }>();
 
@@ -170,6 +171,11 @@ async function buildDoc(from: string, to: string) {
   }
   if (props.report === "daily-report") {
     return buildDailyReportDocument(
+      await window.ahb.reportMoneyTransactionsDayWise(from, to)
+    );
+  }
+  if (props.report === "payment-report") {
+    return buildPaymentReportDocument(
       await window.ahb.reportMoneyTransactionsDayWise(from, to)
     );
   }

@@ -8,8 +8,7 @@ type NavigationPage =
   | "customers"
   | "products"
   | "product-sales-history"
-  | "product-purchase-history"
-  | "report-daily-payment";
+  | "product-purchase-history";
 
 describe("QuickActions.vue", () => {
   const mockActions = [

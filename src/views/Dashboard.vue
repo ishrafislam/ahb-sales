@@ -173,7 +173,7 @@
           <button
             type="button"
             :class="[buttonClass, 'min-h-[2.5rem] px-1 py-1 col-span-2']"
-            @click="emit('navigate', 'report-daily-payment')"
+            @click="openPaymentReport"
           >
             {{ t("v2_daily_payment_report") }}
           </button>
@@ -661,6 +661,10 @@ function parseCustomerId(): number | undefined {
 async function openCustomerList() {
   const customers = await window.ahb.listCustomers();
   await window.ahb.openPrintPreview(buildCustomerListDocument(customers));
+}
+
+function openPaymentReport() {
+  void window.ahb.openPaymentReportWindow();
 }
 
 async function openProductList() {

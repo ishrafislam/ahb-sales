@@ -952,6 +952,7 @@ describe("Dashboard v2 — action button navigation", () => {
   let openTotalSellWindow: ReturnType<typeof vi.fn>;
   let openDailyReportWindow: ReturnType<typeof vi.fn>;
   let openClientSelectWindow: ReturnType<typeof vi.fn>;
+  let openPaymentReportWindow: ReturnType<typeof vi.fn>;
   let listCustomers: ReturnType<typeof vi.fn>;
   let listProducts: ReturnType<typeof vi.fn>;
   let openPrintPreview: ReturnType<typeof vi.fn>;
@@ -961,6 +962,7 @@ describe("Dashboard v2 — action button navigation", () => {
     openTotalSellWindow = vi.fn(async () => undefined);
     openDailyReportWindow = vi.fn(async () => undefined);
     openClientSelectWindow = vi.fn(async () => undefined);
+    openPaymentReportWindow = vi.fn(async () => undefined);
     listCustomers = vi.fn(async () => [
       {
         id: 7,
@@ -989,6 +991,7 @@ describe("Dashboard v2 — action button navigation", () => {
       openTotalSellWindow,
       openDailyReportWindow,
       openClientSelectWindow,
+      openPaymentReportWindow,
       listCustomers,
       listProducts,
       openPrintPreview,
@@ -1020,7 +1023,6 @@ describe("Dashboard v2 — action button navigation", () => {
     ["Item Purchase History", "product-purchase-history"],
     ["Item Sale History", "product-sales-history"],
     ["Purchase Entry", "purchase-entry"],
-    ["Daily Payment Report", "report-daily-payment"],
   ];
 
   it.each(wiredButtons)(
@@ -1127,6 +1129,15 @@ describe("Dashboard v2 — action button navigation", () => {
     await findButton(wrapper, "Client Report").trigger("click");
 
     expect(openClientSelectWindow).toHaveBeenCalledTimes(1);
+    expect(wrapper.emitted("navigate")).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it("Daily Payment Report opens the date range window instead of navigating", async () => {
+    const wrapper = mountDashboard();
+    await findButton(wrapper, "Daily Payment Report").trigger("click");
+
+    expect(openPaymentReportWindow).toHaveBeenCalledTimes(1);
     expect(wrapper.emitted("navigate")).toBeUndefined();
     wrapper.unmount();
   });
