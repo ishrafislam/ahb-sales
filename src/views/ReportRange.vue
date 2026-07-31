@@ -110,10 +110,15 @@ import {
 import { toYmd } from "../utils/date";
 import { buildTotalSellDocument } from "../print/totalSell";
 import { buildDailyReportDocument } from "../print/dailyReport";
+import { buildClientReportDocument } from "../print/clientReport";
 
 // The window is the same for every ranged report; only what Okay builds
-// differs.
-const props = defineProps<{ report: "total-sell" | "daily-report" }>();
+// differs. The client report also carries which client was picked, or none
+// for all of them.
+const props = defineProps<{
+  report: "total-sell" | "daily-report" | "client-report";
+  customerId?: number;
+}>();
 
 const startText = ref(formatDdMmYyyy(new Date()));
 const endText = ref(formatDdMmYyyy(new Date()));
@@ -159,19 +164,28 @@ function step(unit: ShiftUnit, delta: number) {
   if (focusedField.value !== "start") endText.value = apply(endText.value);
 }
 
+async function buildDoc(from: string, to: string) {
+  if (props.report === "total-sell") {
+    return buildTotalSellDocument(await window.ahb.reportTotalSell(from, to));
+  }
+  if (props.report === "daily-report") {
+    return buildDailyReportDocument(
+      await window.ahb.reportMoneyTransactionsDayWise(from, to)
+    );
+  }
+  return buildClientReportDocument(
+    await window.ahb.reportClientLedger(from, to, props.customerId),
+    { from, to }
+  );
+}
+
 async function okay() {
   if (error.value || running.value) return;
   running.value = true;
   try {
     const from = toYmd(startDate.value!);
     const to = toYmd(endDate.value!);
-    const doc =
-      props.report === "total-sell"
-        ? buildTotalSellDocument(await window.ahb.reportTotalSell(from, to))
-        : buildDailyReportDocument(
-            await window.ahb.reportMoneyTransactionsDayWise(from, to)
-          );
-    await window.ahb.openPrintPreview(doc);
+    await window.ahb.openPrintPreview(await buildDoc(from, to));
     window.close();
   } finally {
     running.value = false;

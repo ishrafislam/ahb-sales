@@ -77,6 +77,11 @@ type AppAPI = {
     from: string,
     to: string
   ) => Promise<import("./main/data").TotalSellReport>;
+  reportClientLedger: (
+    from: string,
+    to: string,
+    customerId?: number
+  ) => Promise<import("./main/data").ClientLedgerReport>;
   onDataChanged: (
     cb: (payload: { kind: string; action: string; id: number }) => void
   ) => () => void;
@@ -91,6 +96,8 @@ type AppAPI = {
   openSalesHistoryWindow: (productId?: number) => Promise<void>;
   openTotalSellWindow: () => Promise<void>;
   openDailyReportWindow: () => Promise<void>;
+  openClientSelectWindow: () => Promise<void>;
+  openClientReportWindow: (customerId?: number) => Promise<void>;
   // Printing
   openPrintPreview: (doc: PrintDocument) => Promise<string>;
   getPrintJob: (id: string) => Promise<PrintJob | null>;
@@ -193,6 +200,8 @@ const api: AppAPI = {
     ipcRenderer.invoke("report:daily-payment", date),
   reportTotalSell: (from, to) =>
     ipcRenderer.invoke("report:total-sell", from, to),
+  reportClientLedger: (from, to, customerId) =>
+    ipcRenderer.invoke("report:client-ledger", from, to, customerId),
   onDataChanged: (cb) => {
     const listener = (
       _: unknown,
@@ -217,6 +226,9 @@ const api: AppAPI = {
     ipcRenderer.invoke("window:open-sales-history", productId),
   openTotalSellWindow: () => ipcRenderer.invoke("window:open-total-sell"),
   openDailyReportWindow: () => ipcRenderer.invoke("window:open-daily-report"),
+  openClientSelectWindow: () => ipcRenderer.invoke("window:open-client-select"),
+  openClientReportWindow: (customerId) =>
+    ipcRenderer.invoke("window:open-client-report", customerId),
   openPrintPreview: (doc) => ipcRenderer.invoke("print:create-job", doc),
   getPrintJob: (id) => ipcRenderer.invoke("print:get-job", id),
   setPrintMargins: (id, margins) =>

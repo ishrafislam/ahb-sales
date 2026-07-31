@@ -32,14 +32,6 @@
 
     <!-- Modals -->
     <BaseModal
-      v-if="modalStore.showReportMoneyCustomer"
-      :title="t('report_money_customer_title')"
-      :max-width="'5xl'"
-      @close="modalStore.closeAll"
-    >
-      <ReportMoneyCustomer />
-    </BaseModal>
-    <BaseModal
       v-if="modalStore.showReportDailyPayment"
       :title="t('report_daily_payment_title')"
       :max-width="'4xl'"
@@ -86,7 +78,6 @@ import { onMounted } from "vue";
 import { t, initI18n } from "./i18n";
 import Dashboard from "./views/Dashboard.vue";
 import BaseModal from "./components/BaseModal.vue";
-import ReportMoneyCustomer from "./views/ReportMoneyCustomer.vue";
 import ReportDailyPayment from "./views/ReportDailyPayment.vue";
 import SettingsModal from "./views/SettingsModal.vue";
 import AboutModal from "./views/AboutModal.vue";
@@ -245,7 +236,6 @@ function onNavigate(
     | "customer-history"
     | "purchase-entry"
     | "reports"
-    | "report-money-customer"
     | "report-daily-payment"
     | "settings"
     | string,
@@ -273,10 +263,6 @@ function onNavigate(
   }
   if (page === "purchase-entry") {
     void window.ahb.openPurchaseEntryWindow();
-    return;
-  }
-  if (page === "report-money-customer") {
-    modalStore.navigateTo("report-money-customer");
     return;
   }
   if (page === "report-daily-payment") {

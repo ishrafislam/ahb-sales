@@ -18,6 +18,7 @@ import {
   reportMoneyTransactionsDayWise,
   reportDailyPayments,
   reportTotalSell,
+  reportClientLedger,
   recordPayment,
 } from "../data";
 import type { FileService } from "./FileService";
@@ -320,5 +321,9 @@ export class DataService {
 
   reportTotalSell(from: string, to: string) {
     return reportTotalSell(this.getData(), from, to);
+  }
+
+  reportClientLedger(from: string, to: string, customerId?: number) {
+    return reportClientLedger(this.getData(), from, to, customerId);
   }
 }

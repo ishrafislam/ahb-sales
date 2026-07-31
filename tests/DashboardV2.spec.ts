@@ -951,15 +951,18 @@ describe("Dashboard v2 — customer ID quick entry", () => {
 describe("Dashboard v2 — action button navigation", () => {
   let openTotalSellWindow: ReturnType<typeof vi.fn>;
   let openDailyReportWindow: ReturnType<typeof vi.fn>;
+  let openClientSelectWindow: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     currentLang.value = "en";
     openTotalSellWindow = vi.fn(async () => undefined);
     openDailyReportWindow = vi.fn(async () => undefined);
+    openClientSelectWindow = vi.fn(async () => undefined);
     (window as unknown as { ahb: unknown }).ahb = {
       listInvoicesByCustomer: vi.fn(async () => []),
       openTotalSellWindow,
       openDailyReportWindow,
+      openClientSelectWindow,
     };
   });
 
@@ -990,7 +993,6 @@ describe("Dashboard v2 — action button navigation", () => {
     ["Item Purchase History", "product-purchase-history"],
     ["Item Sale History", "product-sales-history"],
     ["Purchase Entry", "purchase-entry"],
-    ["Client Report", "report-money-customer"],
     ["Daily Payment Report", "report-daily-payment"],
   ];
 
@@ -1051,6 +1053,15 @@ describe("Dashboard v2 — action button navigation", () => {
     await findButton(wrapper, "Total Sell").trigger("click");
 
     expect(openTotalSellWindow).toHaveBeenCalledTimes(1);
+    wrapper.unmount();
+  });
+
+  it("Client Report opens the client picker instead of navigating", async () => {
+    const wrapper = mountDashboard();
+    await findButton(wrapper, "Client Report").trigger("click");
+
+    expect(openClientSelectWindow).toHaveBeenCalledTimes(1);
+    expect(wrapper.emitted("navigate")).toBeUndefined();
     wrapper.unmount();
   });
 

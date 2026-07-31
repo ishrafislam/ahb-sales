@@ -10,7 +10,6 @@ describe("useModalStore", () => {
   it("should have all modals closed by default", () => {
     const store = useModalStore();
 
-    expect(store.showReportMoneyCustomer).toBe(false);
     expect(store.showReportDailyPayment).toBe(false);
     expect(store.showSettings).toBe(false);
     expect(store.showAbout).toBe(false);
@@ -55,14 +54,6 @@ describe("useModalStore", () => {
       expect(store.isAnyModalOpen()).toBe(false);
     });
 
-    it("should navigate to report money customer", () => {
-      const store = useModalStore();
-
-      store.navigateTo("report-money-customer");
-
-      expect(store.showReportMoneyCustomer).toBe(true);
-    });
-
     it("should navigate to report daily payment", () => {
       const store = useModalStore();
 
@@ -84,22 +75,18 @@ describe("useModalStore", () => {
       store.navigateTo("settings");
       expect(store.showSettings).toBe(true);
 
-      store.navigateTo("report-money-customer");
+      store.navigateTo("report-daily-payment");
 
       expect(store.showSettings).toBe(false);
-      expect(store.showReportMoneyCustomer).toBe(true);
+      expect(store.showReportDailyPayment).toBe(true);
     });
   });
 
   it("should support multiple sequential navigations", () => {
     const store = useModalStore();
 
-    store.navigateTo("report-money-customer");
-    expect(store.showReportMoneyCustomer).toBe(true);
-
     store.navigateTo("report-daily-payment");
     expect(store.showReportDailyPayment).toBe(true);
-    expect(store.showReportMoneyCustomer).toBe(false);
 
     store.navigateTo("settings");
     expect(store.showSettings).toBe(true);

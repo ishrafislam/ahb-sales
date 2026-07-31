@@ -701,7 +701,10 @@ const reportButtons: {
     key: "v2_daily_report",
     handler: () => void window.ahb.openDailyReportWindow(),
   },
-  { key: "v2_client_report", page: "report-money-customer" },
+  {
+    key: "v2_client_report",
+    handler: () => void window.ahb.openClientSelectWindow(),
+  },
 ];
 
 const todayText = computed(() => {

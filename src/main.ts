@@ -214,6 +214,8 @@ const purchaseHistoryWindows = new Map<number, BrowserWindow>();
 const salesHistoryWindows = new Map<number, BrowserWindow>();
 const totalSellWindows = new Map<number, BrowserWindow>();
 const dailyReportWindows = new Map<number, BrowserWindow>();
+const clientSelectWindows = new Map<number, BrowserWindow>();
+const clientReportWindows = new Map<number, BrowserWindow>();
 // Print windows are keyed by job id, not by opener: printing twice from the
 // same screen must give two previews, not refocus the first.
 const printPreviewWindows = new Map<string, BrowserWindow>();
@@ -469,6 +471,29 @@ async function openDailyReportWindow(
   });
 }
 
+async function openClientSelectWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, clientSelectWindows, "client-select", {
+    width: 420,
+    height: 300,
+    resizable: false,
+  });
+}
+
+async function openClientReportWindow(
+  sender: Electron.WebContents,
+  customerId?: number
+): Promise<void> {
+  const hash =
+    customerId === undefined ? "client-report" : `client-report/${customerId}`;
+  await openChildWindow(sender, clientReportWindows, hash, {
+    width: 460,
+    height: 440,
+    resizable: false,
+  });
+}
+
 // -----------------------
 // File-path parsing helper
 // -----------------------
@@ -696,6 +721,13 @@ ipcMain.handle("report:total-sell", async (e, from: string, to: string) => {
   return getCtx(e.sender).dataService.reportTotalSell(from, to);
 });
 
+ipcMain.handle(
+  "report:client-ledger",
+  async (e, from: string, to: string, customerId?: number) => {
+    return getCtx(e.sender).dataService.reportClientLedger(from, to, customerId);
+  }
+);
+
 // Window control
 ipcMain.handle(
   "window:open-customer-history",
@@ -744,6 +776,14 @@ ipcMain.handle("window:open-total-sell", async (e) => {
 
 ipcMain.handle("window:open-daily-report", async (e) => {
   await openDailyReportWindow(e.sender);
+});
+
+ipcMain.handle("window:open-client-select", async (e) => {
+  await openClientSelectWindow(e.sender);
+});
+
+ipcMain.handle("window:open-client-report", async (e, customerId?: number) => {
+  await openClientReportWindow(e.sender, customerId);
 });
 
 // -----------------------

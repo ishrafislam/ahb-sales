@@ -6,6 +6,7 @@ import { currentLang } from "../../src/i18n";
 describe("Report range window", () => {
   const reportTotalSell = vi.fn();
   const reportMoneyTransactionsDayWise = vi.fn();
+  const reportClientLedger = vi.fn();
   const openPrintPreview = vi.fn();
   const close = vi.fn();
 
@@ -54,11 +55,32 @@ describe("Report range window", () => {
         },
       ],
     });
+    reportClientLedger.mockReset().mockResolvedValue({
+      clients: [
+        {
+          customerId: 225,
+          customerName: "মুন্না ভাই",
+          currentDue: 1500,
+          rows: [
+            {
+              date: "30-07-2026",
+              bill: 8220,
+              discount: 0,
+              netBill: 8220,
+              paid: 6720,
+              previousDue: 0,
+              hasInvoice: true,
+            },
+          ],
+        },
+      ],
+    });
     openPrintPreview.mockReset().mockResolvedValue("job-1");
     close.mockReset();
     (window as unknown as { ahb: unknown }).ahb = {
       reportTotalSell,
       reportMoneyTransactionsDayWise,
+      reportClientLedger,
       openPrintPreview,
     };
     vi.spyOn(window, "close").mockImplementation(close);
@@ -68,8 +90,14 @@ describe("Report range window", () => {
     vi.useRealTimers();
   });
 
-  function mountView(report: "total-sell" | "daily-report" = "total-sell") {
-    return mount(ReportRange, { attachTo: document.body, props: { report } });
+  function mountView(
+    report: "total-sell" | "daily-report" | "client-report" = "total-sell",
+    customerId?: number
+  ) {
+    return mount(ReportRange, {
+      attachTo: document.body,
+      props: { report, customerId },
+    });
   }
 
   type View = ReturnType<typeof mountView>;
@@ -229,6 +257,47 @@ describe("Report range window", () => {
     // The ledger is too wide to split the page
     expect(doc.columns).toBeUndefined();
     expect(close).toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("builds the client ledger for the picked client", async () => {
+    const wrapper = mountView("client-report", 225);
+
+    await button(wrapper, "Okay").trigger("click");
+    await vi.runAllTimersAsync();
+
+    expect(reportClientLedger).toHaveBeenCalledWith(
+      "2026-07-30",
+      "2026-07-30",
+      225
+    );
+    const doc = openPrintPreview.mock.calls[0]![0] as {
+      title: string;
+      bodyHtml: string;
+      columns?: number;
+    };
+    expect(doc.title).toBe("Money Transaction Report");
+    // The range the report ran on is stated on the page
+    expect(doc.bodyHtml).toContain("Between : Thursday, July 30, 2026");
+    expect(doc.bodyHtml).toContain("And Thursday, July 30, 2026");
+    expect(doc.bodyHtml).toContain('<td class="who">225 মুন্না ভাই</td>');
+    expect(doc.bodyHtml).toContain("1,500.00");
+    expect(doc.columns).toBeUndefined();
+    expect(close).toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("asks for every client when none was picked", async () => {
+    const wrapper = mountView("client-report");
+
+    await button(wrapper, "Okay").trigger("click");
+    await vi.runAllTimersAsync();
+
+    expect(reportClientLedger).toHaveBeenCalledWith(
+      "2026-07-30",
+      "2026-07-30",
+      undefined
+    );
     wrapper.unmount();
   });
 

@@ -54,6 +54,8 @@ export function initData(): AhbDataV1 {
 
 // Helpers
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
+// A report's DD-MM-YYYY back to a sortable YYYY-MM-DD
+const ymdOf = (ddMmYyyy: string) => ddMmYyyy.split("-").reverse().join("-");
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const isoToYmd = (iso: string) => {
   const d = new Date(iso);
@@ -1061,6 +1063,109 @@ export function reportMoneyTransactionsDayWise(
     return as < bs ? 1 : as > bs ? -1 : 0;
   });
   return { days };
+}
+
+// -----------------------
+// Client ledger: every transaction in range, grouped by client
+// -----------------------
+
+export type ClientLedgerRow = {
+  date: string; // DD-MM-YYYY
+  bill: number; // subtotal
+  discount: number;
+  netBill: number;
+  paid: number;
+  previousDue: number; // snapshot from the invoice
+  hasInvoice: boolean; // false for a standalone deposit
+};
+
+export type ClientLedgerClient = {
+  customerId: number; // 0 indicates anonymous
+  customerName?: string;
+  /** The customer's outstanding today, not as of the end of the range. */
+  currentDue: number;
+  rows: ClientLedgerRow[];
+};
+
+export type ClientLedgerReport = { clients: ClientLedgerClient[] };
+
+export function reportClientLedger(
+  data: AhbDataV1,
+  from: string,
+  to: string,
+  customerId?: number
+): ClientLedgerReport {
+  ensurePhase2(data);
+  const customerById = new Map(data.customers.map((c) => [c.id, c]));
+  const wanted = (id: number) => customerId === undefined || id === customerId;
+
+  // customerId (0 = anonymous) -> rows
+  const byCustomer = new Map<number, ClientLedgerRow[]>();
+  const rowsFor = (id: number) => {
+    let rows = byCustomer.get(id);
+    if (!rows) {
+      rows = [];
+      byCustomer.set(id, rows);
+    }
+    return rows;
+  };
+
+  for (const inv of data.invoices ?? []) {
+    const ymd = isoToYmd(inv.date);
+    if (ymd < from || ymd > to) continue;
+    const id = inv.customerId ?? 0;
+    if (!wanted(id)) continue;
+    const bill = ceil2(
+      inv.totals?.subtotal ??
+        inv.lines.reduce(
+          (s, l) => s + (l.lineTotal || ceil2(l.quantity * l.rate)),
+          0
+        )
+    );
+    const discount = ceil2(inv.discount || 0);
+    rowsFor(id).push({
+      date: toDDMMYYYY(ymd),
+      bill,
+      discount,
+      netBill: ceil2(inv.totals?.net ?? Math.max(0, bill - discount)),
+      paid: ceil2(inv.paid || 0),
+      previousDue: ceil2(inv.previousDue || 0),
+      hasInvoice: true,
+    });
+  }
+
+  // A deposit against an old due has no invoice behind it, and no previous-due
+  // snapshot to report either.
+  for (const p of data.payments ?? []) {
+    const ymd = isoToYmd(p.date);
+    if (ymd < from || ymd > to) continue;
+    if (!wanted(p.customerId)) continue;
+    const amount = ceil2(p.amount || 0);
+    if (amount <= 0) continue;
+    rowsFor(p.customerId).push({
+      date: toDDMMYYYY(ymd),
+      bill: 0,
+      discount: 0,
+      netBill: 0,
+      paid: amount,
+      previousDue: 0,
+      hasInvoice: false,
+    });
+  }
+
+  const clients: ClientLedgerClient[] = [];
+  for (const [id, rows] of byCustomer) {
+    // A ledger reads forwards
+    rows.sort((a, b) => ymdOf(a.date).localeCompare(ymdOf(b.date)));
+    clients.push({
+      customerId: id,
+      customerName: customerById.get(id)?.nameBn,
+      currentDue: ceil2(customerById.get(id)?.outstanding ?? 0),
+      rows,
+    });
+  }
+  clients.sort((a, b) => a.customerId - b.customerId);
+  return { clients };
 }
 
 // -----------------------

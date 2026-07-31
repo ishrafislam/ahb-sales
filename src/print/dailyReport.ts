@@ -1,30 +1,7 @@
-import type { MoneyTxnDayWise, MoneyTxnDayWiseRow } from "../main/data";
+import type { MoneyTxnDayWise } from "../main/data";
 import { t } from "../i18n";
 import type { PrintDocument } from "./document";
-import { longDate, money } from "./format";
-
-// Difference is signed, and ceiling would be asymmetric across zero
-const round2 = (n: number) => Math.round(n * 100) / 100;
-
-function esc(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-/**
- * What the day owes after the day's trade: the bill left unpaid, added to
- * what was owed before it. Both are blank for a customer who only made a
- * deposit, since a standalone payment carries no previous-due snapshot.
- */
-function amounts(row: MoneyTxnDayWiseRow) {
-  const difference = round2(row.netBill - row.paid);
-  return {
-    difference,
-    nextDue: row.hasInvoice ? round2(row.previousDue + difference) : undefined,
-  };
-}
+import { esc, ledgerAmounts, longDate, money, round2 } from "./format";
 
 /**
  * The daily report as a print document: one table per day, customer by
@@ -47,7 +24,7 @@ export function buildDailyReportDocument(
 
       const rowsHtml = rows
         .map((r) => {
-          const { difference, nextDue } = amounts(r);
+          const { difference, nextDue } = ledgerAmounts(r);
           return `<tr>
             <td class="cid">${r.customerId}</td>
             <td class="name">${esc(r.customerName ?? "")}</td>
@@ -63,7 +40,7 @@ export function buildDailyReportDocument(
         .join("");
 
       const totalDifference = rows.reduce(
-        (s, r) => round2(s + amounts(r).difference),
+        (s, r) => round2(s + ledgerAmounts(r).difference),
         0
       );
 
