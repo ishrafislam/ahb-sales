@@ -106,6 +106,8 @@ describe("buildCustomerListDocument", () => {
 
     // Three-digit grouping, not the lakh grouping bn-BD would give
     expect(bodyHtml).toContain("টাকা ১০১,০১৩.০০");
+    // The id follows the language too
+    expect(bodyHtml).toContain('<td class="id">৩২</td>');
     expect(bodyHtml).not.toContain("TK.");
   });
 

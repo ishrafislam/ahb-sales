@@ -1,45 +1,44 @@
-import type { Customer } from "../main/data";
+import type { Product } from "../main/data";
 import { t } from "../i18n";
 import type { PrintDocument } from "./document";
-import { digits, esc, money } from "./format";
+import { digits, esc, quantity } from "./format";
 
 /**
- * The customer roll as a print document: id, name and the due each customer
+ * The product roll as a print document: id, name and the stock each product
  * stands at, poured down the left half of the page and continued down the
  * right. The order is the one the caller hands over.
  */
-export function buildCustomerListDocument(
-  customers: Customer[]
-): PrintDocument {
-  const title = t("customer_list");
-  const currency = t("currency_taka");
+export function buildProductListDocument(products: Product[]): PrintDocument {
+  const title = t("v2_product_list");
 
-  const rowsHtml = customers
-    .map((c) => {
-      const due = Number(c.outstanding) || 0;
-      return `<tr>
-        <td class="id">${digits(c.id)}</td>
-        <td class="name">${esc(c.nameBn ?? "")}</td>
-        <td class="due">${due < 0 ? "-" : ""}${currency} ${money(Math.abs(due))}</td>
-      </tr>`;
-    })
+  const rowsHtml = products
+    .map(
+      (p) => `<tr>
+        <td class="id">${digits(p.id)}</td>
+        <td class="name">${esc(p.nameBn ?? "")}</td>
+        <td class="stock">${quantity(Number(p.stock) || 0)}</td>
+        <td class="unit">${esc(p.unit ?? "")}</td>
+      </tr>`
+    )
     .join("");
 
   const bodyHtml = `
     <h1>${title} :</h1>
     ${
-      customers.length
+      products.length
         ? `<table>
             <colgroup>
               <col class="c-id" />
               <col class="c-name" />
-              <col class="c-due" />
+              <col class="c-stock" />
+              <col class="c-unit" />
             </colgroup>
             <thead>
               <tr>
                 <th class="id">${t("id")}</th>
                 <th class="name">${t("name")}</th>
-                <th class="due">${t("due")}</th>
+                <th class="stock"></th>
+                <th class="unit">${t("current_stock")}</th>
               </tr>
             </thead>
             <tbody>${rowsHtml}</tbody>
@@ -48,9 +47,11 @@ export function buildCustomerListDocument(
     }
   `;
 
-  // The due ranges right, sign and all, so the figures end on a common
-  // vertical. Widths live on the colgroup rather than the cells, which is
-  // where `table-layout: fixed` reads them from.
+  // The stock ranges right and its unit ranges left, so the figures end on a
+  // common vertical however long the unit reads. Only the unit column is
+  // headed — the figures share that heading rather than carrying one of their
+  // own. Widths live on the colgroup, which is where `table-layout: fixed`
+  // reads them from.
   //
   // Rows carry no rules — only the header band does, as in the reference.
   const styleCss = `
@@ -60,11 +61,13 @@ export function buildCustomerListDocument(
     th, td { border: none; padding: 2px 4px; overflow-wrap: break-word; }
     th { font-weight: 600; white-space: nowrap; border-top: 1px solid #999; border-bottom: 1px solid #999; }
     .c-id { width: 15%; }
-    .c-name { width: 49%; }
-    .c-due { width: 36%; }
+    .c-name { width: 45%; }
+    .c-stock { width: 15%; }
+    .c-unit { width: 25%; }
     .id { text-align: left; }
     .name { text-align: left; }
-    .due { text-align: right; white-space: nowrap; }
+    .stock { text-align: right; white-space: nowrap; padding-right: 2px; }
+    .unit { text-align: left; white-space: nowrap; padding-left: 2px; }
   `;
 
   return { title, bodyHtml, styleCss, columns: 2 };

@@ -303,6 +303,7 @@ import {
   type ProductInfo,
 } from "../print/invoice";
 import { buildCustomerListDocument } from "../print/customerList";
+import { buildProductListDocument } from "../print/productList";
 
 const emit = defineEmits<{
   (e: "navigate", view: string, opts?: { customerId?: number }): void;
@@ -662,7 +663,12 @@ async function openCustomerList() {
   await window.ahb.openPrintPreview(buildCustomerListDocument(customers));
 }
 
-// Most of these navigate; Cust. List prints instead
+async function openProductList() {
+  const products = await window.ahb.listProducts();
+  await window.ahb.openPrintPreview(buildProductListDocument(products));
+}
+
+// Most of these navigate; the two list buttons print instead
 function onActionClick(btn: {
   key: string;
   page?: string;
@@ -692,7 +698,7 @@ const actionButtons: {
   { key: "v2_cust_form", page: "customers" },
   { key: "v2_item_form", page: "products" },
   { key: "v2_cust_list", handler: () => void openCustomerList() },
-  { key: "v2_item_list", page: "products" },
+  { key: "v2_item_list", handler: () => void openProductList() },
 ];
 
 // Most of these navigate; Total Sell opens its own window instead

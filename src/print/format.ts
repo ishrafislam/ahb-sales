@@ -58,6 +58,25 @@ export function money(n: number): string {
   return currentLang.value === "bn" ? toBengaliDigits(s) : s;
 }
 
+/**
+ * An id or other bare figure: transliterated in Bengali but never grouped,
+ * since "১,০০০" would read as a thousand rather than as slot 1000.
+ */
+export function digits(value: number | string): string {
+  const s = String(value);
+  return currentLang.value === "bn" ? toBengaliDigits(s) : s;
+}
+
+/**
+ * "6", "1,500", "2.5" — a count rather than an amount, so no forced decimals.
+ * Grouped and transliterated the same way as `money`.
+ */
+export function quantity(n: number): string {
+  const value = Number.isFinite(n) ? n : 0;
+  const s = value.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return currentLang.value === "bn" ? toBengaliDigits(s) : s;
+}
+
 /** Customer and product names are user input, so they go through this. */
 export function esc(s: string): string {
   return s

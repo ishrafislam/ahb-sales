@@ -953,6 +953,7 @@ describe("Dashboard v2 — action button navigation", () => {
   let openDailyReportWindow: ReturnType<typeof vi.fn>;
   let openClientSelectWindow: ReturnType<typeof vi.fn>;
   let listCustomers: ReturnType<typeof vi.fn>;
+  let listProducts: ReturnType<typeof vi.fn>;
   let openPrintPreview: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -970,6 +971,18 @@ describe("Dashboard v2 — action button navigation", () => {
         updatedAt: "",
       },
     ]);
+    listProducts = vi.fn(async () => [
+      {
+        id: 10,
+        nameBn: "চানা অরেঞ্জ ট্যাক",
+        unit: "পেকেট",
+        price: 100,
+        stock: 6,
+        active: true,
+        createdAt: "",
+        updatedAt: "",
+      },
+    ]);
     openPrintPreview = vi.fn(async () => "job-1");
     (window as unknown as { ahb: unknown }).ahb = {
       listInvoicesByCustomer: vi.fn(async () => []),
@@ -977,6 +990,7 @@ describe("Dashboard v2 — action button navigation", () => {
       openDailyReportWindow,
       openClientSelectWindow,
       listCustomers,
+      listProducts,
       openPrintPreview,
     };
   });
@@ -1003,7 +1017,6 @@ describe("Dashboard v2 — action button navigation", () => {
     ["History", "customer-history"],
     ["Cust. Form", "customers"],
     ["Item Form", "products"],
-    ["Item List", "products"],
     ["Item Purchase History", "product-purchase-history"],
     ["Item Sale History", "product-sales-history"],
     ["Purchase Entry", "purchase-entry"],
@@ -1083,6 +1096,26 @@ describe("Dashboard v2 — action button navigation", () => {
     };
     expect(doc.title).toBe("Customer List");
     expect(doc.bodyHtml).toContain("বোখে বেকারী");
+    // Half a page each, left then right
+    expect(doc.columns).toBe(2);
+    expect(wrapper.emitted("navigate")).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it("Item List prints the product roll instead of navigating", async () => {
+    const wrapper = mountDashboard();
+    await findButton(wrapper, "Item List").trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(listProducts).toHaveBeenCalledTimes(1);
+    const doc = openPrintPreview.mock.calls[0]![0] as {
+      title: string;
+      bodyHtml: string;
+      columns?: number;
+    };
+    expect(doc.title).toBe("Product List");
+    expect(doc.bodyHtml).toContain("চানা অরেঞ্জ ট্যাক");
+    expect(doc.bodyHtml).toContain('<td class="stock">6</td>');
     // Half a page each, left then right
     expect(doc.columns).toBe(2);
     expect(wrapper.emitted("navigate")).toBeUndefined();
