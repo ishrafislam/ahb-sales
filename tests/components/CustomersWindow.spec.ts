@@ -103,18 +103,18 @@ describe("Customers window", () => {
     // Customer 1 owes 12500 → red, prefixed with the localized taka text
     expect((outstanding().element as HTMLInputElement).disabled).toBe(true);
     expect((outstanding().element as HTMLInputElement).value).toBe(
-      "Tk 12500.00"
+      "TK. 12500.00"
     );
     expect(outstanding().classes()).toContain("text-red-600");
 
     // Customer 3 paid extra → green, shown unsigned
     await selectRow(wrapper, 3);
-    expect((outstanding().element as HTMLInputElement).value).toBe("Tk 250.00");
+    expect((outstanding().element as HTMLInputElement).value).toBe("TK. 250.00");
     expect(outstanding().classes()).toContain("text-green-600");
 
     // Customer 4 settled → neutral
     await selectRow(wrapper, 4);
-    expect((outstanding().element as HTMLInputElement).value).toBe("Tk 0.00");
+    expect((outstanding().element as HTMLInputElement).value).toBe("TK. 0.00");
     expect(outstanding().classes()).not.toContain("text-red-600");
     expect(outstanding().classes()).not.toContain("text-green-600");
     wrapper.unmount();

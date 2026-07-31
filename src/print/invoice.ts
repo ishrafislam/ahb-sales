@@ -7,13 +7,10 @@ import {
   DEFAULT_MARGINS,
   type PrintDocument,
 } from "./document";
+import { toBengaliDigits } from "./format";
 
 function fmt(n: number): string {
   return Number.isFinite(n) ? n.toFixed(2) : "0.00";
-}
-
-function toBengaliDigits(s: string): string {
-  return s.replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[+d]);
 }
 
 function fmtReceiptDate(

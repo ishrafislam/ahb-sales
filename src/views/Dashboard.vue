@@ -302,6 +302,7 @@ import {
   buildInvoiceDocument,
   type ProductInfo,
 } from "../print/invoice";
+import { buildCustomerListDocument } from "../print/customerList";
 
 const emit = defineEmits<{
   (e: "navigate", view: string, opts?: { customerId?: number }): void;
@@ -656,7 +657,21 @@ function parseCustomerId(): number | undefined {
   return id;
 }
 
-function onActionClick(btn: { key: string; page?: string }) {
+async function openCustomerList() {
+  const customers = await window.ahb.listCustomers();
+  await window.ahb.openPrintPreview(buildCustomerListDocument(customers));
+}
+
+// Most of these navigate; Cust. List prints instead
+function onActionClick(btn: {
+  key: string;
+  page?: string;
+  handler?: () => void;
+}) {
+  if (btn.handler) {
+    btn.handler();
+    return;
+  }
   if (!btn.page) return;
   const id = btn.page === "customer-history" ? parseCustomerId() : undefined;
   if (id !== undefined) {
@@ -666,13 +681,17 @@ function onActionClick(btn: { key: string; page?: string }) {
   }
 }
 
-const actionButtons: { key: string; page?: string }[] = [
+const actionButtons: {
+  key: string;
+  page?: string;
+  handler?: () => void;
+}[] = [
   { key: "v2_history", page: "customer-history" },
   // TODO(revamp/v2): action undecided
   { key: "v2_refresh" },
   { key: "v2_cust_form", page: "customers" },
   { key: "v2_item_form", page: "products" },
-  { key: "v2_cust_list", page: "customers" },
+  { key: "v2_cust_list", handler: () => void openCustomerList() },
   { key: "v2_item_list", page: "products" },
 ];
 

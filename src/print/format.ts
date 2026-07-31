@@ -38,13 +38,24 @@ export function shortDate(ddMmYyyy: string): string {
   });
 }
 
-/** "8,220.00", in Bengali digits when the app is in Bengali. */
+export function toBengaliDigits(s: string): string {
+  return s.replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[+d]!);
+}
+
+/**
+ * "8,220.00", in Bengali digits when the app is in Bengali.
+ *
+ * The grouping is always Western three-digit, transliterated afterwards
+ * rather than formatted with the bn-BD locale, which would group by lakh —
+ * "১,০১,০১৩.০০" where the ledgers this replaces read "১০১,০১৩.০০".
+ */
 export function money(n: number): string {
   const value = Number.isFinite(n) ? n : 0;
-  return value.toLocaleString(locale(), {
+  const s = value.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  return currentLang.value === "bn" ? toBengaliDigits(s) : s;
 }
 
 /** Customer and product names are user input, so they go through this. */

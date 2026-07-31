@@ -952,17 +952,32 @@ describe("Dashboard v2 — action button navigation", () => {
   let openTotalSellWindow: ReturnType<typeof vi.fn>;
   let openDailyReportWindow: ReturnType<typeof vi.fn>;
   let openClientSelectWindow: ReturnType<typeof vi.fn>;
+  let listCustomers: ReturnType<typeof vi.fn>;
+  let openPrintPreview: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     currentLang.value = "en";
     openTotalSellWindow = vi.fn(async () => undefined);
     openDailyReportWindow = vi.fn(async () => undefined);
     openClientSelectWindow = vi.fn(async () => undefined);
+    listCustomers = vi.fn(async () => [
+      {
+        id: 7,
+        nameBn: "বোখে বেকারী",
+        outstanding: 101013,
+        active: true,
+        createdAt: "",
+        updatedAt: "",
+      },
+    ]);
+    openPrintPreview = vi.fn(async () => "job-1");
     (window as unknown as { ahb: unknown }).ahb = {
       listInvoicesByCustomer: vi.fn(async () => []),
       openTotalSellWindow,
       openDailyReportWindow,
       openClientSelectWindow,
+      listCustomers,
+      openPrintPreview,
     };
   });
 
@@ -987,7 +1002,6 @@ describe("Dashboard v2 — action button navigation", () => {
   const wiredButtons: [label: string, page: string][] = [
     ["History", "customer-history"],
     ["Cust. Form", "customers"],
-    ["Cust. List", "customers"],
     ["Item Form", "products"],
     ["Item List", "products"],
     ["Item Purchase History", "product-purchase-history"],
@@ -1053,6 +1067,25 @@ describe("Dashboard v2 — action button navigation", () => {
     await findButton(wrapper, "Total Sell").trigger("click");
 
     expect(openTotalSellWindow).toHaveBeenCalledTimes(1);
+    wrapper.unmount();
+  });
+
+  it("Cust. List prints the customer roll instead of navigating", async () => {
+    const wrapper = mountDashboard();
+    await findButton(wrapper, "Cust. List").trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(listCustomers).toHaveBeenCalledTimes(1);
+    const doc = openPrintPreview.mock.calls[0]![0] as {
+      title: string;
+      bodyHtml: string;
+      columns?: number;
+    };
+    expect(doc.title).toBe("Customer List");
+    expect(doc.bodyHtml).toContain("বোখে বেকারী");
+    // Half a page each, left then right
+    expect(doc.columns).toBe(2);
+    expect(wrapper.emitted("navigate")).toBeUndefined();
     wrapper.unmount();
   });
 
