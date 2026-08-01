@@ -196,6 +196,25 @@ describe("Print preview window", () => {
     wrapper.unmount();
   });
 
+  it("opens the margins window from the Print button, the shortcut's only visible sign", async () => {
+    const wrapper = await mountView();
+    const button = wrapper.find('[data-role="print"]');
+
+    expect(button.text()).toBe("Print");
+    await button.trigger("click");
+
+    expect(openPrintMargins).toHaveBeenCalledWith("job-1");
+    wrapper.unmount();
+  });
+
+  it("labels the Print button in the current language", async () => {
+    currentLang.value = "bn";
+    const wrapper = await mountView();
+
+    expect(wrapper.find('[data-role="print"]').text()).toBe("প্রিন্ট");
+    wrapper.unmount();
+  });
+
   it("re-composes when the margins change for this job", async () => {
     const wrapper = await mountView();
 

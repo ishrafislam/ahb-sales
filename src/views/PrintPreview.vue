@@ -87,6 +87,21 @@
       >
         {{ Math.round(zoom * 100) }}%
       </span>
+      <!-- Kept off the zoom group so it does not read as a third stepper -->
+      <span
+        class="w-px self-stretch bg-gray-200 dark:bg-gray-700"
+        aria-hidden="true"
+      ></span>
+      <!-- Printing itself lives in the margins dialog; this is the only thing
+           on screen that says so -->
+      <button
+        type="button"
+        :class="printButtonClass"
+        data-role="print"
+        @click="openMargins"
+      >
+        {{ t("print") }}
+      </button>
     </div>
   </div>
 </template>
@@ -201,18 +216,23 @@ onUnmounted(() => {
   if (off) off();
 });
 
+function openMargins() {
+  void window.ahb.openPrintMargins(jobId);
+}
+
 useKeyboardShortcuts([
   {
     key: "p",
     ctrl: true,
-    handler: () => {
-      void window.ahb.openPrintMargins(jobId);
-    },
+    handler: openMargins,
     description: "Page margins",
   },
 ]);
 
 const canvasRef = ref<HTMLElement | null>(null);
+
+const printButtonClass =
+  "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-1.5 px-4 text-sm dark:text-gray-100";
 
 const stepButtonClass =
   "w-8 h-8 leading-none bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";

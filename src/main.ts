@@ -826,9 +826,18 @@ ipcMain.handle(
   }
 );
 
-ipcMain.handle("print:run", async (_e, id: string, margins: PrintMargins) =>
-  printService.print(id, margins)
-);
+// The document has reached the printer, so the preview has done its job.
+// Closing it takes the margins dialog and the job itself with it. Only main
+// knows which window owns the job, so the close happens here rather than in
+// the dialog that asked for the print.
+ipcMain.handle("print:run", async (_e, id: string, margins: PrintMargins) => {
+  const res = await printService.print(id, margins);
+  if (res.success) {
+    const preview = printPreviewWindows.get(id);
+    if (preview && !preview.isDestroyed()) preview.close();
+  }
+  return res;
+});
 
 ipcMain.handle("window:open-print-margins", async (e, jobId: string) => {
   await openPrintMarginsWindow(e.sender, jobId);
