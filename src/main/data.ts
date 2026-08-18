@@ -1,4 +1,9 @@
-import { MIN_PRODUCT_ID, MAX_PRODUCT_ID } from "../constants/business";
+import {
+  MIN_PRODUCT_ID,
+  MAX_PRODUCT_ID,
+  MIN_CUSTOMER_ID,
+  MAX_CUSTOMER_ID,
+} from "../constants/business";
 import { nowIso, toDDMMYYYY } from "../utils/date";
 
 export type Lang = "bn" | "en";
@@ -49,6 +54,8 @@ export function initData(): AhbDataV1 {
 
 // Helpers
 const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
+// A report's DD-MM-YYYY back to a sortable YYYY-MM-DD
+const ymdOf = (ddMmYyyy: string) => ddMmYyyy.split("-").reverse().join("-");
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const isoToYmd = (iso: string) => {
   const d = new Date(iso);
@@ -96,11 +103,20 @@ export type Invoice = {
   totals: { subtotal: number; net: number };
   // Phase 3: Payments & dues
   paid: number; // amount paid against this invoice (may also cover previous due)
+  payments?: InvoicePayment[]; // individual payments summing to paid
   previousDue: number; // customer's outstanding before posting this invoice
   currentDue: number; // customer's outstanding after posting this invoice
   status: "posted"; // Phase 2: only posted receipts
   createdAt: string;
   updatedAt: string;
+};
+
+export type InvoicePayment = {
+  id: string;
+  date: string; // ISO
+  amount: number;
+  notes?: string;
+  createdAt: string;
 };
 
 export type Payment = {
@@ -123,18 +139,20 @@ export type PostInvoiceInput = {
   discount?: number;
   paid?: number;
   notes?: string;
+  // Sell to an empty customer slot: create the customer at that id instead
+  // of failing when no record exists yet.
+  createMissingCustomer?: boolean;
 };
 
-export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
-  ensurePhase2(data);
-  const date = input.date ? new Date(input.date) : new Date();
-  if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
-  const hasCustomer =
-    input.customerId !== null && input.customerId !== undefined;
-  const customer = hasCustomer
-    ? data.customers.find((c) => c.id === (input.customerId as number))
-    : undefined;
-  if (hasCustomer && !customer) throw new Error("Customer not found");
+// Shared between postInvoice and updateInvoice: build and validate the
+// invoice body (lines, totals, discount, paid, dues) without mutating state.
+function buildInvoiceBody(
+  data: AhbDataV1,
+  input: PostInvoiceInput,
+  previousDue: number,
+  hasCustomer: boolean,
+  allowOverpay = false
+) {
   if (!Array.isArray(input.lines) || input.lines.length === 0)
     throw new Error("At least one line item is required");
 
@@ -166,17 +184,82 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
     throw new Error("Discount must be a non-negative number");
   if (discount > subtotal) throw new Error("Discount cannot exceed subtotal");
   const net = ceil2(subtotal - discount);
-  const previousDue = hasCustomer
-    ? ceil2(Number(customer!.outstanding || 0))
-    : 0;
   const paid = Number(input.paid ?? 0);
   if (!Number.isFinite(paid) || paid < 0)
     throw new Error("Paid must be a non-negative number");
   const maxPayable = ceil2(previousDue + net);
-  if (paid > maxPayable)
+  if (!allowOverpay && paid > maxPayable)
     throw new Error("Paid amount cannot exceed previous due plus net bill");
-  const invoiceDue = Math.max(0, ceil2(net - paid));
+  // With allowOverpay (edit of an invoice carrying accumulated payments), the
+  // excess reduces previous due and may go negative (customer credit).
+  const invoiceDue = allowOverpay
+    ? ceil2(net - paid)
+    : Math.max(0, ceil2(net - paid));
   const currentDue = hasCustomer ? ceil2(previousDue + invoiceDue) : 0;
+
+  return { lines, subtotal, discount, net, paid, currentDue };
+}
+
+// Adjust product stock by the invoice lines: sign -1 applies the sale
+// (decrement), sign +1 reverts it.
+function applyStock(data: AhbDataV1, lines: InvoiceLine[], sign: 1 | -1) {
+  for (const l of lines) {
+    const idx = data.products.findIndex((p) => p.id === l.productId);
+    if (idx === -1) continue; // Should not happen as validated earlier
+    const prod = data.products[idx];
+    if (!prod) continue; // Additional safety check
+    data.products[idx] = {
+      ...prod,
+      stock: prod.stock + sign * l.quantity,
+      updatedAt: nowIso(),
+    };
+  }
+}
+
+function setCustomerOutstanding(
+  data: AhbDataV1,
+  customerId: number,
+  outstanding: number
+) {
+  const custIdx = data.customers.findIndex((c) => c.id === customerId);
+  if (custIdx === -1) return;
+  data.customers[custIdx] = {
+    ...data.customers[custIdx]!,
+    outstanding,
+    updatedAt: nowIso(),
+  };
+}
+
+export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
+  ensurePhase2(data);
+  const date = input.date ? new Date(input.date) : new Date();
+  if (Number.isNaN(date.getTime())) throw new Error("Invalid date");
+  const hasCustomer =
+    input.customerId !== null && input.customerId !== undefined;
+  let customer = hasCustomer
+    ? data.customers.find((c) => c.id === (input.customerId as number))
+    : undefined;
+  // Selling to an empty slot creates the customer on the spot; the name and
+  // contact details are filled in later from the customer form. The record is
+  // only created once the invoice body validates, so a rejected post never
+  // leaves a stray customer behind.
+  const newCustomerId = hasCustomer && !customer ? (input.customerId as number) : null;
+  if (newCustomerId !== null) {
+    if (!input.createMissingCustomer) throw new Error("Customer not found");
+    if (
+      !Number.isInteger(newCustomerId) ||
+      newCustomerId < MIN_CUSTOMER_ID ||
+      newCustomerId > MAX_CUSTOMER_ID
+    ) {
+      throw new Error("Customer ID out of range");
+    }
+  }
+
+  const previousDue = customer ? ceil2(Number(customer.outstanding || 0)) : 0;
+  const body = buildInvoiceBody(data, input, previousDue, hasCustomer);
+  if (newCustomerId !== null) {
+    customer = addCustomer(data, { id: newCustomerId, nameBn: "" });
+  }
 
   // Stock check removed: allow negative stock (policy change)
 
@@ -187,52 +270,179 @@ export function postInvoice(data: AhbDataV1, input: PostInvoiceInput): Invoice {
     no: invoiceNo,
     date: date.toISOString(),
     customerId: hasCustomer ? customer!.id : null,
-    lines,
-    discount,
+    lines: body.lines,
+    discount: body.discount,
     notes: input.notes?.trim() || undefined,
-    totals: { subtotal, net },
-    paid,
+    totals: { subtotal: body.subtotal, net: body.net },
+    paid: body.paid,
     previousDue,
-    currentDue,
+    currentDue: body.currentDue,
     status: "posted",
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };
 
-  // Persist and update stock
+  // Persist, update stock and customer outstanding
   data.invoices.push(inv);
-  for (const l of lines) {
-    const idx = data.products.findIndex((p) => p.id === l.productId);
-    if (idx === -1) continue; // Should not happen as validated earlier
-    const prod = data.products[idx];
-    if (!prod) continue; // Additional safety check
-    const updated: Product = {
-      id: prod.id,
-      nameBn: prod.nameBn,
-      nameEn: prod.nameEn,
-      description: prod.description,
-      unit: prod.unit,
-      price: prod.price,
-      stock: prod.stock - l.quantity,
-      active: prod.active,
-      createdAt: prod.createdAt,
-      updatedAt: nowIso(),
-    };
-    data.products[idx] = updated;
-  }
-  // Update customer outstanding (currentDue)
+  applyStock(data, body.lines, -1);
   if (hasCustomer && customer) {
-    const custIdx = data.customers.findIndex((c) => c.id === customer.id);
-    if (custIdx !== -1) {
-      data.customers[custIdx] = {
-        ...customer,
-        outstanding: currentDue,
-        updatedAt: nowIso(),
-      };
-    }
+    setCustomerOutstanding(data, customer.id, body.currentDue);
   }
 
   return inv;
+}
+
+/**
+ * Update the customer's latest invoice in place: reverts the old invoice's
+ * stock and outstanding effects, then re-applies with the new input. The
+ * stored previousDue snapshot is kept as the recomputation base, so only
+ * the latest invoice (highest no for that customer) can be edited safely.
+ */
+export function updateInvoice(
+  data: AhbDataV1,
+  invoiceId: string,
+  input: PostInvoiceInput
+): Invoice {
+  ensurePhase2(data);
+  const idx = data.invoices.findIndex((i) => i.id === invoiceId);
+  if (idx === -1) throw new Error("Invoice not found");
+  const old = data.invoices[idx]!;
+  const hasNewer = data.invoices.some(
+    (i) => i.customerId === old.customerId && i.no > old.no
+  );
+  if (hasNewer) throw new Error("Only the latest invoice can be edited");
+
+  const hasCustomer = old.customerId !== null;
+  // The invoice stays with its original customer; recompute against the
+  // stored previousDue snapshot. Validation happens before any mutation.
+  const body = buildInvoiceBody(data, input, old.previousDue, hasCustomer, true);
+
+  applyStock(data, old.lines, 1); // revert the old sale
+  const updated: Invoice = {
+    ...old,
+    lines: body.lines,
+    discount: body.discount,
+    notes: input.notes?.trim() || undefined,
+    totals: { subtotal: body.subtotal, net: body.net },
+    paid: body.paid,
+    currentDue: body.currentDue,
+    updatedAt: nowIso(),
+  };
+  data.invoices[idx] = updated;
+  applyStock(data, body.lines, -1);
+  if (hasCustomer) {
+    setCustomerOutstanding(data, old.customerId!, body.currentDue);
+  }
+
+  return updated;
+}
+
+export type AddInvoicePaymentInput = {
+  amount: number;
+  notes?: string;
+};
+
+// Shared by addInvoicePayment/updateInvoicePayment: locate and guard the
+// invoice, validate the amount, and apply the single payment record.
+function applyInvoicePayment(
+  data: AhbDataV1,
+  invoiceId: string,
+  input: AddInvoicePaymentInput,
+  buildPayment: (
+    existing: InvoicePayment | undefined,
+    amount: number,
+    notes: string | undefined,
+    now: string
+  ) => InvoicePayment
+): Invoice {
+  ensurePhase2(data);
+  const idx = data.invoices.findIndex((i) => i.id === invoiceId);
+  if (idx === -1) throw new Error("Invoice not found");
+  const old = data.invoices[idx]!;
+  const hasNewer = data.invoices.some(
+    (i) => i.customerId === old.customerId && i.no > old.no
+  );
+  if (hasNewer)
+    throw new Error("Only the latest invoice can receive payments");
+
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount <= 0)
+    throw new Error("Payment amount must be positive");
+
+  const now = nowIso();
+  const payment = buildPayment(
+    old.payments?.[0],
+    ceil2(amount),
+    input.notes?.trim() || undefined,
+    now
+  );
+  const paid = payment.amount;
+  const hasCustomer = old.customerId !== null;
+  const currentDue = hasCustomer
+    ? ceil2(old.previousDue + old.totals.net - paid)
+    : 0;
+  const updated: Invoice = {
+    ...old,
+    payments: [payment],
+    paid,
+    currentDue,
+    updatedAt: now,
+  };
+  data.invoices[idx] = updated;
+  if (hasCustomer) {
+    setCustomerOutstanding(data, old.customerId!, currentDue);
+  }
+  return updated;
+}
+
+/**
+ * Record a payment against an invoice. Every invoice keeps a single
+ * payment record: adding merges into it (amounts summed, notes replaced
+ * when provided). `paid` mirrors that record; currentDue is recomputed as
+ * previousDue + net - paid and may go negative (customer credit) since
+ * overpayment is allowed. Restricted to the customer's latest invoice for
+ * the same reason as updateInvoice.
+ */
+export function addInvoicePayment(
+  data: AhbDataV1,
+  invoiceId: string,
+  input: AddInvoicePaymentInput
+): Invoice {
+  return applyInvoicePayment(
+    data,
+    invoiceId,
+    input,
+    (existing, amount, notes, now) =>
+      existing
+        ? {
+            ...existing,
+            amount: ceil2(existing.amount + amount),
+            notes: notes ?? existing.notes,
+            date: now,
+          }
+        : { id: genId(), date: now, amount, notes, createdAt: now }
+  );
+}
+
+/**
+ * Correct the invoice's single payment record: the amount replaces the
+ * previous one (not added), notes are replaced. The record's original
+ * date/createdAt are kept.
+ */
+export function updateInvoicePayment(
+  data: AhbDataV1,
+  invoiceId: string,
+  input: AddInvoicePaymentInput
+): Invoice {
+  return applyInvoicePayment(
+    data,
+    invoiceId,
+    input,
+    (existing, amount, notes) => {
+      if (!existing) throw new Error("Invoice has no payment to edit");
+      return { ...existing, amount, notes };
+    }
+  );
 }
 
 export function assertProductId(id: number) {
@@ -693,6 +903,7 @@ export type MoneyTxnDayWiseRow = {
   due: number; // netBill - paid (ceil2, non-negative)
   previousDue: number; // from earliest invoice for this customer on the day
   totalDue: number; // previousDue + due
+  hasInvoice: boolean; // false when the day holds only a standalone payment
 };
 
 export type MoneyTxnDay = {
@@ -729,11 +940,38 @@ export function reportMoneyTransactionsDayWise(
     netBill: number;
     paid: number;
     due: number;
-    earliestIso: string;
+    earliestIso?: string;
     earliestPrevDue: number;
+    hasInvoice: boolean;
   };
 
   const dayMap = new Map<string, Map<number, Acc>>(); // ymd -> customerId (0=anon) -> Acc
+
+  // A payment-only accumulator carries no previous-due snapshot: a Payment
+  // records nothing but the amount, and the customer's outstanding is today's
+  // figure rather than that day's.
+  function accFor(ymd: string, customerId: number): Acc {
+    let custMap = dayMap.get(ymd);
+    if (!custMap) {
+      custMap = new Map();
+      dayMap.set(ymd, custMap);
+    }
+    let acc = custMap.get(customerId);
+    if (!acc) {
+      acc = {
+        bill: 0,
+        discount: 0,
+        netBill: 0,
+        paid: 0,
+        due: 0,
+        earliestPrevDue: 0,
+        hasInvoice: false,
+      };
+      custMap.set(customerId, acc);
+    }
+    return acc;
+  }
+
   for (const inv of data.invoices ?? []) {
     const ymd = isoToYmd(inv.date);
     if (ymd < start || ymd > end) continue;
@@ -749,34 +987,32 @@ export function reportMoneyTransactionsDayWise(
     const paid = ceil2(inv.paid || 0);
     const due = Math.max(0, ceil2(net - paid));
 
-    let custMap = dayMap.get(ymd);
-    if (!custMap) {
-      custMap = new Map();
-      dayMap.set(ymd, custMap);
-    }
-    const cid = inv.customerId ?? 0;
-    let acc = custMap.get(cid);
-    if (!acc) {
-      acc = {
-        bill: 0,
-        discount: 0,
-        netBill: 0,
-        paid: 0,
-        due: 0,
-        earliestIso: inv.date,
-        earliestPrevDue: ceil2(inv.previousDue || 0),
-      };
-      custMap.set(cid, acc);
+    const acc = accFor(ymd, inv.customerId ?? 0);
+    if (!acc.hasInvoice) {
+      acc.hasInvoice = true;
+      acc.earliestIso = inv.date;
+      acc.earliestPrevDue = ceil2(inv.previousDue || 0);
     }
     acc.bill = ceil2(acc.bill + subtotal);
     acc.discount = ceil2(acc.discount + discount);
     acc.netBill = ceil2(acc.netBill + net);
     acc.paid = ceil2(acc.paid + paid);
     acc.due = ceil2(acc.due + due);
-    if (inv.date < acc.earliestIso) {
+    if (acc.earliestIso && inv.date < acc.earliestIso) {
       acc.earliestIso = inv.date;
       acc.earliestPrevDue = ceil2(inv.previousDue || 0);
     }
+  }
+
+  // Deposits taken against an old due carry no invoice, so they would
+  // otherwise be missing from the day's paid column entirely.
+  for (const p of data.payments ?? []) {
+    const ymd = isoToYmd(p.date);
+    if (ymd < start || ymd > end) continue;
+    const amount = ceil2(p.amount || 0);
+    if (amount <= 0) continue;
+    const acc = accFor(ymd, p.customerId);
+    acc.paid = ceil2(acc.paid + amount);
   }
 
   const days: MoneyTxnDay[] = [];
@@ -795,6 +1031,7 @@ export function reportMoneyTransactionsDayWise(
         due: acc.due,
         previousDue,
         totalDue,
+        hasInvoice: acc.hasInvoice,
       });
     }
     // Sort rows by customer name/id for consistency
@@ -826,6 +1063,109 @@ export function reportMoneyTransactionsDayWise(
     return as < bs ? 1 : as > bs ? -1 : 0;
   });
   return { days };
+}
+
+// -----------------------
+// Client ledger: every transaction in range, grouped by client
+// -----------------------
+
+export type ClientLedgerRow = {
+  date: string; // DD-MM-YYYY
+  bill: number; // subtotal
+  discount: number;
+  netBill: number;
+  paid: number;
+  previousDue: number; // snapshot from the invoice
+  hasInvoice: boolean; // false for a standalone deposit
+};
+
+export type ClientLedgerClient = {
+  customerId: number; // 0 indicates anonymous
+  customerName?: string;
+  /** The customer's outstanding today, not as of the end of the range. */
+  currentDue: number;
+  rows: ClientLedgerRow[];
+};
+
+export type ClientLedgerReport = { clients: ClientLedgerClient[] };
+
+export function reportClientLedger(
+  data: AhbDataV1,
+  from: string,
+  to: string,
+  customerId?: number
+): ClientLedgerReport {
+  ensurePhase2(data);
+  const customerById = new Map(data.customers.map((c) => [c.id, c]));
+  const wanted = (id: number) => customerId === undefined || id === customerId;
+
+  // customerId (0 = anonymous) -> rows
+  const byCustomer = new Map<number, ClientLedgerRow[]>();
+  const rowsFor = (id: number) => {
+    let rows = byCustomer.get(id);
+    if (!rows) {
+      rows = [];
+      byCustomer.set(id, rows);
+    }
+    return rows;
+  };
+
+  for (const inv of data.invoices ?? []) {
+    const ymd = isoToYmd(inv.date);
+    if (ymd < from || ymd > to) continue;
+    const id = inv.customerId ?? 0;
+    if (!wanted(id)) continue;
+    const bill = ceil2(
+      inv.totals?.subtotal ??
+        inv.lines.reduce(
+          (s, l) => s + (l.lineTotal || ceil2(l.quantity * l.rate)),
+          0
+        )
+    );
+    const discount = ceil2(inv.discount || 0);
+    rowsFor(id).push({
+      date: toDDMMYYYY(ymd),
+      bill,
+      discount,
+      netBill: ceil2(inv.totals?.net ?? Math.max(0, bill - discount)),
+      paid: ceil2(inv.paid || 0),
+      previousDue: ceil2(inv.previousDue || 0),
+      hasInvoice: true,
+    });
+  }
+
+  // A deposit against an old due has no invoice behind it, and no previous-due
+  // snapshot to report either.
+  for (const p of data.payments ?? []) {
+    const ymd = isoToYmd(p.date);
+    if (ymd < from || ymd > to) continue;
+    if (!wanted(p.customerId)) continue;
+    const amount = ceil2(p.amount || 0);
+    if (amount <= 0) continue;
+    rowsFor(p.customerId).push({
+      date: toDDMMYYYY(ymd),
+      bill: 0,
+      discount: 0,
+      netBill: 0,
+      paid: amount,
+      previousDue: 0,
+      hasInvoice: false,
+    });
+  }
+
+  const clients: ClientLedgerClient[] = [];
+  for (const [id, rows] of byCustomer) {
+    // A ledger reads forwards
+    rows.sort((a, b) => ymdOf(a.date).localeCompare(ymdOf(b.date)));
+    clients.push({
+      customerId: id,
+      customerName: customerById.get(id)?.nameBn,
+      currentDue: ceil2(customerById.get(id)?.outstanding ?? 0),
+      rows,
+    });
+  }
+  clients.sort((a, b) => a.customerId - b.customerId);
+  return { clients };
 }
 
 // -----------------------
@@ -892,4 +1232,63 @@ export function reportDailyPayments(
   });
 
   return { header: { date: toDDMMYYYY(target) }, rows, totals };
+}
+
+// -----------------------
+// Total sell: quantity sold per item, per day
+// -----------------------
+
+export type TotalSellItemRow = {
+  productId: number;
+  productNameBn?: string;
+  unit?: string;
+  quantity: number;
+};
+
+export type TotalSellDay = {
+  date: string; // DD-MM-YYYY
+  rows: TotalSellItemRow[];
+};
+
+export type TotalSellReport = { days: TotalSellDay[] };
+
+export function reportTotalSell(
+  data: AhbDataV1,
+  from: string,
+  to: string
+): TotalSellReport {
+  ensurePhase2(data);
+  const productById = new Map(data.products.map((p) => [p.id, p]));
+
+  // ymd -> productId -> quantity
+  const dayMap = new Map<string, Map<number, number>>();
+  for (const inv of data.invoices ?? []) {
+    const ymd = isoToYmd(inv.date);
+    if (ymd < from || ymd > to) continue;
+    let byProduct = dayMap.get(ymd);
+    if (!byProduct) {
+      byProduct = new Map();
+      dayMap.set(ymd, byProduct);
+    }
+    for (const ln of inv.lines) {
+      const qty = Number(ln.quantity) || 0;
+      byProduct.set(ln.productId, ceil2((byProduct.get(ln.productId) ?? 0) + qty));
+    }
+  }
+
+  const days: TotalSellDay[] = [];
+  // Oldest first: the report reads forwards through the range
+  for (const ymd of Array.from(dayMap.keys()).sort()) {
+    const byProduct = dayMap.get(ymd)!;
+    const rows: TotalSellItemRow[] = Array.from(byProduct.entries())
+      .map(([productId, quantity]) => ({
+        productId,
+        productNameBn: productById.get(productId)?.nameBn,
+        unit: productById.get(productId)?.unit,
+        quantity,
+      }))
+      .sort((a, b) => a.productId - b.productId);
+    days.push({ date: toDDMMYYYY(ymd), rows });
+  }
+  return { days };
 }

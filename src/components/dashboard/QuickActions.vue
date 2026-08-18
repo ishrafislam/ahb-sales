@@ -26,10 +26,7 @@ type NavigationPage =
   | "customers"
   | "products"
   | "product-sales-history"
-  | "product-purchase-history"
-  | "report-money-customer"
-  | "report-money-daywise"
-  | "report-daily-payment";
+  | "product-purchase-history";
 
 type Action = {
   page: NavigationPage;

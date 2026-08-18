@@ -1,0 +1,121 @@
+import { describe, it, expect, beforeEach } from "vitest";
+import { buildInvoiceDocument } from "../src/print/invoice";
+import { currentLang } from "../src/i18n";
+import type { Invoice } from "../src/main/data";
+
+const invoice = {
+  id: "inv-1",
+  no: 42,
+  date: "2026-07-30T10:00:00.000Z",
+  customerId: 100,
+  lines: [
+    {
+      productId: 1,
+      quantity: 25,
+      unit: "Bag",
+      rate: 466,
+      lineTotal: 11650,
+    },
+    {
+      productId: 3,
+      quantity: 2,
+      unit: "kg",
+      rate: 12.5,
+      lineTotal: 25,
+    },
+  ],
+  totals: { subtotal: 11675, net: 11175 },
+  discount: 500,
+  previousDue: 300,
+  paid: 1000,
+  currentDue: 10475,
+} as unknown as Invoice;
+
+const opts = {
+  businessName: "ABDUL HAMID AND BROTHERS",
+  customerName: "Karim Store",
+  products: {
+    1: { name: "Item 1", unit: "Bag" },
+    3: { name: "Item 3", unit: "kg" },
+  },
+};
+
+describe("buildInvoiceDocument", () => {
+  beforeEach(() => {
+    currentLang.value = "en";
+  });
+
+  it("titles the document with the invoice number", () => {
+    expect(buildInvoiceDocument(invoice, opts).title).toContain("42");
+  });
+
+  it("renders the header, both lines and the totals", () => {
+    const { bodyHtml } = buildInvoiceDocument(invoice, opts);
+
+    expect(bodyHtml).toContain("ABDUL HAMID AND BROTHERS");
+    expect(bodyHtml).toContain("Karim Store");
+    expect(bodyHtml).toContain("Item 1");
+    expect(bodyHtml).toContain("25 Bag");
+    expect(bodyHtml).toContain("Item 3");
+    expect(bodyHtml).toContain("2 kg");
+    // net, previous due, grand total, paid, current due
+    expect(bodyHtml).toContain("11175.00");
+    expect(bodyHtml).toContain("300.00");
+    expect(bodyHtml).toContain("11475.00");
+    expect(bodyHtml).toContain("1000.00");
+    expect(bodyHtml).toContain("10475.00");
+  });
+
+  it("falls back to the product id when a name is missing", () => {
+    const { bodyHtml } = buildInvoiceDocument(invoice, {
+      ...opts,
+      products: {},
+    });
+
+    expect(bodyHtml).toContain("<td>1</td>");
+    expect(bodyHtml).toContain("<td>3</td>");
+  });
+
+  it("includes the notes block only when there are notes", () => {
+    expect(buildInvoiceDocument(invoice, opts).bodyHtml).not.toContain(
+      "class=\"notes\""
+    );
+
+    const withNotes = buildInvoiceDocument(
+      { ...invoice, notes: "Deliver Friday" } as Invoice,
+      opts
+    );
+    expect(withNotes.bodyHtml).toContain("Deliver Friday");
+  });
+
+  it("dates the previous due when a prior invoice is supplied", () => {
+    const { bodyHtml } = buildInvoiceDocument(invoice, {
+      ...opts,
+      previousDueDate: "2026-07-01T10:00:00.000Z",
+    });
+
+    expect(bodyHtml).toContain("01/07/2026");
+  });
+
+  it("leaves page setup to the print module", () => {
+    const { styleCss, pageSize } = buildInvoiceDocument(invoice, opts);
+
+    // The module owns @page, the body box and the page size
+    expect(styleCss).not.toContain("@page");
+    expect(styleCss).not.toMatch(/(^|[^.\w])body\s*\{/);
+    expect(pageSize).toBeUndefined();
+    // Every rule is scoped to the receipt
+    expect(styleCss).toContain(".receipt {");
+    expect(styleCss).toContain("width: 72mm");
+  });
+
+  it("switches digits and font for Bengali", () => {
+    currentLang.value = "bn";
+    const { bodyHtml, styleCss } = buildInvoiceDocument(invoice, opts);
+
+    // Customer id and date render in Bengali digits
+    expect(bodyHtml).toContain("১০০");
+    expect(bodyHtml).toContain("৩০/০৭/২৬");
+    expect(styleCss).toContain("Noto Sans Bengali");
+  });
+});

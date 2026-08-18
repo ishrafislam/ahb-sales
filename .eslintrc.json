@@ -35,6 +35,12 @@
         "import/named": "off"
       }
     },
+    {
+      "files": ["tests/**/*.ts", "tests/**/*.tsx"],
+      "rules": {
+        "vue/one-component-per-file": "off"
+      }
+    },
     { "files": ["src/index.css"], "rules": {} }
   ],
   "rules": {

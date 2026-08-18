@@ -17,6 +17,8 @@ import { SettingsService } from "./main/services/SettingsService";
 import { MenuService } from "./main/services/MenuService";
 import { UpdateService } from "./main/services/UpdateService";
 import { DataService } from "./main/services/DataService";
+import { PrintService } from "./main/services/PrintService";
+import type { PrintDocument, PrintMargins } from "./print/document";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -47,6 +49,9 @@ function getCtx(sender: Electron.WebContents): WindowContext {
 
 const settingsService = new SettingsService();
 const updateService = new UpdateService();
+// Print jobs belong to the app, not to a document, so one service serves all
+// windows.
+const printService = new PrintService(settingsService);
 
 const menuService = new MenuService(
   () => {
@@ -127,6 +132,377 @@ async function createWindow(filePath?: string): Promise<void> {
   }
 
   menuService.buildMenu();
+}
+
+// -----------------------
+// Customer history window (child of a main window, shares its context)
+// -----------------------
+
+const historyWindows = new Map<number, BrowserWindow>();
+
+async function openCustomerHistoryWindow(
+  sender: Electron.WebContents,
+  customerId?: number
+): Promise<void> {
+  const parentCtx = getCtx(sender);
+  const parentId = sender.id;
+
+  const existing = historyWindows.get(parentId);
+  if (existing && !existing.isDestroyed()) {
+    existing.restore();
+    existing.focus();
+    if (customerId !== undefined) {
+      existing.webContents.send("history:load-customer", customerId);
+    }
+    return;
+  }
+
+  const win = new BrowserWindow({
+    width: 1100,
+    height: 700,
+    minWidth: 900,
+    minHeight: 600,
+    parent: parentCtx.win,
+    title: app.getName(),
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
+
+  const webContentsId = win.webContents.id;
+
+  // Share the parent's file/data services so all data IPC routed by
+  // sender id operates on the same open document.
+  contexts.set(webContentsId, {
+    win,
+    fileService: parentCtx.fileService,
+    dataService: parentCtx.dataService,
+  });
+  parentCtx.fileService.attachWindow(win);
+  historyWindows.set(parentId, win);
+
+  win.on("closed", () => {
+    contexts.delete(webContentsId);
+    historyWindows.delete(parentId);
+    parentCtx.fileService.detachWindow(win);
+  });
+
+  const hash =
+    customerId !== undefined
+      ? `customer-history/${customerId}`
+      : "customer-history";
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    await win.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}#${hash}`);
+  } else {
+    await win.loadFile(
+      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+      { hash }
+    );
+  }
+}
+
+// -----------------------
+// Payment / customer windows (children of a main window, share its context)
+// -----------------------
+
+const paymentWindows = new Map<number, BrowserWindow>();
+const editPaymentWindows = new Map<number, BrowserWindow>();
+const customersWindows = new Map<number, BrowserWindow>();
+const productsWindows = new Map<number, BrowserWindow>();
+const purchaseEntryWindows = new Map<number, BrowserWindow>();
+const purchaseHistoryWindows = new Map<number, BrowserWindow>();
+const salesHistoryWindows = new Map<number, BrowserWindow>();
+const totalSellWindows = new Map<number, BrowserWindow>();
+const dailyReportWindows = new Map<number, BrowserWindow>();
+const clientSelectWindows = new Map<number, BrowserWindow>();
+const clientReportWindows = new Map<number, BrowserWindow>();
+const paymentReportWindows = new Map<number, BrowserWindow>();
+// Print windows are keyed by job id, not by opener: printing twice from the
+// same screen must give two previews, not refocus the first.
+const printPreviewWindows = new Map<string, BrowserWindow>();
+const printMarginsWindows = new Map<string, BrowserWindow>();
+
+// Child window sharing the parent's file/data services so all data IPC
+// routed by sender id operates on the same open document.
+async function openChildWindow(
+  sender: Electron.WebContents,
+  registry: Map<number, BrowserWindow>,
+  hash: string,
+  opts: { width: number; height: number; resizable: boolean }
+): Promise<void> {
+  const parentCtx = getCtx(sender);
+  const parentId = sender.id;
+
+  const existing = registry.get(parentId);
+  if (existing && !existing.isDestroyed()) {
+    existing.restore();
+    existing.focus();
+    return;
+  }
+
+  // Anchor to the top-level window: when one small window opens another
+  // (payment → edit payment) the opener may close right away, and a child
+  // window would be destroyed with its parent.
+  const topLevelParent = parentCtx.win.getParentWindow() ?? parentCtx.win;
+  const win = new BrowserWindow({
+    width: opts.width,
+    height: opts.height,
+    resizable: opts.resizable,
+    minimizable: opts.resizable,
+    maximizable: opts.resizable,
+    parent: topLevelParent,
+    title: app.getName(),
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+    },
+  });
+
+  const webContentsId = win.webContents.id;
+
+  contexts.set(webContentsId, {
+    win,
+    fileService: parentCtx.fileService,
+    dataService: parentCtx.dataService,
+  });
+  parentCtx.fileService.attachWindow(win);
+  registry.set(parentId, win);
+
+  win.on("closed", () => {
+    contexts.delete(webContentsId);
+    registry.delete(parentId);
+    parentCtx.fileService.detachWindow(win);
+  });
+
+  await loadWindowRoute(win, hash);
+}
+
+async function loadWindowRoute(
+  win: BrowserWindow,
+  hash: string
+): Promise<void> {
+  if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+    await win.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}#${hash}`);
+  } else {
+    await win.loadFile(
+      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
+      { hash }
+    );
+  }
+}
+
+async function openPaymentWindow(
+  sender: Electron.WebContents,
+  invoiceId: string
+): Promise<void> {
+  await openChildWindow(sender, paymentWindows, `payment/${invoiceId}`, {
+    width: 420,
+    height: 480,
+    resizable: false,
+  });
+}
+
+async function openEditPaymentWindow(
+  sender: Electron.WebContents,
+  invoiceId: string
+): Promise<void> {
+  await openChildWindow(
+    sender,
+    editPaymentWindows,
+    `edit-payment/${invoiceId}`,
+    { width: 420, height: 520, resizable: false }
+  );
+}
+
+async function openCustomersWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, customersWindows, "customers", {
+    width: 780,
+    height: 780,
+    resizable: true,
+  });
+}
+
+async function openProductsWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, productsWindows, "products", {
+    width: 900,
+    height: 720,
+    resizable: true,
+  });
+}
+
+async function openPurchaseEntryWindow(
+  sender: Electron.WebContents,
+  productId?: number
+): Promise<void> {
+  // The item form passes the row it is showing so the window opens on it
+  const hash = productId ? `purchase-entry/${productId}` : "purchase-entry";
+  await openChildWindow(sender, purchaseEntryWindows, hash, {
+    width: 1180,
+    height: 760,
+    resizable: true,
+  });
+}
+
+async function openPurchaseHistoryWindow(
+  sender: Electron.WebContents,
+  productId?: number
+): Promise<void> {
+  const hash = productId ? `purchase-history/${productId}` : "purchase-history";
+  await openChildWindow(sender, purchaseHistoryWindows, hash, {
+    width: 1000,
+    height: 720,
+    resizable: true,
+  });
+}
+
+// The preview owns the job: closing it throws the document away and takes
+// any open margins dialog with it.
+async function openPrintPreviewWindow(
+  sender: Electron.WebContents,
+  doc: PrintDocument
+): Promise<string> {
+  const parentCtx = getCtx(sender);
+  const topLevelParent = parentCtx.win.getParentWindow() ?? parentCtx.win;
+  const id = printService.createJob(doc);
+
+  const win = new BrowserWindow({
+    width: 900,
+    height: 900,
+    resizable: true,
+    parent: topLevelParent,
+    title: app.getName(),
+    webPreferences: { preload: path.join(__dirname, "preload.js") },
+  });
+
+  const webContentsId = win.webContents.id;
+  contexts.set(webContentsId, {
+    win,
+    fileService: parentCtx.fileService,
+    dataService: parentCtx.dataService,
+  });
+  parentCtx.fileService.attachWindow(win);
+  printPreviewWindows.set(id, win);
+
+  win.on("closed", () => {
+    contexts.delete(webContentsId);
+    printPreviewWindows.delete(id);
+    parentCtx.fileService.detachWindow(win);
+    const margins = printMarginsWindows.get(id);
+    if (margins && !margins.isDestroyed()) margins.close();
+    printService.disposeJob(id);
+  });
+
+  await loadWindowRoute(win, `print-preview/${id}`);
+  return id;
+}
+
+async function openPrintMarginsWindow(
+  sender: Electron.WebContents,
+  jobId: string
+): Promise<void> {
+  const existing = printMarginsWindows.get(jobId);
+  if (existing && !existing.isDestroyed()) {
+    existing.restore();
+    existing.focus();
+    return;
+  }
+
+  const parentCtx = getCtx(sender);
+  const win = new BrowserWindow({
+    width: 380,
+    height: 380,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    parent: printPreviewWindows.get(jobId) ?? parentCtx.win,
+    title: app.getName(),
+    webPreferences: { preload: path.join(__dirname, "preload.js") },
+  });
+
+  const webContentsId = win.webContents.id;
+  contexts.set(webContentsId, {
+    win,
+    fileService: parentCtx.fileService,
+    dataService: parentCtx.dataService,
+  });
+  parentCtx.fileService.attachWindow(win);
+  printMarginsWindows.set(jobId, win);
+
+  win.on("closed", () => {
+    contexts.delete(webContentsId);
+    printMarginsWindows.delete(jobId);
+    parentCtx.fileService.detachWindow(win);
+  });
+
+  await loadWindowRoute(win, `print-margins/${jobId}`);
+}
+
+async function openSalesHistoryWindow(
+  sender: Electron.WebContents,
+  productId?: number
+): Promise<void> {
+  const hash = productId ? `sales-history/${productId}` : "sales-history";
+  await openChildWindow(sender, salesHistoryWindows, hash, {
+    width: 1000,
+    height: 720,
+    resizable: true,
+  });
+}
+
+async function openTotalSellWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, totalSellWindows, "total-sell", {
+    width: 460,
+    height: 440,
+    resizable: false,
+  });
+}
+
+async function openDailyReportWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, dailyReportWindows, "daily-report", {
+    width: 460,
+    height: 440,
+    resizable: false,
+  });
+}
+
+async function openPaymentReportWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, paymentReportWindows, "payment-report", {
+    width: 460,
+    height: 440,
+    resizable: false,
+  });
+}
+
+async function openClientSelectWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, clientSelectWindows, "client-select", {
+    width: 420,
+    height: 300,
+    resizable: false,
+  });
+}
+
+async function openClientReportWindow(
+  sender: Electron.WebContents,
+  customerId?: number
+): Promise<void> {
+  const hash =
+    customerId === undefined ? "client-report" : `client-report/${customerId}`;
+  await openChildWindow(sender, clientReportWindows, hash, {
+    width: 460,
+    height: 440,
+    resizable: false,
+  });
 }
 
 // -----------------------
@@ -263,6 +639,9 @@ ipcMain.handle(
     return getCtx(e.sender).dataService.listProducts(opts);
   }
 );
+ipcMain.handle("data:get-product", async (e, id: number) => {
+  return getCtx(e.sender).dataService.getProductById(id) ?? null;
+});
 ipcMain.handle("data:add-product", async (e, p) => {
   return getCtx(e.sender).dataService.addProduct(p);
 });
@@ -276,6 +655,9 @@ ipcMain.handle(
     return getCtx(e.sender).dataService.listCustomers(opts);
   }
 );
+ipcMain.handle("data:get-customer", async (e, id: number) => {
+  return getCtx(e.sender).dataService.getCustomerById(id) ?? null;
+});
 ipcMain.handle("data:add-customer", async (e, c) => {
   return getCtx(e.sender).dataService.addCustomer(c);
 });
@@ -293,6 +675,25 @@ ipcMain.handle(
 ipcMain.handle("data:post-invoice", async (e, payload) => {
   return getCtx(e.sender).dataService.postInvoice(payload);
 });
+
+ipcMain.handle("data:update-invoice", async (e, id: string, payload) => {
+  return getCtx(e.sender).dataService.updateInvoice(id, payload);
+});
+
+ipcMain.handle("data:get-invoice", async (e, id: string) => {
+  return getCtx(e.sender).dataService.getInvoiceById(id);
+});
+
+ipcMain.handle("data:add-invoice-payment", async (e, id: string, payload) => {
+  return getCtx(e.sender).dataService.addInvoicePayment(id, payload);
+});
+
+ipcMain.handle(
+  "data:update-invoice-payment",
+  async (e, id: string, payload) => {
+    return getCtx(e.sender).dataService.updateInvoicePayment(id, payload);
+  }
+);
 
 ipcMain.handle(
   "data:list-invoices-by-customer",
@@ -325,6 +726,121 @@ ipcMain.handle("report:money-daywise", async (e, from: string, to: string) => {
 
 ipcMain.handle("report:daily-payment", async (e, date: string) => {
   return getCtx(e.sender).dataService.reportDailyPayments(date);
+});
+
+ipcMain.handle("report:total-sell", async (e, from: string, to: string) => {
+  return getCtx(e.sender).dataService.reportTotalSell(from, to);
+});
+
+ipcMain.handle(
+  "report:client-ledger",
+  async (e, from: string, to: string, customerId?: number) => {
+    return getCtx(e.sender).dataService.reportClientLedger(from, to, customerId);
+  }
+);
+
+// Window control
+ipcMain.handle(
+  "window:open-customer-history",
+  async (e, customerId?: number) => {
+    await openCustomerHistoryWindow(e.sender, customerId);
+  }
+);
+
+ipcMain.handle("window:open-payment", async (e, invoiceId: string) => {
+  await openPaymentWindow(e.sender, invoiceId);
+});
+
+ipcMain.handle("window:open-edit-payment", async (e, invoiceId: string) => {
+  await openEditPaymentWindow(e.sender, invoiceId);
+});
+
+ipcMain.handle("window:open-customers", async (e) => {
+  await openCustomersWindow(e.sender);
+});
+
+ipcMain.handle("window:open-products", async (e) => {
+  await openProductsWindow(e.sender);
+});
+
+ipcMain.handle(
+  "window:open-purchase-entry",
+  async (e, productId?: number) => {
+    await openPurchaseEntryWindow(e.sender, productId);
+  }
+);
+
+ipcMain.handle(
+  "window:open-purchase-history",
+  async (e, productId?: number) => {
+    await openPurchaseHistoryWindow(e.sender, productId);
+  }
+);
+
+ipcMain.handle("window:open-sales-history", async (e, productId?: number) => {
+  await openSalesHistoryWindow(e.sender, productId);
+});
+
+ipcMain.handle("window:open-total-sell", async (e) => {
+  await openTotalSellWindow(e.sender);
+});
+
+ipcMain.handle("window:open-daily-report", async (e) => {
+  await openDailyReportWindow(e.sender);
+});
+
+ipcMain.handle("window:open-payment-report", async (e) => {
+  await openPaymentReportWindow(e.sender);
+});
+
+ipcMain.handle("window:open-client-select", async (e) => {
+  await openClientSelectWindow(e.sender);
+});
+
+ipcMain.handle("window:open-client-report", async (e, customerId?: number) => {
+  await openClientReportWindow(e.sender, customerId);
+});
+
+// -----------------------
+// Printing
+// -----------------------
+
+ipcMain.handle("print:create-job", async (e, doc: PrintDocument) =>
+  openPrintPreviewWindow(e.sender, doc)
+);
+
+ipcMain.handle("print:get-job", async (_e, id: string) =>
+  printService.getJob(id)
+);
+
+ipcMain.handle(
+  "print:set-margins",
+  async (_e, id: string, margins: PrintMargins) => {
+    const applied = printService.setMargins(id, margins);
+    if (!applied) return null;
+    // The preview redraws from this, so every window hears about it
+    BrowserWindow.getAllWindows().forEach((w) =>
+      w.webContents.send("print:margins-changed", { id, margins: applied })
+    );
+    return applied;
+  }
+);
+
+// The document has reached the printer, so the preview has done its job.
+// Closing it takes the margins dialog and the job itself with it. Only main
+// knows which window owns the job, so the close happens here rather than in
+// the dialog that asked for the print.
+ipcMain.handle("print:run", async (_e, id: string, margins: PrintMargins) => {
+  const res = await printService.print(id, margins);
+  if (res.success) {
+    const preview = printPreviewWindows.get(id);
+    if (preview && !preview.isDestroyed()) preview.close();
+  }
+  return res;
+});
+
+ipcMain.handle("window:open-print-margins", async (e, jobId: string) => {
+  await openPrintMarginsWindow(e.sender, jobId);
 });
 
 // Updates & app info (global)
