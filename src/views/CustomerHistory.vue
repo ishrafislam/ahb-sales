@@ -1,139 +1,164 @@
 <template>
-  <div class="flex flex-1 min-h-0">
-    <!-- Left list: customers -->
+  <div class="flex flex-col flex-1 min-h-0">
+    <!-- Top bar: ID lookup + customer info -->
     <div
-      class="w-[25%] border-r border-gray-200 dark:border-gray-700 flex flex-col"
+      class="flex items-start justify-end gap-6 p-4 border-b border-gray-200 dark:border-gray-700"
     >
+      <div class="flex items-center gap-2 mt-1">
+        <label
+          class="text-sm font-medium"
+          for="customer-history-id"
+        >{{ t("id") }}:</label>
+        <input
+          id="customer-history-id"
+          ref="idInputRef"
+          v-model="customerId"
+          type="text"
+          inputmode="numeric"
+          class="w-28 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm text-right dark:text-gray-100"
+          @keyup.enter="onLoadCustomer"
+        >
+      </div>
       <div
-        ref="leftListRef"
-        class="flex-grow overflow-y-auto"
+        class="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 border border-gray-300 dark:border-gray-600 rounded-lg p-3 w-80"
       >
-        <ul>
-          <li
-            v-for="id in idList"
-            :key="id"
-            class="px-3 py-2 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
-            :class="{ 'bg-blue-100 dark:bg-blue-950': selectedId === id }"
-            :data-id="id"
-            @click="onSelectCustomer(id)"
-          >
-            <div class="flex items-center">
-              <div class="font-medium text-sm text-right w-10">
-                {{ id }}
-              </div>
-              <div class="text-sm text-gray-600 dark:text-gray-300 ml-4">
-                {{ customersById.get(id)?.nameBn || "" }}
-              </div>
-            </div>
-          </li>
-        </ul>
+        <label class="text-sm">{{ t("name") }}:</label>
+        <input
+          type="text"
+          disabled
+          :value="customer?.nameBn ?? ''"
+          class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-right dark:text-gray-100"
+        >
+        <label class="text-sm">{{ t("address") }}:</label>
+        <input
+          type="text"
+          disabled
+          :value="customer?.address ?? ''"
+          class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-right dark:text-gray-100"
+        >
+        <label class="text-sm">{{ t("v2_receivable") }}:</label>
+        <input
+          type="text"
+          disabled
+          :value="customer ? money(customer.outstanding) : ''"
+          class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-right dark:text-gray-100"
+        >
       </div>
     </div>
 
-    <!-- Right pane: invoice table -->
-    <div class="w-[75%] flex flex-col overflow-hidden">
-      <div class="flex-grow overflow-y-auto">
-        <table class="w-full text-sm text-left">
-          <thead
-            class="text-xs uppercase bg-gray-50 dark:bg-gray-900 dark:text-gray-100 sticky top-0 border-b border-gray-200 dark:border-gray-700"
+    <!-- Invoice table -->
+    <div class="flex-grow overflow-y-auto">
+      <table class="w-full text-sm text-left">
+        <thead
+          class="text-xs uppercase bg-gray-50 dark:bg-gray-900 dark:text-gray-100 sticky top-0 border-b border-gray-200 dark:border-gray-700"
+        >
+          <tr>
+            <th class="px-3 py-2">
+              {{ t("date") }}
+            </th>
+            <th class="px-3 py-2 text-right">
+              {{ t("total_price") }}
+            </th>
+            <th class="px-3 py-2 text-right">
+              {{ t("discount") }}
+            </th>
+            <th class="px-3 py-2 text-right">
+              {{ t("bill") }}
+            </th>
+            <th class="px-3 py-2 text-right">
+              {{ t("paid") }}
+            </th>
+            <th class="px-3 py-2 text-right">
+              {{ t("due") }}
+            </th>
+            <th class="px-3 py-2 text-right">
+              {{ t("previous_due") }}
+            </th>
+            <th class="px-3 py-2 text-right">
+              {{ t("current_due") }}
+            </th>
+            <th class="px-3 py-2">
+              {{ t("comment") }}
+            </th>
+            <th class="px-3 py-2 text-right">
+              {{ t("actions") }}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="row in rows"
+            :key="row.id"
+            class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
-            <tr>
-              <th class="px-3 py-2">
-                {{ t("date") }}
-              </th>
-              <th class="px-3 py-2 text-right">
-                {{ t("total_price") }}
-              </th>
-              <th class="px-3 py-2 text-right">
-                {{ t("bill") }}
-              </th>
-              <th class="px-3 py-2 text-right">
-                {{ t("paid") }}
-              </th>
-              <th class="px-3 py-2 text-right">
-                {{ t("due") }}
-              </th>
-              <th class="px-3 py-2 text-right">
-                {{ t("previous_due") }}
-              </th>
-              <th class="px-3 py-2 text-right">
-                {{ t("current_due") }}
-              </th>
-              <th class="px-3 py-2">
-                {{ t("comment") }}
-              </th>
-              <th class="px-3 py-2 text-right">
-                {{ t("actions") }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="row in rows"
-              :key="row.id"
-              class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              <td class="px-3 py-2 font-medium whitespace-nowrap">
-                {{ formatDate(row.date) }}
-              </td>
-              <td class="px-3 py-2 text-right">
-                {{ money(row.subtotal) }}
-              </td>
-              <td class="px-3 py-2 text-right">
-                {{ money(row.net) }}
-              </td>
-              <td class="px-3 py-2 text-right text-green-600">
-                {{ money(row.paid) }}
-              </td>
-              <td class="px-3 py-2 text-right text-red-600">
-                {{ money(row.due) }}
-              </td>
-              <td class="px-3 py-2 text-right">
-                {{ money(row.previousDue) }}
-              </td>
-              <td class="px-3 py-2 text-right font-semibold">
-                {{ money(row.currentDue) }}
-              </td>
-              <td class="px-3 py-2">
-                {{ row.notes || "" }}
-              </td>
-              <td class="px-3 py-2 text-right">
-                <button
-                  class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 py-1 px-2 rounded-md text-xs font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-100"
-                  @click="onPrint(row.id)"
-                >
-                  {{ t("print") }}
-                </button>
-              </td>
-            </tr>
-            <tr v-if="!rows.length">
-              <td
-                class="px-4 py-3 text-center text-gray-500 dark:text-gray-400"
-                colspan="9"
+            <td class="px-3 py-2 font-medium whitespace-nowrap">
+              {{ formatDate(row.date) }}
+            </td>
+            <td class="px-3 py-2 text-right">
+              {{ money(row.subtotal) }}
+            </td>
+            <td class="px-3 py-2 text-right">
+              {{ money(row.discount) }}
+            </td>
+            <td class="px-3 py-2 text-right">
+              {{ money(row.net) }}
+            </td>
+            <td class="px-3 py-2 text-right text-green-600">
+              {{ money(row.paid) }}
+            </td>
+            <td class="px-3 py-2 text-right text-red-600">
+              {{ money(row.due) }}
+            </td>
+            <td class="px-3 py-2 text-right">
+              {{ money(row.previousDue) }}
+            </td>
+            <td class="px-3 py-2 text-right font-semibold">
+              {{ money(row.currentDue) }}
+            </td>
+            <td class="px-3 py-2">
+              {{ row.notes || "" }}
+            </td>
+            <td class="px-3 py-2 text-right">
+              <button
+                class="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 py-1 px-2 rounded-md text-xs font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-100"
+                @click="onPrint(row.id)"
               >
-                {{ t("no_invoices") }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+                {{ t("print") }}
+              </button>
+            </td>
+          </tr>
+          <tr v-if="!rows.length">
+            <td
+              class="px-4 py-3 text-center text-gray-500 dark:text-gray-400"
+              colspan="10"
+            >
+              {{ t("no_invoices") }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 defineOptions({ name: "AhbCustomerHistoryView" });
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
 import { printInvoice } from "../print/invoice";
-import { BUSINESS_NAME, MAX_CUSTOMER_ID } from "../constants/business";
+import {
+  BUSINESS_NAME,
+  MIN_CUSTOMER_ID,
+  MAX_CUSTOMER_ID,
+} from "../constants/business";
 import { formatDate } from "../utils/date";
+import type { Customer } from "../main/data";
 
-type Cust = { id: number; nameBn: string };
-
-const customers = ref<Cust[]>([]);
+const customerId = ref("");
+const idInputRef = ref<HTMLInputElement | null>(null);
+const customer = ref<Customer | null>(null);
+const loadedId = ref<number | null>(null);
 const products = ref<Array<{ id: number; nameBn: string; unit: string }>>([]);
-const selectedId = ref<number>(1);
 const invoices = ref<
   Awaited<ReturnType<typeof window.ahb.listInvoicesByCustomer>>
 >([]);
@@ -144,6 +169,7 @@ const rows = computed(() =>
     id: inv.id,
     date: inv.date,
     subtotal: inv.totals.subtotal,
+    discount: inv.discount,
     net: inv.totals.net,
     paid: inv.paid,
     due: ceil2(Math.max(0, inv.totals.net - inv.paid)),
@@ -161,31 +187,31 @@ function money(n: number) {
   });
 }
 
-function onSelectCustomer(id: number) {
-  selectedId.value = id;
-  void loadInvoices();
-  void scrollSelectedIntoView();
+async function onLoadCustomer() {
+  const id = Number.parseInt(customerId.value, 10);
+  if (Number.isNaN(id) || id < MIN_CUSTOMER_ID || id > MAX_CUSTOMER_ID) {
+    loadedId.value = null;
+    customer.value = null;
+    invoices.value = [];
+    idInputRef.value?.select();
+    return;
+  }
+  loadedId.value = id;
+  await refreshCustomerData();
+  idInputRef.value?.select();
 }
 
-const idList = computed(() =>
-  Array.from({ length: MAX_CUSTOMER_ID }, (_, i) => i + 1)
-);
-const customersById = computed(() => {
-  const m = new Map<number, Cust>();
-  for (const c of customers.value) m.set(c.id, c);
-  return m;
-});
+async function refreshCustomerData() {
+  if (loadedId.value === null) return;
+  const id = loadedId.value;
+  const [cust, invs] = await Promise.all([
+    window.ahb.getCustomerById(id),
+    window.ahb.listInvoicesByCustomer(id),
+  ]);
+  customer.value = cust;
+  invoices.value = invs;
+}
 
-async function loadCustomers() {
-  const list = await window.ahb.listCustomers({ activeOnly: false });
-  customers.value = list.map((c) => ({ id: c.id, nameBn: c.nameBn }));
-  // Ensure selectedId stays in range
-  if (selectedId.value < 1 || selectedId.value > 1000) selectedId.value = 1;
-  await scrollSelectedIntoView();
-}
-async function loadInvoices() {
-  invoices.value = await window.ahb.listInvoicesByCustomer(selectedId.value);
-}
 async function loadProducts() {
   const list = await window.ahb.listProducts({ activeOnly: false });
   products.value = list.map((p) => ({
@@ -195,48 +221,40 @@ async function loadProducts() {
   }));
 }
 
-const leftListRef = ref<HTMLElement | null>(null);
-async function scrollSelectedIntoView() {
-  await nextTick();
-  const container = leftListRef.value;
-  if (!container) return;
-  const el = container.querySelector(
-    `[data-id="${selectedId.value}"]`
-  ) as HTMLElement | null;
-  if (el) {
-    el.scrollIntoView({ block: "nearest" });
-  }
-}
-
 let off: null | (() => void) = null;
+let offLoadCustomer: null | (() => void) = null;
 onMounted(async () => {
-  await Promise.all([loadCustomers(), loadInvoices(), loadProducts()]);
-  await scrollSelectedIntoView();
+  await loadProducts();
+  await nextTick();
+  idInputRef.value?.focus();
   off = window.ahb.onDataChanged((p) => {
     if (p.kind === "invoice" || p.kind === "customer") {
-      void loadCustomers();
-      void loadInvoices();
-      void loadProducts();
-      void scrollSelectedIntoView();
+      void refreshCustomerData();
     }
     if (p.kind === "product") {
       void loadProducts();
     }
   });
+  offLoadCustomer = window.ahb.onLoadHistoryCustomer((id) => {
+    customerId.value = String(id);
+    void onLoadCustomer();
+  });
+  // Preloaded customer passed via URL hash (#customer-history/{id})
+  const match = /^#customer-history\/(\d+)$/.exec(window.location.hash);
+  if (match) {
+    customerId.value = match[1]!;
+    void onLoadCustomer();
+  }
 });
 onUnmounted(() => {
   if (off) off();
-});
-
-watch(selectedId, () => {
-  void scrollSelectedIntoView();
+  if (offLoadCustomer) offLoadCustomer();
 });
 
 function onPrint(id: string) {
   const inv = invoices.value.find((i) => i.id === id);
   if (!inv) return;
-  const custName =
-    customersById.value.get(inv.customerId)?.nameBn ?? String(inv.customerId);
+  const custName = customer.value?.nameBn ?? String(inv.customerId);
   const prodMap: Record<number, { name: string; unit: string }> = {};
   for (const p of products.value)
     prodMap[p.id] = { name: p.nameBn, unit: p.unit };

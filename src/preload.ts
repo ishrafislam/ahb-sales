@@ -2,6 +2,11 @@
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
 import { contextBridge, ipcRenderer } from "electron";
 import type { Product, Customer, Invoice } from "./main/data";
+import type {
+  PrintDocument,
+  PrintJob,
+  PrintMargins,
+} from "./print/document";
 
 type AppAPI = {
   // File operations
@@ -23,15 +28,27 @@ type AppAPI = {
   listProducts: (
     opts?: boolean | { activeOnly?: boolean }
   ) => Promise<Product[]>;
+  getProductById: (id: number) => Promise<Product | null>;
   addProduct: (p: unknown) => Promise<unknown>;
   updateProduct: (id: number, patch: unknown) => Promise<unknown>;
   listCustomers: (
     opts?: boolean | { activeOnly?: boolean }
   ) => Promise<Customer[]>;
+  getCustomerById: (id: number) => Promise<Customer | null>;
   addCustomer: (c: unknown) => Promise<unknown>;
   updateCustomer: (id: number, patch: unknown) => Promise<unknown>;
   // Phase 2: Invoices
   postInvoice: (payload: unknown) => Promise<Invoice>;
+  updateInvoice: (id: string, payload: unknown) => Promise<Invoice>;
+  getInvoiceById: (id: string) => Promise<Invoice | null>;
+  addInvoicePayment: (
+    id: string,
+    payload: { amount: number; notes?: string }
+  ) => Promise<Invoice>;
+  updateInvoicePayment: (
+    id: string,
+    payload: { amount: number; notes?: string }
+  ) => Promise<Invoice>;
   // Phase 3: History/listings
   listInvoicesByCustomer: (customerId: number) => Promise<Invoice[]>;
   listProductSales: (
@@ -56,10 +73,48 @@ type AppAPI = {
   reportDailyPayments: (
     date: string
   ) => Promise<import("./main/data").DailyPaymentReport>;
+  reportTotalSell: (
+    from: string,
+    to: string
+  ) => Promise<import("./main/data").TotalSellReport>;
+  reportClientLedger: (
+    from: string,
+    to: string,
+    customerId?: number
+  ) => Promise<import("./main/data").ClientLedgerReport>;
   onDataChanged: (
     cb: (payload: { kind: string; action: string; id: number }) => void
   ) => () => void;
   // App control
+  openCustomerHistory: (customerId?: number) => Promise<void>;
+  openPaymentWindow: (invoiceId: string) => Promise<void>;
+  openEditPaymentWindow: (invoiceId: string) => Promise<void>;
+  openCustomersWindow: () => Promise<void>;
+  openProductsWindow: () => Promise<void>;
+  openPurchaseEntryWindow: (productId?: number) => Promise<void>;
+  openPurchaseHistoryWindow: (productId?: number) => Promise<void>;
+  openSalesHistoryWindow: (productId?: number) => Promise<void>;
+  openTotalSellWindow: () => Promise<void>;
+  openDailyReportWindow: () => Promise<void>;
+  openPaymentReportWindow: () => Promise<void>;
+  openClientSelectWindow: () => Promise<void>;
+  openClientReportWindow: (customerId?: number) => Promise<void>;
+  // Printing
+  openPrintPreview: (doc: PrintDocument) => Promise<string>;
+  getPrintJob: (id: string) => Promise<PrintJob | null>;
+  setPrintMargins: (
+    id: string,
+    margins: PrintMargins
+  ) => Promise<PrintMargins | null>;
+  onPrintMarginsChanged: (
+    cb: (payload: { id: string; margins: PrintMargins }) => void
+  ) => () => void;
+  openPrintMargins: (jobId: string) => Promise<void>;
+  runPrint: (
+    id: string,
+    margins: PrintMargins
+  ) => Promise<{ success: boolean; reason?: string }>;
+  onLoadHistoryCustomer: (cb: (id: number) => void) => () => void;
   onOpenSettings: (cb: () => void) => () => void;
   onOpenAbout: (cb: () => void) => () => void;
   getAppVersion: () => Promise<string>;
@@ -112,14 +167,23 @@ const api: AppAPI = {
     return () => ipcRenderer.removeListener("app:document-changed", listener);
   },
   listProducts: (opts) => ipcRenderer.invoke("data:list-products", opts),
+  getProductById: (id) => ipcRenderer.invoke("data:get-product", id),
   addProduct: (p) => ipcRenderer.invoke("data:add-product", p),
   updateProduct: (id, patch) =>
     ipcRenderer.invoke("data:update-product", id, patch),
   listCustomers: (opts) => ipcRenderer.invoke("data:list-customers", opts),
+  getCustomerById: (id) => ipcRenderer.invoke("data:get-customer", id),
   addCustomer: (c) => ipcRenderer.invoke("data:add-customer", c),
   updateCustomer: (id, patch) =>
     ipcRenderer.invoke("data:update-customer", id, patch),
   postInvoice: (payload) => ipcRenderer.invoke("data:post-invoice", payload),
+  updateInvoice: (id, payload) =>
+    ipcRenderer.invoke("data:update-invoice", id, payload),
+  getInvoiceById: (id) => ipcRenderer.invoke("data:get-invoice", id),
+  addInvoicePayment: (id, payload) =>
+    ipcRenderer.invoke("data:add-invoice-payment", id, payload),
+  updateInvoicePayment: (id, payload) =>
+    ipcRenderer.invoke("data:update-invoice-payment", id, payload),
   listInvoicesByCustomer: (customerId) =>
     ipcRenderer.invoke("data:list-invoices-by-customer", customerId),
   listProductSales: (productId) =>
@@ -135,6 +199,10 @@ const api: AppAPI = {
     ipcRenderer.invoke("report:money-daywise", from, to),
   reportDailyPayments: (date) =>
     ipcRenderer.invoke("report:daily-payment", date),
+  reportTotalSell: (from, to) =>
+    ipcRenderer.invoke("report:total-sell", from, to),
+  reportClientLedger: (from, to, customerId) =>
+    ipcRenderer.invoke("report:client-ledger", from, to, customerId),
   onDataChanged: (cb) => {
     const listener = (
       _: unknown,
@@ -142,6 +210,49 @@ const api: AppAPI = {
     ) => cb(payload);
     ipcRenderer.on("data:changed", listener);
     return () => ipcRenderer.removeListener("data:changed", listener);
+  },
+  openCustomerHistory: (customerId) =>
+    ipcRenderer.invoke("window:open-customer-history", customerId),
+  openPaymentWindow: (invoiceId) =>
+    ipcRenderer.invoke("window:open-payment", invoiceId),
+  openEditPaymentWindow: (invoiceId) =>
+    ipcRenderer.invoke("window:open-edit-payment", invoiceId),
+  openCustomersWindow: () => ipcRenderer.invoke("window:open-customers"),
+  openProductsWindow: () => ipcRenderer.invoke("window:open-products"),
+  openPurchaseEntryWindow: (productId) =>
+    ipcRenderer.invoke("window:open-purchase-entry", productId),
+  openPurchaseHistoryWindow: (productId) =>
+    ipcRenderer.invoke("window:open-purchase-history", productId),
+  openSalesHistoryWindow: (productId) =>
+    ipcRenderer.invoke("window:open-sales-history", productId),
+  openTotalSellWindow: () => ipcRenderer.invoke("window:open-total-sell"),
+  openDailyReportWindow: () => ipcRenderer.invoke("window:open-daily-report"),
+  openPaymentReportWindow: () =>
+    ipcRenderer.invoke("window:open-payment-report"),
+  openClientSelectWindow: () => ipcRenderer.invoke("window:open-client-select"),
+  openClientReportWindow: (customerId) =>
+    ipcRenderer.invoke("window:open-client-report", customerId),
+  openPrintPreview: (doc) => ipcRenderer.invoke("print:create-job", doc),
+  getPrintJob: (id) => ipcRenderer.invoke("print:get-job", id),
+  setPrintMargins: (id, margins) =>
+    ipcRenderer.invoke("print:set-margins", id, margins),
+  onPrintMarginsChanged: (cb) => {
+    const listener = (
+      _: unknown,
+      payload: { id: string; margins: PrintMargins }
+    ) => cb(payload);
+    ipcRenderer.on("print:margins-changed", listener);
+    return () =>
+      ipcRenderer.removeListener("print:margins-changed", listener);
+  },
+  openPrintMargins: (jobId) =>
+    ipcRenderer.invoke("window:open-print-margins", jobId),
+  runPrint: (id, margins) => ipcRenderer.invoke("print:run", id, margins),
+  onLoadHistoryCustomer: (cb) => {
+    const listener = (_: unknown, id: number) => cb(id);
+    ipcRenderer.on("history:load-customer", listener);
+    return () =>
+      ipcRenderer.removeListener("history:load-customer", listener);
   },
   onOpenSettings: (cb) => {
     const listener = () => cb();

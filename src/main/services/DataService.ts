@@ -7,6 +7,9 @@ import {
   updateCustomer,
   listCustomers,
   postInvoice,
+  updateInvoice,
+  addInvoicePayment,
+  updateInvoicePayment,
   listInvoicesByCustomer,
   listProductSales,
   listProductPurchases,
@@ -14,6 +17,8 @@ import {
   reportMoneyTransactionsCustomerRange,
   reportMoneyTransactionsDayWise,
   reportDailyPayments,
+  reportTotalSell,
+  reportClientLedger,
   recordPayment,
 } from "../data";
 import type { FileService } from "./FileService";
@@ -138,16 +143,23 @@ export class DataService {
 
   // Invoices
   postInvoice(payload: Parameters<typeof postInvoice>[1]) {
+    // Posting to an empty slot creates the customer, which the index has
+    // never seen before
+    const isNewCustomer =
+      payload.customerId != null && !this.index.getCustomer(payload.customerId);
     const inv = postInvoice(this.getData(), payload);
 
-    // Update indexes
+    // Update indexes. Stock and outstanding are applied by replacing the
+    // entries in `data`, so the fresh objects have to be re-read from there
+    // rather than pulled back out of the index.
+    const data = this.getData();
     this.index.addInvoice(inv);
     inv.lines.forEach((ln) => {
-      const prod = this.index.getProduct(ln.productId);
+      const prod = data.products.find((p) => p.id === ln.productId);
       if (prod) this.index.updateProduct(prod);
     });
     if (inv.customerId != null) {
-      const cust = this.index.getCustomer(inv.customerId);
+      const cust = data.customers.find((c) => c.id === inv.customerId);
       if (cust) this.index.updateCustomer(cust);
     }
 
@@ -165,6 +177,85 @@ export class DataService {
       })
     );
     // Notify customer outstanding update
+    if (inv.customerId != null) {
+      this.fileService.notifyDataChanged({
+        kind: "customer",
+        action: isNewCustomer ? "add" : "update",
+        id: inv.customerId,
+      });
+    }
+    this.markDirty();
+    return inv;
+  }
+
+  updateInvoice(
+    invoiceId: string,
+    payload: Parameters<typeof updateInvoice>[2]
+  ) {
+    const data = this.getData();
+    const old = data.invoices?.find((i) => i.id === invoiceId);
+    const inv = updateInvoice(data, invoiceId, payload);
+
+    // Old and new lines may touch different products; rebuild for correctness
+    this.rebuildIndex();
+
+    this.fileService.notifyDataChanged({
+      kind: "invoice",
+      action: "update",
+      id: inv.no,
+    });
+    const productIds = new Set<number>([
+      ...(old?.lines.map((l) => l.productId) ?? []),
+      ...inv.lines.map((l) => l.productId),
+    ]);
+    for (const id of productIds) {
+      this.fileService.notifyDataChanged({
+        kind: "product",
+        action: "stock-updated",
+        id,
+      });
+    }
+    if (inv.customerId != null) {
+      this.fileService.notifyDataChanged({
+        kind: "customer",
+        action: "update",
+        id: inv.customerId,
+      });
+    }
+    this.markDirty();
+    return inv;
+  }
+
+  getInvoiceById(invoiceId: string) {
+    return this.getData().invoices?.find((i) => i.id === invoiceId) ?? null;
+  }
+
+  addInvoicePayment(
+    invoiceId: string,
+    payload: Parameters<typeof addInvoicePayment>[2]
+  ) {
+    return this.notifyPaymentChange(
+      addInvoicePayment(this.getData(), invoiceId, payload)
+    );
+  }
+
+  updateInvoicePayment(
+    invoiceId: string,
+    payload: Parameters<typeof updateInvoicePayment>[2]
+  ) {
+    return this.notifyPaymentChange(
+      updateInvoicePayment(this.getData(), invoiceId, payload)
+    );
+  }
+
+  private notifyPaymentChange(inv: ReturnType<typeof addInvoicePayment>) {
+    // The invoice and customer objects are replaced in the data arrays
+    this.rebuildIndex();
+    this.fileService.notifyDataChanged({
+      kind: "invoice",
+      action: "payment",
+      id: inv.no,
+    });
     if (inv.customerId != null) {
       this.fileService.notifyDataChanged({
         kind: "customer",
@@ -192,8 +283,12 @@ export class DataService {
   postPurchase(payload: Parameters<typeof postPurchase>[1]) {
     const purchase = postPurchase(this.getData(), payload);
 
-    // Update product index
-    const prod = this.index.getProduct(purchase.productId);
+    // Update product index. postPurchase replaces the entry in `data` to bump
+    // stock, so the fresh object has to be re-read from there rather than
+    // pulled back out of the index.
+    const prod = this.getData().products.find(
+      (p) => p.id === purchase.productId
+    );
     if (prod) this.index.updateProduct(prod);
 
     this.fileService.notifyDataChanged({
@@ -222,5 +317,13 @@ export class DataService {
 
   reportDailyPayments(date: string) {
     return reportDailyPayments(this.getData(), date);
+  }
+
+  reportTotalSell(from: string, to: string) {
+    return reportTotalSell(this.getData(), from, to);
+  }
+
+  reportClientLedger(from: string, to: string, customerId?: number) {
+    return reportClientLedger(this.getData(), from, to, customerId);
   }
 }

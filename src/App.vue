@@ -32,75 +32,6 @@
 
     <!-- Modals -->
     <BaseModal
-      v-if="modalStore.showCustomers"
-      :title="t('customers_title')"
-      :max-width="'4xl'"
-      @close="modalStore.closeAll"
-    >
-      <CustomersModal />
-    </BaseModal>
-    <BaseModal
-      v-if="modalStore.showProducts"
-      :title="t('products_title')"
-      :max-width="'5xl'"
-      @close="modalStore.closeAll"
-    >
-      <ProductsModal />
-    </BaseModal>
-    <BaseModal
-      v-if="modalStore.showSalesHistory"
-      :title="t('product_sales_history_title')"
-      @close="modalStore.closeAll"
-    >
-      <ProductSalesHistory @navigate="onNavigate" />
-    </BaseModal>
-    <BaseModal
-      v-if="modalStore.showPurchaseHistory"
-      :title="t('product_purchase_history_title')"
-      @close="modalStore.closeAll"
-    >
-      <ProductPurchaseHistory @navigate="onNavigate" />
-    </BaseModal>
-    <BaseModal
-      v-if="modalStore.showCustomerHistory"
-      :title="t('customer_history_title')"
-      :max-width="'5xl'"
-      @close="modalStore.closeAll"
-    >
-      <CustomerHistory @navigate="onNavigate" />
-    </BaseModal>
-    <BaseModal
-      v-if="modalStore.showPurchaseEntry"
-      :title="t('product_purchase_title')"
-      @close="modalStore.closeAll"
-    >
-      <ProductPurchaseModal />
-    </BaseModal>
-    <BaseModal
-      v-if="modalStore.showReportMoneyCustomer"
-      :title="t('report_money_customer_title')"
-      :max-width="'5xl'"
-      @close="modalStore.closeAll"
-    >
-      <ReportMoneyCustomer />
-    </BaseModal>
-    <BaseModal
-      v-if="modalStore.showReportMoneyDayWise"
-      :title="t('report_money_daywise_title')"
-      :max-width="'5xl'"
-      @close="modalStore.closeAll"
-    >
-      <ReportMoneyDayWise />
-    </BaseModal>
-    <BaseModal
-      v-if="modalStore.showReportDailyPayment"
-      :title="t('report_daily_payment_title')"
-      :max-width="'4xl'"
-      @close="modalStore.closeAll"
-    >
-      <ReportDailyPayment />
-    </BaseModal>
-    <BaseModal
       v-if="modalStore.showAbout"
       :title="t('about_app')"
       :max-width="'md'"
@@ -137,17 +68,8 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
 import { t, initI18n } from "./i18n";
-import ProductsModal from "./views/ProductsModal.vue";
-import CustomersModal from "./views/CustomersModal.vue";
 import Dashboard from "./views/Dashboard.vue";
-import ProductSalesHistory from "./views/ProductSalesHistory.vue";
-import ProductPurchaseHistory from "./views/ProductPurchaseHistory.vue";
-import CustomerHistory from "./views/CustomerHistory.vue";
 import BaseModal from "./components/BaseModal.vue";
-import ProductPurchaseModal from "./views/ProductPurchaseModal.vue";
-import ReportMoneyCustomer from "./views/ReportMoneyCustomer.vue";
-import ReportMoneyDayWise from "./views/ReportMoneyDayWise.vue";
-import ReportDailyPayment from "./views/ReportDailyPayment.vue";
 import SettingsModal from "./views/SettingsModal.vue";
 import AboutModal from "./views/AboutModal.vue";
 import { useKeyboardShortcuts } from "./composables/useKeyboardShortcuts";
@@ -305,46 +227,32 @@ function onNavigate(
     | "customer-history"
     | "purchase-entry"
     | "reports"
-    | "report-money-customer"
-    | "report-money-daywise"
-    | "report-daily-payment"
     | "settings"
-    | string
+    | string,
+  opts?: { customerId?: number }
 ) {
   if (page === "dashboard") {
     modalStore.closeAll();
     return;
   }
   if (page === "products") {
-    modalStore.navigateTo("products");
+    void window.ahb.openProductsWindow();
     return;
   }
   if (page === "customers") {
-    modalStore.navigateTo("customers");
+    void window.ahb.openCustomersWindow();
     return;
   }
   if (page === "product-sales-history") {
-    modalStore.navigateTo("product-sales-history");
+    void window.ahb.openSalesHistoryWindow();
     return;
   }
   if (page === "product-purchase-history") {
-    modalStore.navigateTo("product-purchase-history");
+    void window.ahb.openPurchaseHistoryWindow();
     return;
   }
   if (page === "purchase-entry") {
-    modalStore.navigateTo("purchase-entry");
-    return;
-  }
-  if (page === "report-money-customer") {
-    modalStore.navigateTo("report-money-customer");
-    return;
-  }
-  if (page === "report-money-daywise") {
-    modalStore.navigateTo("report-money-daywise");
-    return;
-  }
-  if (page === "report-daily-payment") {
-    modalStore.navigateTo("report-daily-payment");
+    void window.ahb.openPurchaseEntryWindow();
     return;
   }
   if (page === "settings") {
@@ -352,7 +260,7 @@ function onNavigate(
     return;
   }
   if (page === "customer-history") {
-    modalStore.navigateTo("customer-history");
+    void window.ahb.openCustomerHistory(opts?.customerId);
   }
 }
 
