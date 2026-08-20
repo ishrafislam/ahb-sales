@@ -224,6 +224,20 @@ const printMarginsWindows = new Map<string, BrowserWindow>();
 
 // Child window sharing the parent's file/data services so all data IPC
 // routed by sender id operates on the same open document.
+/**
+ * Windows hands focus past the owner when a child window is destroyed, which
+ * leaves the main window minimised behind everything else. Pull the parent
+ * back on `close`, while the child is still alive — by `closed` the focus has
+ * already gone.
+ */
+function focusParentOnClose(win: BrowserWindow, parent: BrowserWindow) {
+  win.on("close", () => {
+    if (parent.isDestroyed()) return;
+    if (parent.isMinimized()) parent.restore();
+    parent.focus();
+  });
+}
+
 async function openChildWindow(
   sender: Electron.WebContents,
   registry: Map<number, BrowserWindow>,
@@ -256,6 +270,8 @@ async function openChildWindow(
       preload: path.join(__dirname, "preload.js"),
     },
   });
+
+  focusParentOnClose(win, topLevelParent);
 
   const webContentsId = win.webContents.id;
 
@@ -377,6 +393,8 @@ async function openPrintPreviewWindow(
     webPreferences: { preload: path.join(__dirname, "preload.js") },
   });
 
+  focusParentOnClose(win, topLevelParent);
+
   const webContentsId = win.webContents.id;
   contexts.set(webContentsId, {
     win,
@@ -421,6 +439,11 @@ async function openPrintMarginsWindow(
     title: app.getName(),
     webPreferences: { preload: path.join(__dirname, "preload.js") },
   });
+
+  focusParentOnClose(
+    win,
+    printPreviewWindows.get(jobId) ?? parentCtx.win
+  );
 
   const webContentsId = win.webContents.id;
   contexts.set(webContentsId, {

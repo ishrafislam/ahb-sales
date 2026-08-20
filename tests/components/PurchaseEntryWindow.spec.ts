@@ -197,6 +197,29 @@ describe("Purchase entry window", () => {
     wrapper.unmount();
   });
 
+  it("posts on Enter in the amount field, same as the Update button", async () => {
+    const wrapper = await mountView();
+    await setAmount(wrapper, "25");
+
+    await wrapper.find("#purchase-amount").trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(postPurchase).toHaveBeenCalledWith({ productId: 1, quantity: 25 });
+    expect(field(wrapper, "purchase-amount").value).toBe("");
+    wrapper.unmount();
+  });
+
+  it("ignores Enter while the amount is not postable", async () => {
+    const wrapper = await mountView();
+    await setAmount(wrapper, "0");
+
+    await wrapper.find("#purchase-amount").trigger("keydown.enter");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(postPurchase).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
   it("surfaces a failed post and keeps the amount", async () => {
     postPurchase.mockRejectedValueOnce(new Error("Product not found"));
     const wrapper = await mountView();

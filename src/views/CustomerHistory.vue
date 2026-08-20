@@ -263,6 +263,8 @@ function onPrint(id: string) {
   printInvoice(inv as unknown as import("../main/data").Invoice, {
     businessName: BUSINESS_NAME,
     customerName: custName,
+    customerPhone: customer.value?.phone,
+    customerAddress: customer.value?.address,
     products: prodMap,
     previousDueDate: prevInv?.date,
   });

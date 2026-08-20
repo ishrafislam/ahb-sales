@@ -874,6 +874,50 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     wrapper.unmount();
   });
 
+  it("follows a stock change posted in another window", async () => {
+    let dataChangedCb:
+      | ((p: { kind: string; action: string; id: number }) => void)
+      | null = null;
+    const onDataChanged = vi.fn(
+      (cb: (p: { kind: string; action: string; id: number }) => void) => {
+        dataChangedCb = cb;
+        return () => undefined;
+      }
+    );
+    // The row's product is loaded at stock 40 by setupPostableEntry; a
+    // purchase of 50 lands while the dashboard sits on it
+    let stock = 40;
+    const getProductById = vi.fn(async () => ({
+      id: 5,
+      nameBn: "চাল",
+      unit: "kg",
+      price: 10.5,
+      stock,
+    }));
+    const { wrapper } = await setupPostableEntry(vi.fn(), vi.fn(), {
+      onDataChanged,
+      getProductById,
+    });
+
+    // Header follows the row: 40 stored, 2 about to be sold
+    const stockValue = () =>
+      getDisabledInputs(wrapper)
+        .map((i) => (i.element as HTMLInputElement).value)
+        .find((v) => v === "38" || v === "88");
+    await wrapper.findAll("tbody tr")[0]!.findAll("input")[1]!.trigger("focus");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(stockValue()).toBe("38");
+
+    stock = 90;
+    dataChangedCb!({ kind: "product", action: "stock-updated", id: 5 });
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(getProductById).toHaveBeenCalledWith(5);
+    expect(stockValue()).toBe("88");
+    wrapper.unmount();
+  });
+
   it("refreshes deposit, status and receivable when a payment is recorded", async () => {
     getCustomerById.mockResolvedValue({
       nameBn: "রহিম",

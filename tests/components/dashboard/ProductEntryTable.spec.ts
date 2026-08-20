@@ -151,7 +151,67 @@ describe("ProductEntryTable", () => {
     wrapper.unmount();
   });
 
-  it("re-entering an existing product ID jumps to that row's amount", async () => {
+  // A row restored from a posted invoice: the sale is already inside the
+  // stored stock, so the header must not take it off a second time.
+  function postedRow(stock: number, quantity: number): EntryRow {
+    return {
+      key: -1,
+      idText: "5",
+      product: { id: 5, nameBn: "চাল", unit: "kg", price: 55.5, stock },
+      amountText: String(quantity),
+      appliedQty: quantity,
+      priceText: "55.50",
+      price: 55.5,
+    };
+  }
+
+  it("reports the stored stock for a row the invoice already accounts for", async () => {
+    const wrapper = mountHost();
+    // 0 in stock, 5 sold, 50 bought back in
+    wrapper.vm.rows = [postedRow(45, 5)];
+    await flush();
+
+    await cellInputs(wrapper, 0).amount.trigger("focus");
+    await flush();
+
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 45 });
+    wrapper.unmount();
+  });
+
+  it("projects only the change when an accounted-for amount is edited", async () => {
+    const wrapper = mountHost();
+    wrapper.vm.rows = [postedRow(45, 5)];
+    await flush();
+
+    const amount = cellInputs(wrapper, 0).amount;
+    await amount.setValue("8");
+    await amount.trigger("keydown.enter");
+    await flush();
+
+    // Posting the edit reverts the old 5 and applies the new 8
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 42 });
+    wrapper.unmount();
+  });
+
+  it("refreshProductStock follows a purchase posted elsewhere", async () => {
+    const wrapper = mountHost();
+    wrapper.vm.rows = [postedRow(45, 5)];
+    await flush();
+    await cellInputs(wrapper, 0).amount.trigger("focus");
+    await flush();
+
+    wrapper.vm.table!.refreshProductStock(5, 95);
+    await flush();
+
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 95 });
+    // A product no row holds leaves the header alone
+    wrapper.vm.table!.refreshProductStock(7, 3);
+    await flush();
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 95 });
+    wrapper.unmount();
+  });
+
+  it("takes the same product on a second, independent row", async () => {
     const wrapper = mountHost();
     await startEntry(wrapper);
     const first = cellInputs(wrapper, 0);
@@ -168,11 +228,20 @@ describe("ProductEntryTable", () => {
     await second.id.trigger("keydown.enter");
     await flush();
 
-    expect(getProductById).not.toHaveBeenCalled();
-    expect(wrapper.findAll("tbody tr").length).toBe(2);
-    expect(document.activeElement).toBe(cellInputs(wrapper, 0).amount.element);
-    // Header shows the projected stock for the row's committed amount
-    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37 });
+    // The row loads the product like any other, and focus lands on its own
+    // amount cell rather than jumping back to the first row
+    expect(getProductById).toHaveBeenCalledWith(5);
+    expect(document.activeElement).toBe(cellInputs(wrapper, 1).amount.element);
+
+    await cellInputs(wrapper, 1).amount.setValue("2");
+    await cellInputs(wrapper, 1).amount.trigger("keydown.enter");
+    await flush();
+
+    // Two lines of the same product, each keeping its own quantity
+    const rows = wrapper.findAll("tbody tr");
+    expect(rows.length).toBe(3);
+    expect(cellInputs(wrapper, 0).amount.element.value).toBe("3");
+    expect(cellInputs(wrapper, 1).amount.element.value).toBe("2");
     wrapper.unmount();
   });
 
