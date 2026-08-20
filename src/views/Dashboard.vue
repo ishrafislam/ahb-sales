@@ -431,12 +431,19 @@ function onPayment() {
 }
 
 // Payments recorded in the payment window arrive as data-changed events;
-// refresh the deposit/status/receivable fields from the updated invoice.
+// refresh the deposit/status/receivable fields from the updated invoice. A
+// purchase posted elsewhere arrives the same way and moves a product's stock
+// under any row already holding it.
 async function onDataChanged(payload: {
   kind: string;
   action: string;
   id: number;
 }) {
+  if (payload.kind === "product" && payload.action === "stock-updated") {
+    const product = await window.ahb.getProductById(payload.id);
+    if (product) entryTable.value?.refreshProductStock(payload.id, product.stock);
+    return;
+  }
   if (payload.kind !== "invoice" || payload.action !== "payment") return;
   const invoiceId = postedInvoiceId.value;
   if (invoiceId === null) return;
@@ -483,7 +490,14 @@ async function onPostData() {
     entryRows.value = entryRows.value.filter((row) => {
       if (!row.product) return false;
       const quantity = Number.parseFloat(row.amountText);
-      return Number.isFinite(quantity) && quantity > 0;
+      if (!Number.isFinite(quantity) || quantity <= 0) return false;
+      // The sale has left the shelf now: carry the row's cached stock forward
+      // by whatever this post moved, and mark the quantity as accounted for so
+      // the header stops projecting it.
+      const moved = quantity - (row.appliedQty ?? 0);
+      row.product.stock = Math.round((row.product.stock - moved) * 100) / 100;
+      row.appliedQty = quantity;
+      return true;
     });
     mode.value = "posted";
   } catch (e) {
@@ -589,6 +603,8 @@ async function loadPostedInvoice(inv: Invoice) {
           stock: product?.stock ?? 0,
         },
         amountText: String(line.quantity),
+        // Already posted, so the stored stock has this quantity in it
+        appliedQty: line.quantity,
         priceText: line.rate.toFixed(2),
         price: line.rate,
       };
