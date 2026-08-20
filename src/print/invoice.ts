@@ -24,11 +24,40 @@ function fmtReceiptDate(
   return bengali ? toBengaliDigits(s) : s;
 }
 
+// Bengali reads the clock by part of day rather than AM/PM
+const BN_PERIODS: Array<[number, string]> = [
+  [6, "রাত"],
+  [12, "সকাল"],
+  [15, "দুপুর"],
+  [18, "বিকাল"],
+  [20, "সন্ধ্যা"],
+  [24, "রাত"],
+];
+
+/**
+ * The time of day the sale was made. Invoice dates are full ISO timestamps,
+ * but a few callers pass a plain "YYYY-MM-DD" — those carry no time, so they
+ * print nothing rather than a misleading midnight.
+ */
+function fmtReceiptTime(iso: string, { bengali = false } = {}): string {
+  if (iso.length <= 10) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const h24 = d.getHours();
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  if (!bengali) return `${h12}:${mm} ${h24 < 12 ? "AM" : "PM"}`;
+  const period = BN_PERIODS.find(([upto]) => h24 < upto)?.[1] ?? "রাত";
+  return `${period} ${toBengaliDigits(`${h12}:${mm}`)}`;
+}
+
 export type ProductInfo = { name: string; unit: string };
 
 export type InvoiceDocumentOptions = {
   businessName?: string;
   customerName: string;
+  customerPhone?: string;
+  customerAddress?: string;
   products: Record<number, ProductInfo>;
   previousDueDate?: string;
 };
@@ -67,6 +96,7 @@ export function buildInvoiceDocument(
     : "";
 
   const grandTotal = inv.totals.net + inv.previousDue;
+  const saleTime = fmtReceiptTime(inv.date, { bengali: isBn });
 
   // The receipt keeps its narrow column but sits at the top-left of the
   // content box, so the margins the user sets are what position it.
@@ -75,7 +105,9 @@ export function buildInvoiceDocument(
     .receipt h1 { font-size: 13px; margin: 0 0 2px; text-align: center; }
     .receipt .addr { font-size: 9px; text-align: center; margin: 1px 0; }
     .receipt hr { border: none; border-top: 1px solid #000; margin: 3px 0; }
-    .receipt .meta-row { display: flex; justify-content: space-between; font-size: 10px; margin: 2px 0; }
+    .receipt .cust { display: block; font-size: 9px; }
+    .receipt .time { font-size: 9px; }
+    .receipt .meta-row { display: flex; justify-content: space-between; align-items: flex-start; font-size: 10px; margin: 2px 0; }
     .receipt table { width: 100%; border-collapse: collapse; font-size: 10px; }
     .receipt td { padding: 1px 1px; vertical-align: top; }
     .receipt .sum td { padding: 1px 0; border-bottom: 1px dashed #000; }
@@ -92,8 +124,12 @@ export function buildInvoiceDocument(
       <hr />
 
       <div class="meta-row">
-        <span>${isBn ? toBengaliDigits(String(inv.customerId ?? inv.no)) : (inv.customerId ?? inv.no)}–${inv.customerId != null ? ` ${opts.customerName}` : ""}</span>
-        <span>${fmtReceiptDate(inv.date, { shortYear: true, bengali: isBn })}</span>
+        <span>
+          ${isBn ? toBengaliDigits(String(inv.customerId ?? inv.no)) : (inv.customerId ?? inv.no)}–${inv.customerId != null ? ` ${opts.customerName}` : ""}
+          ${opts.customerAddress ? `<span class="cust">${opts.customerAddress}</span>` : ""}
+          ${opts.customerPhone ? `<span class="cust">${t("phone_label")} : ${isBn ? toBengaliDigits(opts.customerPhone) : opts.customerPhone}</span>` : ""}
+        </span>
+        <span style="text-align:right">${fmtReceiptDate(inv.date, { shortYear: true, bengali: isBn })}${saleTime ? `<br /><span class="time">${saleTime}</span>` : ""}</span>
       </div>
       <hr />
 

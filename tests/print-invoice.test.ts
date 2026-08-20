@@ -109,6 +109,41 @@ describe("buildInvoiceDocument", () => {
     expect(styleCss).toContain("width: 72mm");
   });
 
+  it("prints the customer's address and phone when the record has them", () => {
+    const { bodyHtml } = buildInvoiceDocument(invoice, {
+      ...opts,
+      customerPhone: "01711000111",
+      customerAddress: "12 Moulvi Bazar, Dhaka",
+    });
+
+    expect(bodyHtml).toContain("12 Moulvi Bazar, Dhaka");
+    expect(bodyHtml).toContain("01711000111");
+  });
+
+  it("leaves the customer lines out when the fields are missing", () => {
+    const { bodyHtml } = buildInvoiceDocument(invoice, opts);
+
+    expect(bodyHtml).not.toContain('class="cust"');
+  });
+
+  it("prints the time of the sale under the date", () => {
+    const local = new Date(invoice.date);
+    const h24 = local.getHours();
+    const expected = `${h24 % 12 === 0 ? 12 : h24 % 12}:${String(
+      local.getMinutes()
+    ).padStart(2, "0")} ${h24 < 12 ? "AM" : "PM"}`;
+
+    expect(buildInvoiceDocument(invoice, opts).bodyHtml).toContain(expected);
+  });
+
+  it("prints no time when the invoice carries only a date", () => {
+    const dateOnly = { ...invoice, date: "2026-07-30" } as unknown as Invoice;
+
+    expect(buildInvoiceDocument(dateOnly, opts).bodyHtml).not.toContain(
+      'class="time"'
+    );
+  });
+
   it("switches digits and font for Bengali", () => {
     currentLang.value = "bn";
     const { bodyHtml, styleCss } = buildInvoiceDocument(invoice, opts);
@@ -117,5 +152,7 @@ describe("buildInvoiceDocument", () => {
     expect(bodyHtml).toContain("১০০");
     expect(bodyHtml).toContain("৩০/০৭/২৬");
     expect(styleCss).toContain("Noto Sans Bengali");
+    // The sale time reads as a part of the day, in Bengali digits
+    expect(bodyHtml).toMatch(/রাত|সকাল|দুপুর|বিকাল|সন্ধ্যা/);
   });
 });

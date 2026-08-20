@@ -6,27 +6,40 @@
       class="flex-1 min-h-0 overflow-auto bg-gray-300 dark:bg-gray-800 p-6"
       @wheel="onWheel"
     >
-      <div
-        class="flex flex-col items-center gap-6"
-        :style="{ transform: `scale(${zoom})`, transformOrigin: 'top center' }"
-      >
-        <div
-          v-for="page in pageCount"
-          :key="page"
-          class="bg-white shadow-lg overflow-hidden shrink-0"
-          data-role="sheet"
-          :style="{ width: `${pageWidthMm}mm`, height: `${pageHeightMm}mm` }"
-        >
-          <!-- One composed document, one viewport per sheet: the iframe is
-               shifted so each sheet shows its slice. A normal document grows
-               downwards; a two-column one overflows sideways, so it is
-               sliced on the other axis. -->
-          <iframe
-            class="border-0 block"
-            :srcdoc="composedHtml"
-            :style="frameStyle(page)"
-            :title="`${jobTitle} ${page}`"
-          ></iframe>
+      <!-- transform: scale() leaves layout alone, so the canvas would only
+           ever scroll the unscaled box and everything the zoom pushed left of
+           the origin would be unreachable. The spacer reserves the scaled
+           size instead, and the scaling runs from the top-left corner so the
+           sheets grow into it rather than out of it. -->
+      <div class="flex justify-center w-max min-w-full">
+        <div :style="spacerStyle">
+          <div
+            class="flex flex-col items-center gap-6"
+            :style="{
+              transform: `scale(${zoom})`,
+              transformOrigin: 'top left',
+              width: `${stackWidthPx}px`,
+            }"
+          >
+            <div
+              v-for="page in pageCount"
+              :key="page"
+              class="bg-white shadow-lg overflow-hidden shrink-0"
+              data-role="sheet"
+              :style="{ width: `${pageWidthMm}mm`, height: `${pageHeightMm}mm` }"
+            >
+              <!-- One composed document, one viewport per sheet: the iframe is
+                   shifted so each sheet shows its slice. A normal document
+                   grows downwards; a two-column one overflows sideways, so it
+                   is sliced on the other axis. -->
+              <iframe
+                class="border-0 block"
+                :srcdoc="composedHtml"
+                :style="frameStyle(page)"
+                :title="`${jobTitle} ${page}`"
+              ></iframe>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -129,6 +142,7 @@ const margins = ref<PrintMargins>(normalizeMargins());
 const zoom = ref(1);
 const pageCount = ref(1);
 const measureFrame = ref<HTMLIFrameElement | null>(null);
+const canvasRef = ref<HTMLElement | null>(null);
 
 const jobTitle = computed(() => doc.value?.title || t("print_preview_title"));
 
@@ -159,10 +173,40 @@ function frameStyle(page: number) {
   };
 }
 
+// Gap between sheets, matching the gap-6 on the stack
+const SHEET_GAP_PX = 24;
+
+const stackWidthPx = computed(() => mmToPx(pageWidthMm.value));
+const stackHeightPx = computed(
+  () =>
+    pageCount.value * mmToPx(pageHeightMm.value) +
+    (pageCount.value - 1) * SHEET_GAP_PX
+);
+
+// The scaled footprint, so the canvas can scroll to every edge of it
+const spacerStyle = computed(() => ({
+  width: `${stackWidthPx.value * zoom.value}px`,
+  height: `${stackHeightPx.value * zoom.value}px`,
+}));
+
 function setZoom(z: number) {
   const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
   // Keep the slider off floating-point dust like 1.3000000000000003
-  zoom.value = Math.round(next * 100) / 100;
+  const rounded = Math.round(next * 100) / 100;
+  const prev = zoom.value;
+  zoom.value = rounded;
+  if (prev === rounded) return;
+  // Hold whatever was in the middle of the viewport, once the spacer has
+  // taken its new size
+  void nextTick(() => {
+    const el = canvasRef.value;
+    if (!el) return;
+    const ratio = rounded / prev;
+    el.scrollLeft =
+      (el.scrollLeft + el.clientWidth / 2) * ratio - el.clientWidth / 2;
+    el.scrollTop =
+      (el.scrollTop + el.clientHeight / 2) * ratio - el.clientHeight / 2;
+  });
 }
 
 function stepZoom(direction: number) {
@@ -228,8 +272,6 @@ useKeyboardShortcuts([
     description: "Page margins",
   },
 ]);
-
-const canvasRef = ref<HTMLElement | null>(null);
 
 const printButtonClass =
   "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-1.5 px-4 text-sm dark:text-gray-100";

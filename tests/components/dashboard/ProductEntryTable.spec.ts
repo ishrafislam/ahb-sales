@@ -151,7 +151,7 @@ describe("ProductEntryTable", () => {
     wrapper.unmount();
   });
 
-  it("re-entering an existing product ID jumps to that row's amount", async () => {
+  it("takes the same product on a second, independent row", async () => {
     const wrapper = mountHost();
     await startEntry(wrapper);
     const first = cellInputs(wrapper, 0);
@@ -168,11 +168,20 @@ describe("ProductEntryTable", () => {
     await second.id.trigger("keydown.enter");
     await flush();
 
-    expect(getProductById).not.toHaveBeenCalled();
-    expect(wrapper.findAll("tbody tr").length).toBe(2);
-    expect(document.activeElement).toBe(cellInputs(wrapper, 0).amount.element);
-    // Header shows the projected stock for the row's committed amount
-    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37 });
+    // The row loads the product like any other, and focus lands on its own
+    // amount cell rather than jumping back to the first row
+    expect(getProductById).toHaveBeenCalledWith(5);
+    expect(document.activeElement).toBe(cellInputs(wrapper, 1).amount.element);
+
+    await cellInputs(wrapper, 1).amount.setValue("2");
+    await cellInputs(wrapper, 1).amount.trigger("keydown.enter");
+    await flush();
+
+    // Two lines of the same product, each keeping its own quantity
+    const rows = wrapper.findAll("tbody tr");
+    expect(rows.length).toBe(3);
+    expect(cellInputs(wrapper, 0).amount.element.value).toBe("3");
+    expect(cellInputs(wrapper, 1).amount.element.value).toBe("2");
     wrapper.unmount();
   });
 

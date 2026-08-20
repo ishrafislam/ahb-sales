@@ -234,15 +234,6 @@ async function onIdEnter(idx: number) {
     void focusCell(idx, "id");
     return;
   }
-  // Same product already in another row: jump to its amount instead
-  const existingIdx = rows.value.findIndex(
-    (r, i) => i !== idx && r.product?.id === id
-  );
-  if (existingIdx !== -1) {
-    row.idText = row.product ? String(row.product.id) : "";
-    void focusCell(existingIdx, "amount");
-    return;
-  }
   const product = await window.ahb.getProductById(id);
   if (!product) {
     void focusCell(idx, "id");
@@ -337,7 +328,7 @@ function resumeEntry() {
 defineExpose({ startEntry, resumeEntry });
 
 const cellInputClass =
-  "w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm dark:text-gray-100";
+  "w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-1.5 py-0.5 text-xs dark:text-gray-100";
 
 const cellBorderClass = "border border-gray-300 dark:border-gray-600";
 </script>
