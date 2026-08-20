@@ -1,13 +1,13 @@
 <template>
   <div
-    class="flex-grow bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto p-3 flex flex-col gap-2"
+    class="flex-grow bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto p-2 flex flex-col gap-1.5"
   >
     <div
       v-for="field in fields"
       :key="field.key"
       class="flex items-center gap-2"
     >
-      <label class="text-sm whitespace-nowrap flex-1">{{ t(field.key) }}:</label>
+      <label class="text-xs whitespace-nowrap flex-1">{{ t(field.key) }}:</label>
       <input
         type="text"
         :value="field.value"
@@ -16,7 +16,7 @@
       >
     </div>
     <div class="flex flex-col gap-1 flex-grow">
-      <label class="text-sm whitespace-nowrap">{{ t("comment") }}:</label>
+      <label class="text-xs whitespace-nowrap">{{ t("comment") }}:</label>
       <textarea
         v-model="comment"
         :disabled="locked"

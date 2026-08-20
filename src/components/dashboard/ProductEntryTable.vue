@@ -111,6 +111,12 @@ export type EntryRow = {
     stock: number;
   } | null;
   amountText: string;
+  /**
+   * How much of this line the stored stock already accounts for: the posted
+   * invoice's quantity on a restored row, absent on a draft. Only the
+   * difference between the entered amount and this has yet to leave the shelf.
+   */
+  appliedQty?: number;
   priceText: string;
   // Price used for totals; priceText is only a draft until committed
   // with Enter (or reset on blur).
@@ -130,23 +136,46 @@ const emit = defineEmits<{
   ): void;
 }>();
 
-// Stock shown in the header is the projection after this sale: stored
-// stock minus the row's entered amount. Display only — real stock changes
-// when the invoice is posted.
+// Stock shown in the header is the projection after this sale: stored stock
+// minus whatever this row has yet to take off the shelf. A row restored from a
+// posted invoice is already inside the stored stock, so only a change to its
+// amount projects. Display only — real stock changes when the invoice is
+// posted.
 function projectedStock(row: EntryRow): number {
   const amount = Number.parseFloat(row.amountText);
   const sold = Number.isFinite(amount) && amount > 0 ? amount : 0;
-  return Math.round((row.product!.stock - sold) * 100) / 100;
+  const pending = sold - (row.appliedQty ?? 0);
+  return Math.round((row.product!.stock - pending) * 100) / 100;
+}
+
+// Row the header is currently following, so a stock change arriving from
+// another window can refresh it in place
+const followedKey = ref<number | null>(null);
+
+function emitSelected(row: EntryRow | undefined) {
+  followedKey.value = row?.product ? row.key : null;
+  emit(
+    "product-selected",
+    row?.product ? { id: row.product.id, stock: projectedStock(row) } : null
+  );
+}
+
+/**
+ * A purchase posted in another window changed this product's stock. Refresh
+ * every row holding it, and the header if it is following one of them.
+ */
+function refreshProductStock(id: number, stock: number) {
+  for (const row of rows.value) {
+    if (row.product?.id === id) row.product.stock = stock;
+  }
+  const followed = rows.value.find((r) => r.key === followedKey.value);
+  if (followed?.product?.id === id) emitSelected(followed);
 }
 
 // Header info follows the focused row: fires on any focus (click, arrow
 // navigation, programmatic moves), null for rows without a loaded product.
 function onCellFocus(idx: number) {
-  const row = rows.value[idx];
-  emit(
-    "product-selected",
-    row?.product ? { id: row.product.id, stock: projectedStock(row) } : null
-  );
+  emitSelected(rows.value[idx]);
 }
 
 // Excel-style row selection via the left gutter column: click selects,
@@ -161,9 +190,7 @@ function selectRow(row: EntryRow) {
   const selecting = selectedKey.value !== row.key;
   selectedKey.value = selecting ? row.key : null;
   // Show the selected product's projected stock in the header
-  if (selecting) {
-    emit("product-selected", { id: row.product.id, stock: projectedStock(row) });
-  }
+  if (selecting) emitSelected(row);
 }
 
 function deleteSelected() {
@@ -234,15 +261,6 @@ async function onIdEnter(idx: number) {
     void focusCell(idx, "id");
     return;
   }
-  // Same product already in another row: jump to its amount instead
-  const existingIdx = rows.value.findIndex(
-    (r, i) => i !== idx && r.product?.id === id
-  );
-  if (existingIdx !== -1) {
-    row.idText = row.product ? String(row.product.id) : "";
-    void focusCell(existingIdx, "amount");
-    return;
-  }
   const product = await window.ahb.getProductById(id);
   if (!product) {
     void focusCell(idx, "id");
@@ -275,9 +293,7 @@ async function onAmountEnter(idx: number) {
   await focusCell(idx + 1, "id");
   // The next row's focus emitted null; keep the just-entered product's
   // projected stock visible in the header instead.
-  if (row.product) {
-    emit("product-selected", { id: row.product.id, stock: projectedStock(row) });
-  }
+  if (row.product) emitSelected(row);
 }
 
 // The edited price only takes effect on Enter; an abandoned draft
@@ -334,10 +350,10 @@ function resumeEntry() {
   void focusCell(rows.value.length - 1, "id");
 }
 
-defineExpose({ startEntry, resumeEntry });
+defineExpose({ startEntry, resumeEntry, refreshProductStock });
 
 const cellInputClass =
-  "w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm dark:text-gray-100";
+  "w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-1.5 py-0.5 text-xs dark:text-gray-100";
 
 const cellBorderClass = "border border-gray-300 dark:border-gray-600";
 </script>
