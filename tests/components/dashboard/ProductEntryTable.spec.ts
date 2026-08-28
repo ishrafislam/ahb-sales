@@ -255,9 +255,17 @@ describe("ProductEntryTable", () => {
     const panelRows = () =>
       Array.from(document.querySelectorAll('[data-role="slot-option"]'));
 
-    it("opens on focus and lists every slot, empty ones included", async () => {
+    const caret = (wrapper: ReturnType<typeof mountHost>, rowIdx: number) =>
+      wrapper.findAll('[data-role="slots-toggle"]')[rowIdx]!;
+
+    it("stays shut until the caret is clicked, then lists every slot", async () => {
       const wrapper = mountHost();
       await startEntry(wrapper);
+      await flush();
+      // Focus alone leaves it closed: the arrows walk the rows
+      expect(panelRows()).toHaveLength(0);
+
+      await caret(wrapper, 0).trigger("click");
       await flush();
 
       expect(listProducts).toHaveBeenCalled();
@@ -269,13 +277,17 @@ describe("ProductEntryTable", () => {
       wrapper.unmount();
     });
 
-    it("filters as the id is typed", async () => {
+    it("filters an open list as the id is typed, and never opens one", async () => {
       const wrapper = mountHost();
       await startEntry(wrapper);
       const id = cellInputs(wrapper, 0).id;
 
       await id.setValue("7");
       await id.trigger("input");
+      await flush();
+      expect(panelRows()).toHaveLength(0);
+
+      await caret(wrapper, 0).trigger("click");
       await flush();
 
       // 7, 70-79, 700-799
@@ -288,6 +300,7 @@ describe("ProductEntryTable", () => {
       const wrapper = mountHost();
       await startEntry(wrapper);
       const id = cellInputs(wrapper, 0).id;
+      await caret(wrapper, 0).trigger("click");
       await flush();
 
       (panelRows()[4] as HTMLElement).click();
@@ -312,7 +325,7 @@ describe("ProductEntryTable", () => {
       await flush();
 
       const second = cellInputs(wrapper, 1);
-      await second.id.trigger("focus");
+      await caret(wrapper, 1).trigger("click");
       await flush();
       expect(panelRows().length).toBeGreaterThan(0);
 

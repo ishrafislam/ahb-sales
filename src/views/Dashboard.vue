@@ -40,19 +40,33 @@
         </div>
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_customer_id") }}:</label>
-          <input
-            ref="customerIdInput"
-            v-model="customerId"
-            type="text"
-            :class="[inputClass, 'max-w-[9rem] text-right']"
-            @focus="openCustomerSlots"
-            @input="onCustomerIdInput"
-            @blur="closeCustomerSlots"
-            @keydown.down.prevent="moveCustomerHighlight(1)"
-            @keydown.up.prevent="moveCustomerHighlight(-1)"
-            @keydown.esc.prevent="closeCustomerSlots"
-            @keydown.enter="onCustomerIdEnter"
-          />
+          <!-- The caret opens the slot list; focus alone only selects the id
+               so the next one typed replaces it -->
+          <div class="relative flex-1 min-w-0 max-w-[9rem]">
+            <input
+              ref="customerIdInput"
+              v-model="customerId"
+              type="text"
+              :class="[inputClass, 'w-full pr-6 text-right']"
+              @focus="onCustomerIdFocus"
+              @input="onCustomerIdInput"
+              @blur="closeCustomerSlots"
+              @keydown.down.prevent="moveCustomerHighlight(1)"
+              @keydown.up.prevent="moveCustomerHighlight(-1)"
+              @keydown.esc.prevent="closeCustomerSlots"
+              @keydown.enter="onCustomerIdEnter"
+            />
+            <button
+              type="button"
+              class="absolute inset-y-0 right-0 px-1.5 text-[0.6rem] leading-none text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              :aria-label="t('v2_customer_id')"
+              data-role="customer-slots-toggle"
+              @mousedown.prevent
+              @click="toggleCustomerSlots"
+            >
+              ▼
+            </button>
+          </div>
           <SlotDropdown
             :open="customerSlotsOpen"
             :options="customerSlotOptions"
@@ -461,9 +475,21 @@ async function loadCustomerSlots() {
 async function openCustomerSlots() {
   customerHighlight.value = -1;
   customerSlotsOpen.value = true;
-  // Whatever is in there is about to be replaced by the next id typed
-  customerIdInput.value?.select();
   if (!customerSlotsLoaded) await loadCustomerSlots();
+}
+
+// Whatever is in there is about to be replaced by the next id typed
+function onCustomerIdFocus() {
+  customerIdInput.value?.select();
+}
+
+function toggleCustomerSlots() {
+  if (customerSlotsOpen.value) {
+    closeCustomerSlots();
+    return;
+  }
+  customerIdInput.value?.focus();
+  void openCustomerSlots();
 }
 
 function closeCustomerSlots() {
@@ -471,10 +497,10 @@ function closeCustomerSlots() {
   customerHighlight.value = -1;
 }
 
+// Typing re-filters an open list; it never opens one — that is the caret's
+// job. The old highlight no longer points at the same row afterwards.
 function onCustomerIdInput() {
-  // Typing re-filters, so the old highlight no longer points at the same row
   customerHighlight.value = -1;
-  customerSlotsOpen.value = true;
 }
 
 function moveCustomerHighlight(step: number) {

@@ -45,19 +45,33 @@
             </button>
           </td>
           <td :class="[cellBorderClass, 'px-2 py-1']">
-            <input
-              :ref="(el) => setCellRef(idx, 'id', el)"
-              v-model="row.idText"
-              type="text"
-              inputmode="numeric"
-              :disabled="locked"
-              :class="[cellInputClass, 'disabled:opacity-70 disabled:cursor-not-allowed']"
-              @keydown.enter.prevent="onIdEnter(idx)"
-              @keydown="onCellKeydown($event, idx, 'id')"
-              @focus="onIdCellFocus(idx)"
-              @input="openSlots"
-              @blur="closeSlots"
-            >
+            <div class="relative">
+              <input
+                :ref="(el) => setCellRef(idx, 'id', el)"
+                v-model="row.idText"
+                type="text"
+                inputmode="numeric"
+                :disabled="locked"
+                :class="[cellInputClass, 'pr-5 disabled:opacity-70 disabled:cursor-not-allowed']"
+                @keydown.enter.prevent="onIdEnter(idx)"
+                @keydown="onCellKeydown($event, idx, 'id')"
+                @focus="onIdCellFocus(idx)"
+                @blur="closeSlots"
+              >
+              <!-- Opening the list is a deliberate click: focus happens on
+                   every arrow-key step through the rows -->
+              <button
+                type="button"
+                :disabled="locked"
+                class="absolute inset-y-0 right-0 px-1 text-[0.6rem] leading-none text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 disabled:opacity-70"
+                :aria-label="t('id')"
+                data-role="slots-toggle"
+                @mousedown.prevent
+                @click="toggleSlots(idx)"
+              >
+                ▼
+              </button>
+            </div>
           </td>
           <td :class="[cellBorderClass, 'px-2 py-1']">
             {{ row.product?.nameBn ?? "" }}
@@ -414,6 +428,16 @@ async function reloadSlots() {
 function onIdCellFocus(idx: number) {
   onCellFocus(idx);
   slotRow.value = idx;
+  closeSlots();
+}
+
+function toggleSlots(idx: number) {
+  if (slotsOpen.value && slotRow.value === idx) {
+    closeSlots();
+    return;
+  }
+  slotRow.value = idx;
+  void focusCell(idx, "id");
   openSlots();
 }
 

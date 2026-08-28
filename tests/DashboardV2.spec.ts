@@ -227,9 +227,9 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       };
     });
 
-    it("lists every slot on focus, empty ones included", async () => {
+    it("lists every slot when the caret is clicked, empty ones included", async () => {
       const wrapper = mountDashboard();
-      await getCustomerIdInput(wrapper).trigger("focus");
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
       await new Promise((r) => setTimeout(r, 0));
 
       expect(panelRows().length).toBe(MAX_CUSTOMER_ID);
@@ -237,6 +237,15 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       expect(third).toContain("রহিম");
       expect(third).toContain("ঢাকা");
       expect(panelRows()[0]!.textContent).toContain("Empty Slot");
+      wrapper.unmount();
+    });
+
+    it("does not open on focus alone", async () => {
+      const wrapper = mountDashboard();
+      await getCustomerIdInput(wrapper).trigger("focus");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(panelRows()).toHaveLength(0);
       wrapper.unmount();
     });
 
@@ -255,14 +264,15 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       wrapper.unmount();
     });
 
-    it("filters as the id is typed", async () => {
+    it("filters an open list as the id is typed, and never opens one", async () => {
       const wrapper = mountDashboard();
       const input = getCustomerIdInput(wrapper);
-      await input.trigger("focus");
-      await new Promise((r) => setTimeout(r, 0));
-
       await input.setValue("3");
       await input.trigger("input");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(panelRows()).toHaveLength(0);
+
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
       await new Promise((r) => setTimeout(r, 0));
 
       // 3, 30-39, 300-399
@@ -273,7 +283,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     it("loads the highlighted customer on Enter", async () => {
       const wrapper = mountDashboard();
       const input = getCustomerIdInput(wrapper);
-      await input.trigger("focus");
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
       await new Promise((r) => setTimeout(r, 0));
 
       for (let i = 0; i < 3; i++)
