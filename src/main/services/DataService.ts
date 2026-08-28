@@ -27,10 +27,7 @@ import { DataIndex } from "../utils/dataIndex";
 export class DataService {
   private index = new DataIndex();
 
-  constructor(
-    private fileService: FileService,
-    private menuService?: { buildMenu: () => void }
-  ) {
+  constructor(private fileService: FileService) {
     // Build initial index
     this.rebuildIndex();
   }
@@ -60,13 +57,11 @@ export class DataService {
     return this.fileService.getCurrentDoc().data as AhbDataV1;
   }
 
+  // Marking dirty is also what schedules the file's automatic save. Nothing in
+  // the menu depends on the dirty flag any more, so it is not rebuilt here.
   private markDirty(): void {
     this.fileService.setDirty(true);
     this.fileService.broadcastFileInfo();
-    // Rebuild menu to update Save button state
-    if (this.menuService) {
-      this.menuService.buildMenu();
-    }
   }
 
   // Products

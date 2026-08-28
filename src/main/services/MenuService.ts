@@ -29,7 +29,6 @@ export class MenuService {
       this.settingsService.loadSettings().themeSource ?? "system";
     const fs = this.getFileService();
     const currentFilePath = fs?.getCurrentFilePath() ?? null;
-    const isDirty = fs?.getIsDirty() ?? false;
 
     const template: MenuItemConstructorOptions[] = [
       {
@@ -54,14 +53,6 @@ export class MenuService {
             accelerator: process.platform === "darwin" ? "Cmd+Shift+N" : "Ctrl+Shift+N",
             click: (): void => {
               this.onNewWindow();
-            },
-          },
-          {
-            label: d.menu_save,
-            enabled: Boolean(currentFilePath && isDirty),
-            accelerator: process.platform === "darwin" ? "Cmd+S" : "Ctrl+S",
-            click: (): void => {
-              void this.getFileService()?.handleSaveFile();
             },
           },
           {
@@ -189,15 +180,8 @@ export class MenuService {
 
   private async quitAppFlow(): Promise<void> {
     const { app } = await import("electron");
-    const fs = this.getFileService();
-    if (fs?.getIsDirty()) {
-      const decision = await fs.askToSaveChanges();
-      if (decision === "cancel") return;
-      if (decision === "save") {
-        const ok = await fs.saveCurrentPossiblyAs();
-        if (!ok) return;
-      }
-    }
+    // Changes save themselves; only a write still on the timer needs forcing
+    this.getFileService()?.flushPendingSave();
     app.quit();
   }
 }

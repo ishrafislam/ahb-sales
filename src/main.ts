@@ -79,7 +79,7 @@ async function createWindow(filePath?: string): Promise<void> {
   });
 
   const fileService = new FileService(win);
-  const dataService = new DataService(fileService, menuService);
+  const dataService = new DataService(fileService);
 
   fileService.onDataChanged(() => {
     dataService.rebuildIndex();
@@ -92,15 +92,10 @@ async function createWindow(filePath?: string): Promise<void> {
   const ctx: WindowContext = { win, fileService, dataService };
   contexts.set(webContentsId, ctx);
 
-  // Intercept window close: prompt to save if dirty
-  win.on("close", (e) => {
-    if (!fileService.getIsDirty()) return;
-    e.preventDefault();
-    void fileService.askToSaveChanges().then(async (decision) => {
-      if (decision === "cancel") return;
-      if (decision === "save") await fileService.saveCurrentPossiblyAs();
-      win.destroy(); // bypasses the 'close' event
-    });
+  // Nothing is ever unsaved, so closing asks nothing — it only forces out a
+  // write still sitting on the autosave timer.
+  win.on("close", () => {
+    fileService.flushPendingSave();
   });
 
   win.on("closed", () => {
@@ -647,10 +642,6 @@ app.on("activate", () => {
 // File operations — routed to the sender's window context
 ipcMain.handle("app:new-file", async (e) => getCtx(e.sender).fileService.newFileFlow());
 ipcMain.handle("app:open-file", async (e) => getCtx(e.sender).fileService.openFileFlow());
-ipcMain.handle("app:save-file", async (e) => {
-  await getCtx(e.sender).fileService.handleSaveFile();
-  menuService.buildMenu();
-});
 ipcMain.handle("app:save-file-as", async (e) => {
   await getCtx(e.sender).fileService.handleSaveFileAs();
   menuService.buildMenu();

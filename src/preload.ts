@@ -12,7 +12,6 @@ type AppAPI = {
   // File operations
   newFile: () => Promise<void>;
   openFile: () => Promise<void>;
-  saveFile: () => Promise<void>;
   saveFileAs: () => Promise<void>;
   getFileInfo: () => Promise<{ path: string | null; isDirty: boolean }>;
   onFileInfo: (
@@ -147,7 +146,6 @@ type AppAPI = {
 const api: AppAPI = {
   newFile: () => ipcRenderer.invoke("app:new-file"),
   openFile: () => ipcRenderer.invoke("app:open-file"),
-  saveFile: () => ipcRenderer.invoke("app:save-file"),
   saveFileAs: () => ipcRenderer.invoke("app:save-file-as"),
   getFileInfo: () => ipcRenderer.invoke("app:get-file-info"),
   onFileInfo: (cb) => {
