@@ -57,6 +57,14 @@ describe("SlotDropdown", () => {
     bn.unmount();
   });
 
+  it("drops the id and second line for a name-only list", () => {
+    const wrapper = mountPanel({ nameOnly: true });
+
+    expect(rows()[0]!.textContent?.trim()).toBe("চাল");
+    expect(rows()[1]!.textContent).toContain("Empty Slot");
+    wrapper.unmount();
+  });
+
   it("renders nothing when closed or empty", () => {
     const closed = mountPanel({ open: false });
     expect(panel()).toBeNull();

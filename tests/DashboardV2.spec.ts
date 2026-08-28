@@ -309,6 +309,127 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     });
   });
 
+  describe("the name search boxes", () => {
+    const panelRows = () =>
+      Array.from(document.querySelectorAll('[data-role="slot-option"]'));
+
+    const openRecordDetailsWindow = vi.fn(async () => undefined);
+
+    beforeEach(() => {
+      openRecordDetailsWindow.mockClear();
+      (window as unknown as { ahb: Record<string, unknown> }).ahb = {
+        listInvoicesByCustomer,
+        getCustomerById,
+        openRecordDetailsWindow,
+        listCustomers: vi.fn(async () => [
+          { id: 12, nameBn: "Karim Store", address: "ঢাকা", active: true },
+          { id: 13, nameBn: "Rahim Traders", address: "চট্টগ্রাম", active: false },
+        ]),
+        listProducts: vi.fn(async () => [
+          { id: 5, nameBn: "চাল", description: "মোটা", active: true },
+        ]),
+      };
+    });
+
+    async function type(
+      wrapper: ReturnType<typeof mountDashboard>,
+      role: string,
+      value: string
+    ) {
+      const input = wrapper.find(`[data-role="${role}"]`);
+      await input.setValue(value);
+      await input.trigger("input");
+      await new Promise((r) => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 0));
+      return input;
+    }
+
+    const searchButton = (
+      wrapper: ReturnType<typeof mountDashboard>,
+      role: string
+    ) => wrapper.find(`[data-role="${role}"]`);
+
+    it("suggests customers as the name is typed, names and nothing else", async () => {
+      const wrapper = mountDashboard();
+      await type(wrapper, "customer-name-search", "karim");
+
+      expect(panelRows()).toHaveLength(1);
+      expect(panelRows()[0]!.textContent?.trim()).toBe("Karim Store");
+      wrapper.unmount();
+    });
+
+    it("suggests a close spelling when nothing matches outright", async () => {
+      const wrapper = mountDashboard();
+      await type(wrapper, "customer-name-search", "korim");
+
+      expect(panelRows()[0]!.textContent?.trim()).toBe("Karim Store");
+      wrapper.unmount();
+    });
+
+    it("keeps Search shut until a suggestion is picked, and reopens the pick", async () => {
+      const wrapper = mountDashboard();
+      const button = searchButton(wrapper, "customer-name-search-button");
+      expect((button.element as HTMLButtonElement).disabled).toBe(true);
+
+      const input = await type(wrapper, "customer-name-search", "karim");
+      expect((button.element as HTMLButtonElement).disabled).toBe(true);
+
+      (panelRows()[0] as HTMLElement).click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect((input.element as HTMLInputElement).value).toBe("Karim Store");
+      expect((button.element as HTMLButtonElement).disabled).toBe(false);
+
+      await button.trigger("click");
+      expect(openRecordDetailsWindow).toHaveBeenCalledWith("customer", 12);
+
+      // Editing afterwards means the box no longer names the picked record
+      await type(wrapper, "customer-name-search", "Karim Stor");
+      expect((button.element as HTMLButtonElement).disabled).toBe(true);
+      wrapper.unmount();
+    });
+
+    it("picks with the keyboard", async () => {
+      const wrapper = mountDashboard();
+      const input = await type(wrapper, "customer-name-search", "a");
+
+      await input.trigger("keydown", { key: "ArrowDown" });
+      await input.trigger("keydown", { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+
+      await searchButton(wrapper, "customer-name-search-button").trigger("click");
+      expect(openRecordDetailsWindow).toHaveBeenCalledWith("customer", 12);
+      wrapper.unmount();
+    });
+
+    it("searches products the same way, inactive records included", async () => {
+      const wrapper = mountDashboard();
+      await type(wrapper, "product-name-search", "চাল");
+
+      expect(panelRows()).toHaveLength(1);
+      expect(panelRows()[0]!.textContent?.trim()).toBe("চাল");
+
+      (panelRows()[0] as HTMLElement).click();
+      await new Promise((r) => setTimeout(r, 0));
+      await searchButton(wrapper, "product-name-search-button").trigger("click");
+
+      expect(openRecordDetailsWindow).toHaveBeenCalledWith("product", 5);
+      wrapper.unmount();
+    });
+
+    it("offers nothing for a name no record carries", async () => {
+      const wrapper = mountDashboard();
+      await type(wrapper, "customer-name-search", "elephant");
+
+      expect(panelRows()).toHaveLength(0);
+      expect(
+        (searchButton(wrapper, "customer-name-search-button")
+          .element as HTMLButtonElement).disabled
+      ).toBe(true);
+      wrapper.unmount();
+    });
+  });
+
   describe("editing the customer's name and address", () => {
     async function loadCustomer(
       wrapper: ReturnType<typeof mountDashboard>,

@@ -23,7 +23,10 @@
           data-role="slot-option"
           @click="emit('select', opt)"
         >
-          <span class="w-10 shrink-0 tabular-nums text-gray-500 dark:text-gray-400">
+          <span
+            v-if="!nameOnly"
+            class="w-10 shrink-0 tabular-nums text-gray-500 dark:text-gray-400"
+          >
             {{ opt.id }}
           </span>
           <span v-if="opt.primary" class="font-medium truncate">
@@ -33,7 +36,7 @@
             {{ t("empty_slot") }}
           </span>
           <span
-            v-if="opt.secondary"
+            v-if="opt.secondary && !nameOnly"
             class="ml-auto truncate text-gray-500 dark:text-gray-400"
           >
             {{ opt.secondary }}
@@ -57,6 +60,10 @@ const props = defineProps<{
   /** -1 when nothing is highlighted, so Enter keeps its old meaning. */
   highlight: number;
   anchor: HTMLElement | null;
+  /** Name search: the panel is a plain list of names, no id, no second line. */
+  nameOnly?: boolean;
+  /** Sit exactly as wide as the input rather than the roomier slot width. */
+  fitAnchor?: boolean;
 }>();
 
 const emit = defineEmits<{ (e: "select", option: SlotOption): void }>();
@@ -75,7 +82,7 @@ function place() {
   const el = props.anchor;
   if (!el) return;
   const r = el.getBoundingClientRect();
-  const width = Math.max(PANEL_WIDTH, r.width);
+  const width = props.fitAnchor ? r.width : Math.max(PANEL_WIDTH, r.width);
   // Keep the panel on screen: right-align to the anchor when a left-aligned
   // one would run past the window, and flip above when there is no room below
   const left = Math.max(4, Math.min(r.left, window.innerWidth - width - 4));

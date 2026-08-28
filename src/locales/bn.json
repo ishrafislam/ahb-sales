@@ -223,5 +223,8 @@
   "today": "আজ",
   "yesterday": "গতকাল",
   "invalid_date": "দুটি তারিখই DD/MM/YYYY আকারে দিন।",
-  "end_before_start": "শেষ তারিখ শুরুর তারিখের আগে হতে পারে না।"
+  "end_before_start": "শেষ তারিখ শুরুর তারিখের আগে হতে পারে না।",
+  "item_not_found": "আইটেম পাওয়া যায়নি",
+  "customer_details": "ক্রেতার বিবরণ",
+  "product_details": "আইটেমের বিবরণ"
 }

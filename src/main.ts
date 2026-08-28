@@ -215,6 +215,7 @@ const salesHistoryWindows = new Map<number, BrowserWindow>();
 const totalSellWindows = new Map<number, BrowserWindow>();
 const dailyReportWindows = new Map<number, BrowserWindow>();
 const clientSelectWindows = new Map<number, BrowserWindow>();
+const recordDetailsWindows = new Map<number, BrowserWindow>();
 const clientReportWindows = new Map<number, BrowserWindow>();
 const paymentReportWindows = new Map<number, BrowserWindow>();
 // Print windows are keyed by job id, not by opener: printing twice from the
@@ -503,6 +504,25 @@ async function openPaymentReportWindow(
     height: 440,
     resizable: false,
   });
+}
+
+async function openRecordDetailsWindow(
+  sender: Electron.WebContents,
+  kind: "customer" | "product",
+  id: number
+): Promise<void> {
+  // openChildWindow reuses the window it already has for this parent, which
+  // would leave the previous record on screen. The window carries one record,
+  // so a request for another one replaces it.
+  const existing = recordDetailsWindows.get(sender.id);
+  if (existing && !existing.isDestroyed()) existing.destroy();
+  recordDetailsWindows.delete(sender.id);
+  await openChildWindow(
+    sender,
+    recordDetailsWindows,
+    `record-details/${kind}/${id}`,
+    { width: 460, height: 420, resizable: false }
+  );
 }
 
 async function openClientSelectWindow(
@@ -816,6 +836,12 @@ ipcMain.handle("window:open-payment-report", async (e) => {
   await openPaymentReportWindow(e.sender);
 });
 
+ipcMain.handle(
+  "window:open-record-details",
+  async (e, kind: "customer" | "product", id: number) => {
+    await openRecordDetailsWindow(e.sender, kind, id);
+  }
+);
 ipcMain.handle("window:open-client-select", async (e) => {
   await openClientSelectWindow(e.sender);
 });

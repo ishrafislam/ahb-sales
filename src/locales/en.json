@@ -223,5 +223,8 @@
   "today": "Today",
   "yesterday": "Yesterday",
   "invalid_date": "Enter both dates as DD/MM/YYYY.",
-  "end_before_start": "End date cannot be before the start date."
+  "end_before_start": "End date cannot be before the start date.",
+  "item_not_found": "Item not found",
+  "customer_details": "Customer Details",
+  "product_details": "Item Details"
 }

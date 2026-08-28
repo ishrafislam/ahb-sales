@@ -103,17 +103,73 @@
       <div
         class="lg:col-span-5 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
       >
+        <!-- Name search: type to get suggestions, pick one, then Search opens
+             that record's details in its own window -->
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap w-24">{{ t("v2_customer_name") }}:</label>
-          <input type="text" :class="inputClass" />
-          <button type="button" :class="[buttonClass, 'px-4 h-8 text-xs']">
+          <input
+            ref="customerNameInput"
+            v-model="customerNameQuery"
+            type="text"
+            :class="inputClass"
+            data-role="customer-name-search"
+            @input="onCustomerNameInput"
+            @blur="customerNameOpen = false"
+            @keydown.down.prevent="moveNameHighlight('customer', 1)"
+            @keydown.up.prevent="moveNameHighlight('customer', -1)"
+            @keydown.esc.prevent="customerNameOpen = false"
+            @keydown.enter.prevent="onCustomerNameEnter"
+          />
+          <SlotDropdown
+            :open="customerNameOpen"
+            :options="customerNameOptions"
+            :highlight="customerNameHighlight"
+            :anchor="customerNameInput"
+            name-only
+            fit-anchor
+            @select="pickCustomerName"
+          />
+          <button
+            type="button"
+            :class="[buttonClass, 'px-4 h-8 text-xs disabled:opacity-70 disabled:cursor-not-allowed']"
+            :disabled="pickedCustomerId === null"
+            data-role="customer-name-search-button"
+            @click="openCustomerDetails"
+          >
             {{ t("v2_search") }}
           </button>
         </div>
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap w-24">{{ t("v2_product_name") }}:</label>
-          <input type="text" :class="inputClass" />
-          <button type="button" :class="[buttonClass, 'px-4 h-8 text-xs']">
+          <input
+            ref="productNameInput"
+            v-model="productNameQuery"
+            type="text"
+            :class="inputClass"
+            data-role="product-name-search"
+            @input="onProductNameInput"
+            @blur="productNameOpen = false"
+            @keydown.down.prevent="moveNameHighlight('product', 1)"
+            @keydown.up.prevent="moveNameHighlight('product', -1)"
+            @keydown.esc.prevent="productNameOpen = false"
+            @keydown.enter.prevent="onProductNameEnter"
+          />
+          <SlotDropdown
+            :open="productNameOpen"
+            :options="productNameOptions"
+            :highlight="productNameHighlight"
+            :anchor="productNameInput"
+            name-only
+            fit-anchor
+            @select="pickProductName"
+          />
+          <button
+            type="button"
+            :class="[buttonClass, 'px-4 h-8 text-xs disabled:opacity-70 disabled:cursor-not-allowed']"
+            :disabled="pickedProductId === null"
+            data-role="product-name-search-button"
+            @click="openProductDetails"
+          >
             {{ t("v2_search") }}
           </button>
         </div>
@@ -332,6 +388,7 @@ import { t } from "../i18n";
 import type { Invoice } from "../main/data";
 import SlotDropdown from "../components/dashboard/SlotDropdown.vue";
 import { toSlots, filterSlots, type SlotOption } from "../components/dashboard/slotOptions";
+import { matchByName } from "../utils/fuzzy";
 import ProductEntryTable, {
   type EntryRow,
 } from "../components/dashboard/ProductEntryTable.vue";
@@ -532,6 +589,140 @@ function onCustomerIdEnter() {
   void loadLastBill();
 }
 
+// Name search boxes: suggestions from the saved records, and a picked id that
+// the Search button opens a details window for. Editing the text after picking
+// clears the id, so Search never opens a record the box no longer names.
+type NameRecord = {
+  id: number;
+  nameBn: string;
+  secondary?: string;
+  active: boolean;
+};
+
+const customerNameInput = ref<HTMLInputElement | null>(null);
+const productNameInput = ref<HTMLInputElement | null>(null);
+const customerNameQuery = ref("");
+const productNameQuery = ref("");
+const customerNameOpen = ref(false);
+const productNameOpen = ref(false);
+const customerNameHighlight = ref(-1);
+const productNameHighlight = ref(-1);
+const pickedCustomerId = ref<number | null>(null);
+const pickedProductId = ref<number | null>(null);
+const customerRecords = ref<NameRecord[]>([]);
+const productRecords = ref<NameRecord[]>([]);
+let customerRecordsLoaded = false;
+let productRecordsLoaded = false;
+
+// Inactive records are searchable too — the details window says so
+async function loadCustomerRecords() {
+  try {
+    const customers = await window.ahb.listCustomers({ activeOnly: false });
+    customerRecords.value = customers.map((c) => ({
+      id: c.id,
+      nameBn: c.nameBn,
+      secondary: c.address,
+      active: c.active,
+    }));
+    customerRecordsLoaded = true;
+  } catch {
+    /* a search box that cannot load is simply empty */
+  }
+}
+
+async function loadProductRecords() {
+  try {
+    const products = await window.ahb.listProducts({ activeOnly: false });
+    productRecords.value = products.map((p) => ({
+      id: p.id,
+      nameBn: p.nameBn,
+      secondary: p.description,
+      active: p.active,
+    }));
+    productRecordsLoaded = true;
+  } catch {
+    /* as above */
+  }
+}
+
+// The panel shows names and nothing else; a close spelling is offered the same
+// way an exact one is
+function toNameOptions(records: NameRecord[], query: string): SlotOption[] {
+  return matchByName(records, query, (r) => r.nameBn).map(({ item }) => ({
+    id: item.id,
+    primary: item.nameBn,
+  }));
+}
+
+const customerNameOptions = computed(() =>
+  toNameOptions(customerRecords.value, customerNameQuery.value)
+);
+const productNameOptions = computed(() =>
+  toNameOptions(productRecords.value, productNameQuery.value)
+);
+
+function onCustomerNameInput() {
+  pickedCustomerId.value = null;
+  customerNameHighlight.value = -1;
+  customerNameOpen.value = true;
+  if (!customerRecordsLoaded) void loadCustomerRecords();
+}
+
+function onProductNameInput() {
+  pickedProductId.value = null;
+  productNameHighlight.value = -1;
+  productNameOpen.value = true;
+  if (!productRecordsLoaded) void loadProductRecords();
+}
+
+function moveNameHighlight(kind: "customer" | "product", step: number) {
+  const open = kind === "customer" ? customerNameOpen : productNameOpen;
+  const highlight =
+    kind === "customer" ? customerNameHighlight : productNameHighlight;
+  const count = (
+    kind === "customer" ? customerNameOptions : productNameOptions
+  ).value.length;
+  if (!open.value || !count) return;
+  const next = highlight.value + step;
+  highlight.value = next < 0 ? count - 1 : next >= count ? 0 : next;
+}
+
+function pickCustomerName(option: SlotOption) {
+  const record = customerRecords.value.find((r) => r.id === option.id);
+  customerNameQuery.value = record?.nameBn ?? "";
+  pickedCustomerId.value = option.id;
+  customerNameOpen.value = false;
+  customerNameHighlight.value = -1;
+}
+
+function pickProductName(option: SlotOption) {
+  const record = productRecords.value.find((r) => r.id === option.id);
+  productNameQuery.value = record?.nameBn ?? "";
+  pickedProductId.value = option.id;
+  productNameOpen.value = false;
+  productNameHighlight.value = -1;
+}
+
+function onCustomerNameEnter() {
+  const option = customerNameOptions.value[customerNameHighlight.value];
+  if (customerNameOpen.value && option) pickCustomerName(option);
+}
+
+function onProductNameEnter() {
+  const option = productNameOptions.value[productNameHighlight.value];
+  if (productNameOpen.value && option) pickProductName(option);
+}
+
+function openCustomerDetails() {
+  if (pickedCustomerId.value === null) return;
+  void window.ahb.openRecordDetailsWindow("customer", pickedCustomerId.value);
+}
+
+function openProductDetails() {
+  if (pickedProductId.value === null) return;
+  void window.ahb.openRecordDetailsWindow("product", pickedProductId.value);
+}
+
 const entryTable = ref<InstanceType<typeof ProductEntryTable> | null>(null);
 const entryRows = ref<EntryRow[]>([]);
 const selectedProductIdText = ref("");
@@ -634,6 +825,7 @@ async function onDataChanged(payload: {
 }) {
   if (payload.kind === "product") {
     void entryTable.value?.reloadSlots();
+    if (productRecordsLoaded) void loadProductRecords();
     if (payload.action !== "stock-updated") return;
     const product = await window.ahb.getProductById(payload.id);
     if (product) entryTable.value?.refreshProductStock(payload.id, product.stock);
@@ -641,6 +833,7 @@ async function onDataChanged(payload: {
   }
   if (payload.kind === "customer") {
     if (customerSlotsLoaded) await loadCustomerSlots();
+    if (customerRecordsLoaded) await loadCustomerRecords();
     return;
   }
   if (payload.kind !== "invoice" || payload.action !== "payment") return;

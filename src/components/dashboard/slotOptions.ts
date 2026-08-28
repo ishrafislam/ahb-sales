@@ -4,6 +4,8 @@
  * these helpers pad the saved records out to the full range and filter it.
  */
 
+import { toLatinDigits } from "../../utils/fuzzy";
+
 export type SlotOption = {
   id: number;
   /** The record's name; empty for a slot nothing is saved in yet. */
@@ -11,15 +13,6 @@ export type SlotOption = {
   /** Address for a customer, description for a product. */
   secondary?: string;
 };
-
-const BENGALI_ZERO = "০".codePointAt(0)!;
-
-/** Bengali numerals type the same as Latin ones as far as matching goes. */
-function toLatinDigits(s: string): string {
-  return s.replace(/[০-৯]/g, (d) =>
-    String(d.codePointAt(0)! - BENGALI_ZERO)
-  );
-}
 
 /**
  * Every slot from 1 to `max`, with the saved records merged in. Records

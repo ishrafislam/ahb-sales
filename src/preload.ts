@@ -98,6 +98,10 @@ type AppAPI = {
   openDailyReportWindow: () => Promise<void>;
   openPaymentReportWindow: () => Promise<void>;
   openClientSelectWindow: () => Promise<void>;
+  openRecordDetailsWindow: (
+    kind: "customer" | "product",
+    id: number
+  ) => Promise<void>;
   openClientReportWindow: (customerId?: number) => Promise<void>;
   // Printing
   openPrintPreview: (doc: PrintDocument) => Promise<string>;
@@ -230,6 +234,8 @@ const api: AppAPI = {
   openPaymentReportWindow: () =>
     ipcRenderer.invoke("window:open-payment-report"),
   openClientSelectWindow: () => ipcRenderer.invoke("window:open-client-select"),
+  openRecordDetailsWindow: (kind, id) =>
+    ipcRenderer.invoke("window:open-record-details", kind, id),
   openClientReportWindow: (customerId) =>
     ipcRenderer.invoke("window:open-client-report", customerId),
   openPrintPreview: (doc) => ipcRenderer.invoke("print:create-job", doc),
