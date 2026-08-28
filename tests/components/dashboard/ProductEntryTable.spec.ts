@@ -5,6 +5,7 @@ import ProductEntryTable, {
   type EntryRow,
 } from "../../../src/components/dashboard/ProductEntryTable.vue";
 import { currentLang } from "../../../src/i18n";
+import { MAX_PRODUCT_ID } from "../../../src/constants/business";
 
 type ProductStub = {
   id: number;
@@ -18,6 +19,7 @@ describe("ProductEntryTable", () => {
   let getProductById: ReturnType<
     typeof vi.fn<(id: number) => Promise<ProductStub | null>>
   >;
+  let listProducts: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     currentLang.value = "en";
@@ -28,7 +30,11 @@ describe("ProductEntryTable", () => {
           ? { id: 7, nameBn: "ডাল", unit: "kg", price: 120, stock: 12 }
           : null
     );
-    (window as unknown as { ahb: unknown }).ahb = { getProductById };
+    listProducts = vi.fn(async () => [
+      { id: 5, nameBn: "চাল", description: "মোটা", unit: "kg", price: 55.5, stock: 40 },
+      { id: 7, nameBn: "ডাল", unit: "kg", price: 120, stock: 12 },
+    ]);
+    (window as unknown as { ahb: unknown }).ahb = { getProductById, listProducts };
   });
 
   const Host = defineComponent({
@@ -243,6 +249,83 @@ describe("ProductEntryTable", () => {
     expect(cellInputs(wrapper, 0).amount.element.value).toBe("3");
     expect(cellInputs(wrapper, 1).amount.element.value).toBe("2");
     wrapper.unmount();
+  });
+
+  describe("the ID slot dropdown", () => {
+    const panelRows = () =>
+      Array.from(document.querySelectorAll('[data-role="slot-option"]'));
+
+    it("opens on focus and lists every slot, empty ones included", async () => {
+      const wrapper = mountHost();
+      await startEntry(wrapper);
+      await flush();
+
+      expect(listProducts).toHaveBeenCalled();
+      expect(panelRows().length).toBe(MAX_PRODUCT_ID);
+      const first = panelRows()[4]!.textContent ?? "";
+      expect(first).toContain("চাল");
+      expect(first).toContain("মোটা");
+      expect(panelRows()[0]!.textContent).toContain("Empty Slot");
+      wrapper.unmount();
+    });
+
+    it("filters as the id is typed", async () => {
+      const wrapper = mountHost();
+      await startEntry(wrapper);
+      const id = cellInputs(wrapper, 0).id;
+
+      await id.setValue("7");
+      await id.trigger("input");
+      await flush();
+
+      // 7, 70-79, 700-799
+      expect(panelRows().length).toBe(111);
+      expect(panelRows()[0]!.textContent).toContain("ডাল");
+      wrapper.unmount();
+    });
+
+    it("loads the clicked product and closes", async () => {
+      const wrapper = mountHost();
+      await startEntry(wrapper);
+      const id = cellInputs(wrapper, 0).id;
+      await flush();
+
+      (panelRows()[4] as HTMLElement).click();
+      await flush();
+
+      expect(getProductById).toHaveBeenCalledWith(5);
+      expect((id.element as HTMLInputElement).value).toBe("5");
+      expect(document.activeElement).toBe(cellInputs(wrapper, 0).amount.element);
+      expect(panelRows()).toHaveLength(0);
+      wrapper.unmount();
+    });
+
+    it("leaves the arrows to row navigation, open or not, and closes on Escape", async () => {
+      const wrapper = mountHost();
+      await startEntry(wrapper);
+      const first = cellInputs(wrapper, 0);
+      await first.id.setValue("5");
+      await first.id.trigger("keydown.enter");
+      await flush();
+      await first.amount.setValue("1");
+      await first.amount.trigger("keydown.enter");
+      await flush();
+
+      const second = cellInputs(wrapper, 1);
+      await second.id.trigger("focus");
+      await flush();
+      expect(panelRows().length).toBeGreaterThan(0);
+
+      // Still walks the rows with the panel showing
+      await second.id.trigger("keydown", { key: "ArrowUp" });
+      await flush();
+      expect(document.activeElement).toBe(cellInputs(wrapper, 0).id.element);
+
+      await cellInputs(wrapper, 0).id.trigger("keydown", { key: "Escape" });
+      await flush();
+      expect(panelRows()).toHaveLength(0);
+      wrapper.unmount();
+    });
   });
 
   it("locked disables every cell input", async () => {

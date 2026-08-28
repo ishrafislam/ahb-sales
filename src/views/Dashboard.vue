@@ -45,7 +45,20 @@
             v-model="customerId"
             type="text"
             :class="[inputClass, 'max-w-[9rem] text-right']"
-            @keydown.enter="loadLastBill"
+            @focus="openCustomerSlots"
+            @input="onCustomerIdInput"
+            @blur="closeCustomerSlots"
+            @keydown.down.prevent="moveCustomerHighlight(1)"
+            @keydown.up.prevent="moveCustomerHighlight(-1)"
+            @keydown.esc.prevent="closeCustomerSlots"
+            @keydown.enter="onCustomerIdEnter"
+          />
+          <SlotDropdown
+            :open="customerSlotsOpen"
+            :options="customerSlotOptions"
+            :highlight="customerHighlight"
+            :anchor="customerIdInput"
+            @select="selectCustomerSlot"
           />
         </div>
       </div>
@@ -100,22 +113,29 @@
         <div
           class="shrink-0 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
         >
+          <!-- Name and address save straight from here: Enter, or leaving the
+               field. Receivable stays read-only — it can only be set when the
+               customer is created. -->
           <div class="flex items-center gap-2">
             <label class="text-xs whitespace-nowrap w-14">{{ t("v2_customer") }}:</label>
             <input
+              id="customer-name"
+              v-model="customerNameText"
               type="text"
-              :value="customerNameText"
-              disabled
-              :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              :class="[inputClass, 'text-right']"
+              @keydown.enter.prevent="commitCustomer"
+              @blur="commitCustomer"
             />
           </div>
           <div class="flex items-center gap-2">
             <label class="text-xs whitespace-nowrap w-14">{{ t("v2_address") }}:</label>
             <input
+              id="customer-address"
+              v-model="customerAddressText"
               type="text"
-              :value="customerAddressText"
-              disabled
-              :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              :class="[inputClass, 'text-right']"
+              @keydown.enter.prevent="commitCustomer"
+              @blur="commitCustomer"
             />
           </div>
           <div class="flex items-center gap-2">
@@ -127,6 +147,12 @@
               :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
             />
           </div>
+          <p
+            v-if="customerError"
+            class="text-xs text-red-600 dark:text-red-400"
+          >
+            {{ customerError }}
+          </p>
         </div>
 
         <!-- The customer card above stays put; only the button cards scroll -->
@@ -290,6 +316,8 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { t } from "../i18n";
 import type { Invoice } from "../main/data";
+import SlotDropdown from "../components/dashboard/SlotDropdown.vue";
+import { toSlots, filterSlots, type SlotOption } from "../components/dashboard/slotOptions";
 import ProductEntryTable, {
   type EntryRow,
 } from "../components/dashboard/ProductEntryTable.vue";
@@ -323,6 +351,14 @@ const customerAddressText = ref("");
 const customerPhoneText = ref("");
 const customerReceivableText = ref("");
 
+// What the file holds for the two editable fields, so a commit can tell a real
+// edit from a plain re-focus and can restore them if a save is refused
+const savedCustomerName = ref("");
+const savedCustomerAddress = ref("");
+const customerExists = ref(false);
+const customerError = ref("");
+let savingCustomer = false;
+
 function setCustomerInfo(
   customer: {
     nameBn: string;
@@ -337,6 +373,137 @@ function setCustomerInfo(
   customerReceivableText.value = customer
     ? customer.outstanding.toFixed(2)
     : "";
+  savedCustomerName.value = customerNameText.value;
+  savedCustomerAddress.value = customerAddressText.value;
+  customerExists.value = customer !== null;
+  customerError.value = "";
+}
+
+/**
+ * Save the customer's name and address, on Enter or on leaving the field.
+ * Typing into an id with no record behind it creates the customer there — the
+ * same slot a sale would have created, just named up front.
+ */
+async function commitCustomer() {
+  if (savingCustomer) return;
+  const id = parseCustomerId();
+  if (id === undefined) return;
+  const nameBn = customerNameText.value.trim();
+  const address = customerAddressText.value.trim();
+  // Unchanged: a re-focus, or the blur that Enter itself caused
+  if (
+    nameBn === savedCustomerName.value &&
+    address === savedCustomerAddress.value
+  ) {
+    return;
+  }
+  // Nothing typed and nothing on file: do not create an empty customer
+  if (!customerExists.value && !nameBn && !address) return;
+
+  savingCustomer = true;
+  customerError.value = "";
+  try {
+    if (customerExists.value) {
+      await window.ahb.updateCustomer(id, {
+        nameBn,
+        address: address || undefined,
+      });
+    } else {
+      await window.ahb.addCustomer({
+        id,
+        nameBn,
+        address: address || undefined,
+      });
+      customerExists.value = true;
+    }
+    savedCustomerName.value = nameBn;
+    savedCustomerAddress.value = address;
+    customerNameText.value = nameBn;
+    customerAddressText.value = address;
+  } catch (e) {
+    customerError.value = e instanceof Error ? e.message : String(e);
+    customerNameText.value = savedCustomerName.value;
+    customerAddressText.value = savedCustomerAddress.value;
+  } finally {
+    savingCustomer = false;
+  }
+}
+
+// Customer ID dropdown: every slot 1..MAX_CUSTOMER_ID, saved records merged in
+const customerSlots = ref<SlotOption[]>([]);
+const customerSlotsOpen = ref(false);
+const customerHighlight = ref(-1);
+let customerSlotsLoaded = false;
+
+const customerSlotOptions = computed(() =>
+  filterSlots(customerSlots.value, customerId.value)
+);
+
+async function loadCustomerSlots() {
+  // A dropdown that cannot be filled is not worth breaking the field over
+  let customers: Awaited<ReturnType<typeof window.ahb.listCustomers>> = [];
+  try {
+    customers = await window.ahb.listCustomers();
+  } catch {
+    return;
+  }
+  customerSlots.value = toSlots(
+    customers.map((c) => ({
+      id: c.id,
+      primary: c.nameBn,
+      secondary: c.address,
+    })),
+    MAX_CUSTOMER_ID
+  );
+  customerSlotsLoaded = true;
+}
+
+async function openCustomerSlots() {
+  customerHighlight.value = -1;
+  customerSlotsOpen.value = true;
+  // Whatever is in there is about to be replaced by the next id typed
+  customerIdInput.value?.select();
+  if (!customerSlotsLoaded) await loadCustomerSlots();
+}
+
+function closeCustomerSlots() {
+  customerSlotsOpen.value = false;
+  customerHighlight.value = -1;
+}
+
+function onCustomerIdInput() {
+  // Typing re-filters, so the old highlight no longer points at the same row
+  customerHighlight.value = -1;
+  customerSlotsOpen.value = true;
+}
+
+function moveCustomerHighlight(step: number) {
+  if (!customerSlotsOpen.value) {
+    void openCustomerSlots();
+    return;
+  }
+  const count = customerSlotOptions.value.length;
+  if (!count) return;
+  const next = customerHighlight.value + step;
+  customerHighlight.value = next < 0 ? count - 1 : next >= count ? 0 : next;
+}
+
+function selectCustomerSlot(option: SlotOption) {
+  customerId.value = String(option.id);
+  closeCustomerSlots();
+  void loadLastBill();
+}
+
+// Enter picks the highlighted slot; with nothing highlighted it loads whatever
+// was typed, exactly as before the dropdown existed
+function onCustomerIdEnter() {
+  const option = customerSlotOptions.value[customerHighlight.value];
+  if (customerSlotsOpen.value && option) {
+    selectCustomerSlot(option);
+    return;
+  }
+  closeCustomerSlots();
+  void loadLastBill();
 }
 
 const entryTable = ref<InstanceType<typeof ProductEntryTable> | null>(null);
@@ -439,9 +606,15 @@ async function onDataChanged(payload: {
   action: string;
   id: number;
 }) {
-  if (payload.kind === "product" && payload.action === "stock-updated") {
+  if (payload.kind === "product") {
+    void entryTable.value?.reloadSlots();
+    if (payload.action !== "stock-updated") return;
     const product = await window.ahb.getProductById(payload.id);
     if (product) entryTable.value?.refreshProductStock(payload.id, product.stock);
+    return;
+  }
+  if (payload.kind === "customer") {
+    if (customerSlotsLoaded) await loadCustomerSlots();
     return;
   }
   if (payload.kind !== "invoice" || payload.action !== "payment") return;

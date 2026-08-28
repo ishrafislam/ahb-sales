@@ -3,6 +3,7 @@ import { mount } from "@vue/test-utils";
 import { createPinia } from "pinia";
 import Dashboard from "../src/views/Dashboard.vue";
 import { currentLang } from "../src/i18n";
+import { MAX_CUSTOMER_ID } from "../src/constants/business";
 
 type InvoiceStub = {
   date: string;
@@ -56,12 +57,26 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     return wrapper.findAll("input:disabled");
   }
 
+  // The customer's name and address are editable, so they are not part of the
+  // disabled set the assertions below sweep
+  function customerField(
+    wrapper: ReturnType<typeof mountDashboard>,
+    which: "name" | "address"
+  ) {
+    return wrapper.find(`#customer-${which}`);
+  }
+
+  const customerValue = (
+    wrapper: ReturnType<typeof mountDashboard>,
+    which: "name" | "address"
+  ) => (customerField(wrapper, which).element as HTMLInputElement).value;
+
   it("renders product info, last bill, totals and status fields as always-disabled inputs", () => {
     const wrapper = mountDashboard();
     const disabled = getDisabledInputs(wrapper);
-    // 2 header + 2 last-bill + 3 customer info + grand total + bill
-    // + deposit + 7 status panel fields
-    expect(disabled.length).toBe(17);
+    // 2 header + 2 last-bill + receivable + grand total + bill
+    // + deposit + 7 status panel fields; name and address are editable
+    expect(disabled.length).toBe(15);
     wrapper.unmount();
   });
 
@@ -125,15 +140,15 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       (i) => (i.element as HTMLInputElement).value
     );
     // Grid started for the valid customer: its empty row's price input is
-    // also disabled until a product loads; other empties are the customer
-    // info box, grand total, bill and the 7 status panel fields. The
+    // also disabled until a product loads; other empties are the
+    // receivable, grand total, bill and the 7 status panel fields. The
     // deposit field always shows 0.00.
     expect(values).toEqual([
       "",
       "",
       "—",
       "—",
-      ...Array(6).fill(""),
+      ...Array(4).fill(""),
       "0.00",
       ...Array(7).fill(""),
     ]);
@@ -156,7 +171,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       "",
       "—",
       "—",
-      ...Array(5).fill(""),
+      ...Array(3).fill(""),
       "0.00",
       ...Array(7).fill(""),
     ]);
@@ -179,8 +194,8 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     let values = getDisabledInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).toContain("রহিম");
-    expect(values).toContain("ঢাকা");
+    expect(customerValue(wrapper, "name")).toBe("রহিম");
+    expect(customerValue(wrapper, "address")).toBe("ঢাকা");
     expect(values).toContain("250.50");
 
     // Unknown customer clears the box
@@ -191,9 +206,237 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     values = getDisabledInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).not.toContain("রহিম");
+    expect(customerValue(wrapper, "name")).toBe("");
     expect(values).not.toContain("250.50");
     wrapper.unmount();
+  });
+
+  describe("the Customer ID slot dropdown", () => {
+    const panelRows = () =>
+      Array.from(document.querySelectorAll('[data-role="slot-option"]'));
+
+    beforeEach(() => {
+      const listCustomers = vi.fn(async () => [
+        { id: 3, nameBn: "রহিম", address: "ঢাকা" },
+        { id: 30, nameBn: "করিম", address: "চট্টগ্রাম" },
+      ]);
+      (window as unknown as { ahb: Record<string, unknown> }).ahb = {
+        listInvoicesByCustomer,
+        getCustomerById,
+        listCustomers,
+      };
+    });
+
+    it("lists every slot on focus, empty ones included", async () => {
+      const wrapper = mountDashboard();
+      await getCustomerIdInput(wrapper).trigger("focus");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(panelRows().length).toBe(MAX_CUSTOMER_ID);
+      const third = panelRows()[2]!.textContent ?? "";
+      expect(third).toContain("রহিম");
+      expect(third).toContain("ঢাকা");
+      expect(panelRows()[0]!.textContent).toContain("Empty Slot");
+      wrapper.unmount();
+    });
+
+    it("selects the whole id on focus, ready to be typed over", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await input.setValue("214");
+      const el = input.element as HTMLInputElement;
+      el.setSelectionRange(3, 3);
+
+      await input.trigger("focus");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(el.selectionStart).toBe(0);
+      expect(el.selectionEnd).toBe(3);
+      wrapper.unmount();
+    });
+
+    it("filters as the id is typed", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await input.trigger("focus");
+      await new Promise((r) => setTimeout(r, 0));
+
+      await input.setValue("3");
+      await input.trigger("input");
+      await new Promise((r) => setTimeout(r, 0));
+
+      // 3, 30-39, 300-399
+      expect(panelRows().length).toBe(111);
+      wrapper.unmount();
+    });
+
+    it("loads the highlighted customer on Enter", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await input.trigger("focus");
+      await new Promise((r) => setTimeout(r, 0));
+
+      for (let i = 0; i < 3; i++)
+        await input.trigger("keydown", { key: "ArrowDown" });
+      await input.trigger("keydown", { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(getCustomerById).toHaveBeenCalledWith(3);
+      expect((input.element as HTMLInputElement).value).toBe("3");
+      expect(panelRows()).toHaveLength(0);
+      wrapper.unmount();
+    });
+
+    it("still loads the typed id when nothing is highlighted", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await input.setValue("30");
+      await input.trigger("keydown", { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(listInvoicesByCustomer).toHaveBeenCalledWith(30);
+      wrapper.unmount();
+    });
+  });
+
+  describe("editing the customer's name and address", () => {
+    async function loadCustomer(
+      wrapper: ReturnType<typeof mountDashboard>,
+      id = "12"
+    ) {
+      const input = getCustomerIdInput(wrapper);
+      await input.setValue(id);
+      await input.trigger("keydown.enter");
+      await new Promise((r) => setTimeout(r, 0));
+    }
+
+    function withApi(extra: Record<string, unknown>) {
+      (window as unknown as { ahb: Record<string, unknown> }).ahb = {
+        listInvoicesByCustomer,
+        getCustomerById,
+        ...extra,
+      };
+    }
+
+    it("saves the name on Enter", async () => {
+      const updateCustomer = vi.fn(async () => ({}));
+      getCustomerById.mockResolvedValue({
+        nameBn: "রহিম",
+        address: "ঢাকা",
+        outstanding: 10,
+      });
+      withApi({ updateCustomer });
+      const wrapper = mountDashboard();
+      await loadCustomer(wrapper);
+
+      const name = customerField(wrapper, "name");
+      await name.setValue("করিম");
+      await name.trigger("keydown.enter");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(updateCustomer).toHaveBeenCalledWith(12, {
+        nameBn: "করিম",
+        address: "ঢাকা",
+      });
+      wrapper.unmount();
+    });
+
+    it("saves on blur, and writes nothing when nothing changed", async () => {
+      const updateCustomer = vi.fn(async () => ({}));
+      getCustomerById.mockResolvedValue({
+        nameBn: "রহিম",
+        address: "ঢাকা",
+        outstanding: 10,
+      });
+      withApi({ updateCustomer });
+      const wrapper = mountDashboard();
+      await loadCustomer(wrapper);
+
+      // Focus and leave without typing
+      await customerField(wrapper, "address").trigger("blur");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(updateCustomer).not.toHaveBeenCalled();
+
+      const address = customerField(wrapper, "address");
+      await address.setValue("চট্টগ্রাম");
+      await address.trigger("blur");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(updateCustomer).toHaveBeenCalledWith(12, {
+        nameBn: "রহিম",
+        address: "চট্টগ্রাম",
+      });
+      wrapper.unmount();
+    });
+
+    it("creates the customer when the slot is empty, then updates it", async () => {
+      const addCustomer = vi.fn(async () => ({}));
+      const updateCustomer = vi.fn(async () => ({}));
+      getCustomerById.mockResolvedValue(null);
+      withApi({ addCustomer, updateCustomer });
+      const wrapper = mountDashboard();
+      await loadCustomer(wrapper, "77");
+
+      const name = customerField(wrapper, "name");
+      await name.setValue("নতুন");
+      await name.trigger("keydown.enter");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(addCustomer).toHaveBeenCalledWith({
+        id: 77,
+        nameBn: "নতুন",
+        address: undefined,
+      });
+
+      // The record exists now, so the next edit patches it
+      await name.setValue("নতুন দোকান");
+      await name.trigger("keydown.enter");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(addCustomer).toHaveBeenCalledTimes(1);
+      expect(updateCustomer).toHaveBeenCalledWith(77, {
+        nameBn: "নতুন দোকান",
+        address: undefined,
+      });
+      wrapper.unmount();
+    });
+
+    it("creates nothing for an empty slot left blank", async () => {
+      const addCustomer = vi.fn(async () => ({}));
+      getCustomerById.mockResolvedValue(null);
+      withApi({ addCustomer });
+      const wrapper = mountDashboard();
+      await loadCustomer(wrapper, "77");
+
+      await customerField(wrapper, "name").trigger("blur");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(addCustomer).not.toHaveBeenCalled();
+      wrapper.unmount();
+    });
+
+    it("shows a rejected save and puts the old value back", async () => {
+      const updateCustomer = vi.fn(async () => {
+        throw new Error("Customer not found");
+      });
+      getCustomerById.mockResolvedValue({
+        nameBn: "রহিম",
+        address: "ঢাকা",
+        outstanding: 10,
+      });
+      withApi({ updateCustomer });
+      const wrapper = mountDashboard();
+      await loadCustomer(wrapper);
+
+      const name = customerField(wrapper, "name");
+      await name.setValue("করিম");
+      await name.trigger("keydown.enter");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(wrapper.text()).toContain("Customer not found");
+      expect(customerValue(wrapper, "name")).toBe("রহিম");
+      wrapper.unmount();
+    });
   });
 
   it("starts product entry with one focused row after a valid customer Enter", async () => {
@@ -550,7 +793,9 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       (i) => (i.element as HTMLInputElement).value
     );
     // Customer info box: name, address, receivable
-    expect(values.slice(4, 7)).toEqual(["", "", "20.00"]);
+    expect(customerValue(wrapper, "name")).toBe("");
+    expect(customerValue(wrapper, "address")).toBe("");
+    expect(values[4]).toBe("20.00");
     expect((postButton.element as HTMLButtonElement).disabled).toBe(true);
     wrapper.unmount();
   });
@@ -1134,7 +1379,9 @@ describe("Dashboard v2 — action button navigation", () => {
     await findButton(wrapper, "Cust. List").trigger("click");
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(listCustomers).toHaveBeenCalledTimes(1);
+    // Also called to fill the Customer ID dropdown, so just check the roll
+    expect(listCustomers).toHaveBeenCalled();
+    expect(openPrintPreview).toHaveBeenCalledTimes(1);
     const doc = openPrintPreview.mock.calls[0]![0] as {
       title: string;
       bodyHtml: string;

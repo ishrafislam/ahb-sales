@@ -54,7 +54,9 @@
               :class="[cellInputClass, 'disabled:opacity-70 disabled:cursor-not-allowed']"
               @keydown.enter.prevent="onIdEnter(idx)"
               @keydown="onCellKeydown($event, idx, 'id')"
-              @focus="onCellFocus(idx)"
+              @focus="onIdCellFocus(idx)"
+              @input="openSlots"
+              @blur="closeSlots"
             >
           </td>
           <td :class="[cellBorderClass, 'px-2 py-1']">
@@ -91,13 +93,22 @@
         </tr>
       </tbody>
     </table>
+    <SlotDropdown
+      :open="slotsOpen"
+      :options="slotOptions"
+      :highlight="-1"
+      :anchor="slotAnchor"
+      @select="selectSlot"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 defineOptions({ name: "AhbProductEntryTable" });
-import { nextTick, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { t } from "../../i18n";
+import SlotDropdown from "./SlotDropdown.vue";
+import { toSlots, filterSlots, type SlotOption } from "./slotOptions";
 import { MIN_PRODUCT_ID, MAX_PRODUCT_ID } from "../../constants/business";
 
 export type EntryRow = {
@@ -256,6 +267,7 @@ async function focusCell(idx: number, col: Col) {
 async function onIdEnter(idx: number) {
   const row = rows.value[idx];
   if (!row) return;
+  closeSlots();
   const id = Number.parseInt(row.idText, 10);
   if (Number.isNaN(id) || id < MIN_PRODUCT_ID || id > MAX_PRODUCT_ID) {
     void focusCell(idx, "id");
@@ -321,6 +333,14 @@ function onPriceBlur(idx: number) {
 // Arrow navigation covers the ID and Amount columns; the Price cell is
 // deliberately excluded — it is only reached by clicking it directly.
 function onCellKeydown(e: KeyboardEvent, idx: number, col: Col) {
+  // The dropdown never takes the arrows: they walk the entry rows, open list
+  // or not. Esc dismisses the panel, and a slot is picked by clicking it or by
+  // typing its id.
+  if (col === "id" && slotsOpen.value && e.key === "Escape") {
+    e.preventDefault();
+    closeSlots();
+    return;
+  }
   if (e.key === "ArrowUp" && idx > 0) {
     e.preventDefault();
     void focusCell(idx - 1, col);
@@ -350,7 +370,73 @@ function resumeEntry() {
   void focusCell(rows.value.length - 1, "id");
 }
 
-defineExpose({ startEntry, resumeEntry, refreshProductStock });
+// ID dropdown: every slot 1..MAX_PRODUCT_ID, saved products merged in
+const slots = ref<SlotOption[]>([]);
+const slotsOpen = ref(false);
+const slotRow = ref<number | null>(null);
+let slotsLoaded = false;
+
+const slotAnchor = computed(() =>
+  slotRow.value === null
+    ? null
+    : (cellRefs.get(`${slotRow.value}:id`) ?? null)
+);
+
+const slotOptions = computed(() => {
+  const row = slotRow.value === null ? undefined : rows.value[slotRow.value];
+  return filterSlots(slots.value, row?.idText ?? "");
+});
+
+async function loadSlots() {
+  // A dropdown that cannot be filled is not worth breaking the cell over
+  let products: Awaited<ReturnType<typeof window.ahb.listProducts>> = [];
+  try {
+    products = await window.ahb.listProducts();
+  } catch {
+    return;
+  }
+  slots.value = toSlots(
+    products.map((p) => ({
+      id: p.id,
+      primary: p.nameBn,
+      secondary: p.description,
+    })),
+    MAX_PRODUCT_ID
+  );
+  slotsLoaded = true;
+}
+
+/** A product added or restocked elsewhere should show up without a restart. */
+async function reloadSlots() {
+  if (slotsLoaded) await loadSlots();
+}
+
+function onIdCellFocus(idx: number) {
+  onCellFocus(idx);
+  slotRow.value = idx;
+  openSlots();
+}
+
+function openSlots() {
+  slotsOpen.value = true;
+  if (!slotsLoaded) void loadSlots();
+}
+
+function closeSlots() {
+  slotsOpen.value = false;
+}
+
+function selectSlot(option: SlotOption) {
+  const idx = slotRow.value;
+  if (idx === null) return;
+  const row = rows.value[idx];
+  if (!row) return;
+  row.idText = String(option.id);
+  closeSlots();
+  void onIdEnter(idx);
+}
+
+defineExpose({ startEntry, resumeEntry, refreshProductStock, reloadSlots });
 
 const cellInputClass =
   "w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-1.5 py-0.5 text-xs dark:text-gray-100";
