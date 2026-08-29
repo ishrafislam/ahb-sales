@@ -66,6 +66,9 @@ import {
 const today = new Date().toISOString();
 const dateText = fmtDate(today);
 
+// Long enough for the browser's own paste event to arrive first
+const PASTE_EVENT_GRACE_MS = 50;
+
 const godown = ref("0");
 const rows = ref<SheetRow[]>([]);
 
@@ -78,18 +81,27 @@ const sheetCells = computed(() =>
  * writes the same four tab-separated columns. Each paste adds to the list, so
  * a sheet can be built from several invoices.
  */
+let lastPasteAt = 0;
+
 function onPaste(e: ClipboardEvent) {
   const text = e.clipboardData?.getData("text/plain");
   if (text === undefined) return;
   e.preventDefault();
+  lastPasteAt = Date.now();
   append(text);
 }
 
-// Some Electron paths deliver Ctrl+V without a clipboard payload; the main
-// process can always read it.
+/**
+ * Some Electron paths deliver Ctrl+V without a paste event; the main process
+ * can always read the clipboard. The wait lets a real paste event land first,
+ * so a normal Ctrl+V is not applied twice.
+ */
 async function onKeydown(e: KeyboardEvent) {
   if (e.key !== "v" || !(e.ctrlKey || e.metaKey)) return;
   if (e.defaultPrevented) return;
+  const pressedAt = Date.now();
+  await new Promise((r) => setTimeout(r, PASTE_EVENT_GRACE_MS));
+  if (lastPasteAt >= pressedAt) return;
   try {
     append(await window.ahb.readClipboardText());
   } catch {

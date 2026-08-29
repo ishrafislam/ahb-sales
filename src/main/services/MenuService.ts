@@ -82,6 +82,22 @@ export class MenuService {
           },
         ],
       },
+      // Clipboard accelerators come from these roles. A custom menu without
+      // them leaves Ctrl+C, Ctrl+V, Ctrl+X and Ctrl+A dead in every window —
+      // which is why a selected product name could not be copied.
+      {
+        label: d.menu_edit ?? d.edit ?? "Edit",
+        submenu: [
+          { role: "undo", label: d.menu_undo ?? "Undo" },
+          { role: "redo", label: d.menu_redo ?? "Redo" },
+          { type: "separator" },
+          { role: "cut", label: d.menu_cut ?? "Cut" },
+          { role: "copy", label: d.menu_copy ?? "Copy" },
+          { role: "paste", label: d.menu_paste ?? "Paste" },
+          { type: "separator" },
+          { role: "selectAll", label: d.menu_select_all ?? "Select All" },
+        ],
+      },
       {
         label: d.settings ?? "Settings",
         submenu: [

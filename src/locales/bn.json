@@ -235,5 +235,12 @@
   "cannot_open_file": "ফাইল খোলা যায়নি",
   "cannot_open_file_detail": "ফাইলটি খোলা যায়নি। এটি ক্ষতিগ্রস্ত হতে পারে, AHB Sales ফাইল না-ও হতে পারে, বা অন্য কী দিয়ে এনক্রিপ্ট করা।",
   "v2_godown": "গুদাম",
-  "select_print_title": "বাছাই করে প্রিন্ট"
+  "select_print_title": "বাছাই করে প্রিন্ট",
+  "menu_edit": "সম্পাদনা",
+  "menu_undo": "আগের অবস্থায়",
+  "menu_redo": "পুনরায়",
+  "menu_cut": "কাট",
+  "menu_copy": "কপি",
+  "menu_paste": "পেস্ট",
+  "menu_select_all": "সব নির্বাচন"
 }

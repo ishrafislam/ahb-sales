@@ -235,5 +235,12 @@
   "cannot_open_file": "Cannot open file",
   "cannot_open_file_detail": "This file could not be opened. It may be corrupted, not an AHB Sales file, or encrypted with a different key.",
   "v2_godown": "Godown",
-  "select_print_title": "Select Print"
+  "select_print_title": "Select Print",
+  "menu_edit": "Edit",
+  "menu_undo": "Undo",
+  "menu_redo": "Redo",
+  "menu_cut": "Cut",
+  "menu_copy": "Copy",
+  "menu_paste": "Paste",
+  "menu_select_all": "Select All"
 }

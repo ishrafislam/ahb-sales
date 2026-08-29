@@ -122,9 +122,25 @@ describe("Select print window", () => {
     document.dispatchEvent(
       new KeyboardEvent("keydown", { key: "v", ctrlKey: true })
     );
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 80));
 
     expect(rows(wrapper)).toEqual([["5", "Rice", "3", "kg"]]);
+    wrapper.unmount();
+  });
+
+  it("does not apply an ordinary Ctrl+V twice", async () => {
+    readClipboardText.mockResolvedValue("5\tRice\t3\tkg");
+    const wrapper = mountView();
+
+    // The keypress and the paste event it produces are one paste
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "v", ctrlKey: true })
+    );
+    await paste("5\tRice\t3\tkg");
+    await new Promise((r) => setTimeout(r, 80));
+
+    expect(rows(wrapper)).toEqual([["5", "Rice", "3", "kg"]]);
+    expect(readClipboardText).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 });
