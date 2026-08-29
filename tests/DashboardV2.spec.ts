@@ -53,12 +53,14 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     return row!.find("input");
   }
 
-  function getDisabledInputs(wrapper: ReturnType<typeof mountDashboard>) {
-    return wrapper.findAll("input:disabled");
+  // Boxes the user reads rather than fills: read-only rather than disabled, so
+  // their text can still be selected and copied
+  function getReadonlyInputs(wrapper: ReturnType<typeof mountDashboard>) {
+    return wrapper.findAll("input[readonly]");
   }
 
   // The customer's name and address are editable, so they are not part of the
-  // disabled set the assertions below sweep
+  // read-only set the assertions below sweep
   function customerField(
     wrapper: ReturnType<typeof mountDashboard>,
     which: "name" | "address"
@@ -71,18 +73,18 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     which: "name" | "address"
   ) => (customerField(wrapper, which).element as HTMLInputElement).value;
 
-  it("renders product info, last bill, totals and status fields as always-disabled inputs", () => {
+  it("renders product info, last bill, totals and status fields as read-only inputs", () => {
     const wrapper = mountDashboard();
-    const disabled = getDisabledInputs(wrapper);
+    const readonly = getReadonlyInputs(wrapper);
     // 2 header + 2 last-bill + receivable + grand total + bill
     // + deposit + 7 status panel fields; name and address are editable
-    expect(disabled.length).toBe(15);
+    expect(readonly.length).toBe(15);
     wrapper.unmount();
   });
 
   it("shows a read-only deposit of 0.00 from the start", () => {
     const wrapper = mountDashboard();
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(values).toContain("0.00");
@@ -118,7 +120,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(listInvoicesByCustomer).toHaveBeenCalledWith(12);
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(values).toContain(
@@ -136,19 +138,19 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(listInvoicesByCustomer).toHaveBeenCalledWith(7);
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    // Grid started for the valid customer: its empty row's price input is
-    // also disabled until a product loads; other empties are the
-    // receivable, grand total, bill and the 7 status panel fields. The
-    // deposit field always shows 0.00.
+    // The empty boxes are the two header ones, the receivable, the grand
+    // total and the bill, then the 7 status panel fields. The deposit always
+    // shows 0.00. The empty row's price cell is disabled rather than read-only
+    // until a product loads, so it is not in this sweep.
     expect(values).toEqual([
       "",
       "",
       "—",
       "—",
-      ...Array(4).fill(""),
+      ...Array(3).fill(""),
       "0.00",
       ...Array(7).fill(""),
     ]);
@@ -163,7 +165,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(listInvoicesByCustomer).not.toHaveBeenCalled();
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(values).toEqual([
@@ -191,7 +193,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(getCustomerById).toHaveBeenCalledWith(12);
-    let values = getDisabledInputs(wrapper).map(
+    let values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(customerValue(wrapper, "name")).toBe("রহিম");
@@ -203,7 +205,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await input.setValue("13");
     await input.trigger("keydown.enter");
     await new Promise((r) => setTimeout(r, 0));
-    values = getDisabledInputs(wrapper).map(
+    values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(customerValue(wrapper, "name")).toBe("");
@@ -623,7 +625,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await rowInputs[1]!.setValue("3");
     await new Promise((r) => setTimeout(r, 0));
 
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(values).toContain("31.50");
@@ -634,7 +636,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     // Editing the amount in place (no Enter) updates the grand total
     await rowInputs[1]!.setValue("2");
     await new Promise((r) => setTimeout(r, 0));
-    let updated = getDisabledInputs(wrapper).map(
+    let updated = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(updated).toContain("21.00");
@@ -642,13 +644,13 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     // Editing the price only affects the total once committed with Enter
     await rowInputs[2]!.setValue("5");
     await new Promise((r) => setTimeout(r, 0));
-    updated = getDisabledInputs(wrapper).map(
+    updated = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(updated).toContain("21.00");
     await rowInputs[2]!.trigger("keydown.enter");
     await new Promise((r) => setTimeout(r, 0));
-    updated = getDisabledInputs(wrapper).map(
+    updated = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(updated).toContain("10.00");
@@ -683,11 +685,11 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await rowInputs[1]!.trigger("keydown.enter");
     await new Promise((r) => setTimeout(r, 0));
 
-    const disabledValues = () =>
-      getDisabledInputs(wrapper).map(
+    const readonlyValues = () =>
+      getReadonlyInputs(wrapper).map(
         (i) => (i.element as HTMLInputElement).value
       );
-    expect(disabledValues()).toContain("21.00");
+    expect(readonlyValues()).toContain("21.00");
 
     // Select the product row via the gutter and press Delete
     const gutter = wrapper
@@ -698,7 +700,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(wrapper.findAll("tbody tr").length).toBe(1);
-    expect(disabledValues()).not.toContain("21.00");
+    expect(readonlyValues()).not.toContain("21.00");
     wrapper.unmount();
   });
 
@@ -729,13 +731,13 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await rowInputs[1]!.setValue("2");
     await new Promise((r) => setTimeout(r, 0));
 
-    const disabledValues = () =>
-      getDisabledInputs(wrapper).map(
+    const readonlyValues = () =>
+      getReadonlyInputs(wrapper).map(
         (i) => (i.element as HTMLInputElement).value
       );
     // Bill mirrors the grand total (21.00) while no discount is committed
     expect(
-      disabledValues().filter((v) => v === "21.00").length
+      readonlyValues().filter((v) => v === "21.00").length
     ).toBe(2);
 
     // Discount input: typing alone does not change the bill
@@ -744,19 +746,19 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       .filter(
         (d) =>
           d.text().includes("Discount") &&
-          d.find("input:not([disabled])").exists()
+          d.find("input:not([readonly])").exists()
       );
     const discountInput = discountRows[discountRows.length - 1]!.find(
-      "input:not([disabled])"
+      "input:not([readonly])"
     );
     await discountInput.setValue("1");
     await new Promise((r) => setTimeout(r, 0));
-    expect(disabledValues().filter((v) => v === "21.00").length).toBe(2);
+    expect(readonlyValues().filter((v) => v === "21.00").length).toBe(2);
 
     // Enter commits: bill drops to 20.00, draft normalized to 1.00
     await discountInput.trigger("keydown.enter");
     await new Promise((r) => setTimeout(r, 0));
-    expect(disabledValues()).toContain("20.00");
+    expect(readonlyValues()).toContain("20.00");
     expect((discountInput.element as HTMLInputElement).value).toBe("1.00");
 
     // A discount above the grand total is rejected on Enter
@@ -764,7 +766,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await discountInput.trigger("keydown.enter");
     await new Promise((r) => setTimeout(r, 0));
     expect((discountInput.element as HTMLInputElement).value).toBe("1.00");
-    expect(disabledValues()).toContain("20.00");
+    expect(readonlyValues()).toContain("20.00");
     wrapper.unmount();
   });
 
@@ -807,9 +809,9 @@ describe("Dashboard v2 — customer ID quick entry", () => {
         .filter(
           (d) =>
             d.text().includes(label) &&
-            d.find("input:not([disabled])").exists()
+            d.find("input:not([readonly])").exists()
         );
-      return rows[rows.length - 1]!.find("input:not([disabled])");
+      return rows[rows.length - 1]!.find("input:not([readonly])");
     };
     await totalsInput("Discount").setValue("1");
     await totalsInput("Discount").trigger("keydown.enter");
@@ -842,7 +844,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect(wrapper.findAll("tbody tr").length).toBe(2);
 
     // Header stock shows the projection after this sale (40 - 2)
-    const headerValues = getDisabledInputs(wrapper).map(
+    const headerValues = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(headerValues[0]).toBe("5");
@@ -864,7 +866,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     });
 
     // Status panel shows the returned invoice values
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     for (const v of ["1.00", "20.00", "5.00", "15.00", "100.00", "115.00"]) {
@@ -882,7 +884,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       expect((cell.element as HTMLInputElement).readOnly).toBe(true);
     }
     expect(
-      (wrapper.find("textarea").element as HTMLTextAreaElement).disabled
+      (wrapper.find("textarea").element as HTMLTextAreaElement).readOnly
     ).toBe(true);
     expect((postButton.element as HTMLButtonElement).disabled).toBe(true);
 
@@ -922,7 +924,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     // No "Customer not found" (or any other) error, and the customer info
     // box picks up the due the invoice just created
     expect(wrapper.find(".text-red-600").exists()).toBe(false);
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     // Customer info box: name, address, receivable
@@ -997,7 +999,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     });
 
     // Status panel reflects the updated invoice; form locked again
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(values).toContain("30.50");
@@ -1082,7 +1084,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect(button("Payment").disabled).toBe(false);
 
     // Status panel, deposit total and comment come from the invoice
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     for (const v of ["1.00", "20.00", "100.00", "112.00"]) {
@@ -1222,7 +1224,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     wrapper.unmount();
   });
 
-  it("leaves Direct Print and Select Print unwired", async () => {
+  it("leaves Direct Print unwired, and Select Print prints nothing itself", async () => {
     const postInvoice = vi.fn(async () => ({
       id: "inv-1",
       no: 42,
@@ -1236,10 +1238,11 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       currentDue: 120,
     }));
     const openPrintPreview = vi.fn(async () => "job-1");
+    const openSelectPrintWindow = vi.fn(async () => undefined);
     const { wrapper, postButton } = await setupPostableEntry(
       postInvoice,
       vi.fn(),
-      { openPrintPreview, getInvoiceById: vi.fn() }
+      { openPrintPreview, getInvoiceById: vi.fn(), openSelectPrintWindow }
     );
     await postButton.trigger("click");
     await new Promise((r) => setTimeout(r, 0));
@@ -1250,7 +1253,10 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       await btn.trigger("click");
     }
     await new Promise((r) => setTimeout(r, 0));
+
+    // The sheet is built and printed in its own window, not from here
     expect(openPrintPreview).not.toHaveBeenCalled();
+    expect(openSelectPrintWindow).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });
 
@@ -1281,7 +1287,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
 
     // Header follows the row: 40 stored, 2 about to be sold
     const stockValue = () =>
-      getDisabledInputs(wrapper)
+      getReadonlyInputs(wrapper)
         .map((i) => (i.element as HTMLInputElement).value)
         .find((v) => v === "38" || v === "88");
     await wrapper.findAll("tbody tr")[0]!.findAll("input")[1]!.trigger("focus");
@@ -1343,7 +1349,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(getInvoiceById).toHaveBeenCalledWith("inv-1");
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     // Deposit total, status deposit, difference, next due and receivable
@@ -1377,6 +1383,7 @@ describe("Dashboard v2 — action button navigation", () => {
   let openDailyReportWindow: ReturnType<typeof vi.fn>;
   let openClientSelectWindow: ReturnType<typeof vi.fn>;
   let openPaymentReportWindow: ReturnType<typeof vi.fn>;
+  let openSelectPrintWindow: ReturnType<typeof vi.fn>;
   let listCustomers: ReturnType<typeof vi.fn>;
   let listProducts: ReturnType<typeof vi.fn>;
   let openPrintPreview: ReturnType<typeof vi.fn>;
@@ -1387,6 +1394,7 @@ describe("Dashboard v2 — action button navigation", () => {
     openDailyReportWindow = vi.fn(async () => undefined);
     openClientSelectWindow = vi.fn(async () => undefined);
     openPaymentReportWindow = vi.fn(async () => undefined);
+    openSelectPrintWindow = vi.fn(async () => undefined);
     listCustomers = vi.fn(async () => [
       {
         id: 7,
@@ -1416,6 +1424,7 @@ describe("Dashboard v2 — action button navigation", () => {
       openDailyReportWindow,
       openClientSelectWindow,
       openPaymentReportWindow,
+      openSelectPrintWindow,
       listCustomers,
       listProducts,
       openPrintPreview,
@@ -1498,6 +1507,14 @@ describe("Dashboard v2 — action button navigation", () => {
     const wrapper = mountDashboard();
     await findButton(wrapper, label).trigger("click");
     expect(wrapper.emitted("navigate")).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it("Select Print opens the picking sheet window", async () => {
+    const wrapper = mountDashboard();
+    await findButton(wrapper, "Select Print").trigger("click");
+
+    expect(openSelectPrintWindow).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });
 
