@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import PrintMargins from "../../src/views/PrintMargins.vue";
 import { currentLang } from "../../src/i18n";
-import { MAX_MARGIN_MM } from "../../src/constants/business";
+import {
+  MARGIN_STEP_IN,
+  MAX_MARGIN_IN,
+} from "../../src/constants/business";
 
 describe("Print margins window", () => {
   const getPrintJob = vi.fn();
@@ -15,7 +18,7 @@ describe("Print margins window", () => {
     window.location.hash = "#print-margins/job-1";
     getPrintJob.mockReset().mockResolvedValue({
       doc: { title: "Money Report", bodyHtml: "<h1>Rows</h1>" },
-      margins: { top: 20, bottom: 15, left: 10, right: 5 },
+      margins: { top: 1.5, bottom: 0.75, left: 0.5, right: 0.25 },
     });
     setPrintMargins.mockReset().mockResolvedValue(null);
     runPrint.mockReset().mockResolvedValue({ success: true });
@@ -52,10 +55,10 @@ describe("Print margins window", () => {
     const wrapper = await mountView();
 
     expect(getPrintJob).toHaveBeenCalledWith("job-1");
-    expect(field(wrapper, "top").value).toBe("20");
-    expect(field(wrapper, "bottom").value).toBe("15");
-    expect(field(wrapper, "left").value).toBe("10");
-    expect(field(wrapper, "right").value).toBe("5");
+    expect(field(wrapper, "top").value).toBe("1.5");
+    expect(field(wrapper, "bottom").value).toBe("0.75");
+    expect(field(wrapper, "left").value).toBe("0.5");
+    expect(field(wrapper, "right").value).toBe("0.25");
     wrapper.unmount();
   });
 
@@ -64,16 +67,27 @@ describe("Print margins window", () => {
     // Fake timers only after mounting, so the load await still resolves
     vi.useFakeTimers();
 
-    await wrapper.find("#margin-top").setValue("40");
+    // Inches, typed with decimals
+    await wrapper.find("#margin-top").setValue("0.75");
     vi.advanceTimersByTime(200);
 
     expect(setPrintMargins).toHaveBeenCalledWith("job-1", {
-      top: 40,
-      bottom: 15,
-      left: 10,
-      right: 5,
+      top: 0.75,
+      bottom: 0.75,
+      left: 0.5,
+      right: 0.25,
     });
     vi.useRealTimers();
+    wrapper.unmount();
+  });
+
+  it("steps in tenths of an inch, up to the inch bounds", async () => {
+    const wrapper = await mountView();
+    const left = field(wrapper, "left");
+
+    expect(left.step).toBe(String(MARGIN_STEP_IN));
+    expect(left.min).toBe("0");
+    expect(left.max).toBe(String(MAX_MARGIN_IN));
     wrapper.unmount();
   });
 
@@ -84,7 +98,7 @@ describe("Print margins window", () => {
 
     expect(disabled()).toBe(false);
 
-    await wrapper.find("#margin-left").setValue(String(MAX_MARGIN_MM + 1));
+    await wrapper.find("#margin-left").setValue(String(MAX_MARGIN_IN + 1));
     expect(disabled()).toBe(true);
 
     await wrapper.find("#margin-left").setValue("-1");
@@ -104,10 +118,10 @@ describe("Print margins window", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(runPrint).toHaveBeenCalledWith("job-1", {
-      top: 20,
-      bottom: 15,
-      left: 10,
-      right: 5,
+      top: 1.5,
+      bottom: 0.75,
+      left: 0.5,
+      right: 0.25,
     });
     expect(close).toHaveBeenCalled();
     wrapper.unmount();

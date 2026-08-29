@@ -95,9 +95,6 @@ function newFile() {
 function openFile() {
   window.ahb.openFile();
 }
-async function saveFile() {
-  await window.ahb.saveFile();
-}
 async function saveFileAs() {
   await window.ahb.saveFileAs();
 }
@@ -130,16 +127,6 @@ useKeyboardShortcuts([
       }
     },
     description: "Save File As",
-  },
-  {
-    key: "s",
-    ctrl: true,
-    handler: () => {
-      if (fileStore.loaded) {
-        saveFile();
-      }
-    },
-    description: "Save File",
   },
   {
     key: "Escape",

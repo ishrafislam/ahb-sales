@@ -4,7 +4,8 @@
       <label :class="labelClass" for="range-start">{{ t("start_date") }}</label>
       <input
         id="range-start"
-        v-model="startText"
+        :value="ld(startText)"
+        @input="startText = toLatinDigits(($event.target as HTMLInputElement).value)"
         :class="[fieldClass, 'text-right']"
         type="text"
         inputmode="numeric"
@@ -18,7 +19,8 @@
       <label :class="labelClass" for="range-end">{{ t("end_date") }}</label>
       <input
         id="range-end"
-        v-model="endText"
+        :value="ld(endText)"
+        @input="endText = toLatinDigits(($event.target as HTMLInputElement).value)"
         :class="[fieldClass, 'text-right']"
         type="text"
         inputmode="numeric"
@@ -101,6 +103,10 @@
 defineOptions({ name: "AhbReportRange" });
 import { ref, computed } from "vue";
 import { t } from "../i18n";
+import {
+  localizeDigits as ld,
+  toLatinDigits,
+} from "../utils/numerals";
 import {
   formatDdMmYyyy,
   parseDdMmYyyy,

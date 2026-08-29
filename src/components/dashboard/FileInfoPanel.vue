@@ -11,8 +11,8 @@
       <span
         class="inline-flex items-center gap-1"
         :class="fileDirty ? 'text-orange-500' : 'text-green-600'"
-        :title="fileDirty ? 'Unsaved changes' : 'Saved'"
-        :aria-label="fileDirty ? 'Unsaved changes' : 'Saved'"
+        :title="statusLabel"
+        :aria-label="statusLabel"
         role="img"
       >
         <svg
@@ -30,12 +30,12 @@
         <span
           v-if="!fileDirty"
           class="text-xs font-medium"
-          >Saved</span
+          >{{ t("file_saved") }}</span
         >
         <span
           v-if="fileDirty"
           class="text-xs font-medium"
-          >Unsaved</span
+          >{{ t("file_unsaved") }}</span
         >
       </span>
     </div>
@@ -44,9 +44,15 @@
 
 <script setup lang="ts">
 defineOptions({ name: "FileInfoPanel" });
+import { computed } from "vue";
+import { t } from "../../i18n";
 
-defineProps<{
+const props = defineProps<{
   fileNameDisplay: string;
   fileDirty: boolean;
 }>();
+
+const statusLabel = computed(() =>
+  props.fileDirty ? t("file_unsaved_changes") : t("file_saved")
+);
 </script>

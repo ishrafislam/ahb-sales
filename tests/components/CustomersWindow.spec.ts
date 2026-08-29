@@ -82,8 +82,8 @@ describe("Customers window", () => {
     expect(field(wrapper, "customer-phone").value).toBe("0170000");
 
     // Locked until Edit, and no Save button is offered
-    expect(field(wrapper, "customer-name").disabled).toBe(true);
-    expect(field(wrapper, "customer-address").disabled).toBe(true);
+    expect(field(wrapper, "customer-name").readOnly).toBe(true);
+    expect(field(wrapper, "customer-address").readOnly).toBe(true);
     expect(button(wrapper, "Save")).toBeUndefined();
     expect(button(wrapper, "Edit")).toBeTruthy();
     wrapper.unmount();
@@ -101,7 +101,9 @@ describe("Customers window", () => {
     const outstanding = () => wrapper.find("#customer-outstanding");
 
     // Customer 1 owes 12500 → red, prefixed with the localized taka text
-    expect((outstanding().element as HTMLInputElement).disabled).toBe(true);
+    expect((outstanding().element as HTMLInputElement).readOnly).toBe(
+      true
+    );
     expect((outstanding().element as HTMLInputElement).value).toBe(
       "TK. 12500.00"
     );
@@ -125,7 +127,7 @@ describe("Customers window", () => {
     await button(wrapper, "Edit")!.trigger("click");
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(field(wrapper, "customer-name").disabled).toBe(false);
+    expect(field(wrapper, "customer-name").readOnly).toBe(false);
     expect(button(wrapper, "Edit")).toBeUndefined();
     const save = button(wrapper, "Save")!;
     expect(save).toBeTruthy();
@@ -143,7 +145,7 @@ describe("Customers window", () => {
     });
     expect(addCustomer).not.toHaveBeenCalled();
     // Re-locks after saving
-    expect(field(wrapper, "customer-name").disabled).toBe(true);
+    expect(field(wrapper, "customer-name").readOnly).toBe(true);
     expect(button(wrapper, "Edit")).toBeTruthy();
     wrapper.unmount();
   });
@@ -234,7 +236,7 @@ describe("Customers window", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(wrapper.text()).toContain("Customer not found");
-    expect(field(wrapper, "customer-name").disabled).toBe(false);
+    expect(field(wrapper, "customer-name").readOnly).toBe(false);
     wrapper.unmount();
   });
 

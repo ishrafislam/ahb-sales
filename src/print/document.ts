@@ -7,12 +7,13 @@
 import {
   A4_HEIGHT_MM,
   A4_WIDTH_MM,
-  MAX_MARGIN_MM,
+  MAX_MARGIN_IN,
   MAX_PREVIEW_PAGES,
-  MIN_MARGIN_MM,
+  MIN_MARGIN_IN,
+  MM_PER_INCH,
 } from "../constants/business";
 
-/** Page margins in millimetres. */
+/** Page margins in inches. The page itself is measured in millimetres. */
 export type PrintMargins = {
   top: number;
   bottom: number;
@@ -31,6 +32,12 @@ export type PrintDocument = {
   margins?: Partial<PrintMargins>;
   /** Flow the content down one column then the next. Defaults to 1. */
   columns?: 1 | 2;
+  /**
+   * Stretch the document to one page's content height, so that a block marked
+   * `.page-bottom` sits at the bottom of the sheet rather than under whatever
+   * came before it. Defaults to false.
+   */
+  fillPage?: boolean;
 };
 
 export type PrintJob = {
@@ -39,10 +46,10 @@ export type PrintJob = {
 };
 
 export const DEFAULT_MARGINS: PrintMargins = {
-  top: 12,
-  bottom: 12,
-  left: 12,
-  right: 12,
+  top: 0.5,
+  bottom: 0.5,
+  left: 0.5,
+  right: 0.5,
 };
 
 const FONT_STACK =
@@ -51,7 +58,10 @@ const FONT_STACK =
 function clampMargin(value: unknown, fallback: number): number {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
-  return Math.min(MAX_MARGIN_MM, Math.max(MIN_MARGIN_MM, n));
+  const bounded = Math.min(MAX_MARGIN_IN, Math.max(MIN_MARGIN_IN, n));
+  // Stepping a number input by 0.1 produces the usual float dust, which would
+  // otherwise reach the CSS and the settings file
+  return Math.round(bounded * 100) / 100;
 }
 
 export function normalizeMargins(m?: Partial<PrintMargins>): PrintMargins {
@@ -65,7 +75,12 @@ export function normalizeMargins(m?: Partial<PrintMargins>): PrintMargins {
 
 /** CSS pixels per millimetre at the 96dpi CSS reference resolution. */
 export function mmToPx(mm: number): number {
-  return (mm * 96) / 25.4;
+  return (mm * 96) / MM_PER_INCH;
+}
+
+/** Margins are in inches, the page in millimetres; this is where they meet. */
+export function inToMm(inches: number): number {
+  return inches * MM_PER_INCH;
 }
 
 export function pageSizeMm(doc: Pick<PrintDocument, "orientation">): {
@@ -84,8 +99,8 @@ export function pageContentSizeMm(
 ): { width: number; height: number } {
   const page = pageSizeMm(doc);
   return {
-    width: Math.max(0, page.width - margins.left - margins.right),
-    height: Math.max(0, page.height - margins.top - margins.bottom),
+    width: Math.max(0, page.width - inToMm(margins.left + margins.right)),
+    height: Math.max(0, page.height - inToMm(margins.top + margins.bottom)),
   };
 }
 
@@ -128,7 +143,7 @@ function escapeHtml(s: string): string {
  * next is right + left — which, being one and the same column gap, pins
  * gap = left + right whatever n is.
  */
-export function columnGapMm(margins: PrintMargins): number {
+export function columnGapIn(margins: PrintMargins): number {
   return margins.left + margins.right;
 }
 
@@ -156,8 +171,8 @@ function columnCss(
   const perPage = doc.columns === 2 ? 2 : 1;
   if (mode === "print") {
     if (perPage !== 2) return "";
-    const gap = columnGapMm(margins);
-    return `body { column-count: 2; column-gap: ${gap}mm; column-fill: auto; }`;
+    const gap = columnGapIn(margins);
+    return `body { column-count: 2; column-gap: ${gap}in; column-fill: auto; }`;
   }
   // The count is stated rather than left to `column-width`, which would make
   // the browser work out how many columns fit — and that sum lands on an
@@ -175,9 +190,31 @@ function columnCss(
       width: auto;
       height: ${pageSizeMm(doc).height}mm;
       column-count: ${Math.max(1, Math.floor(pages)) * perPage};
-      column-gap: ${columnGapMm(margins)}mm;
+      column-gap: ${columnGapIn(margins)}in;
       column-fill: auto;
     }`;
+}
+
+/**
+ * Rules for a document that pins a block to the bottom of the page.
+ *
+ * The block needs a definite height to be pushed against, and that height is
+ * the page content box — which is known here and nowhere else, since the
+ * margins come from the print job and change while the preview is open.
+ *
+ * `min-height` rather than `height`: an invoice with enough items to fill the
+ * page grows past it and the bottom block follows the last item, which is what
+ * the paper does anyway.
+ */
+function fillPageCss(doc: PrintDocument, margins: PrintMargins): string {
+  if (!doc.fillPage) return "";
+  const content = pageContentSizeMm(doc, margins);
+  return `.page-fill {
+      min-height: ${content.height}mm;
+      display: flex;
+      flex-direction: column;
+    }
+    .page-bottom { margin-top: auto; }`;
 }
 
 /**
@@ -201,7 +238,7 @@ export function composePrintHtml(
     * { box-sizing: border-box; }
     body {
       width: ${page.width}mm;
-      padding: ${m.top}mm ${m.right}mm ${m.bottom}mm ${m.left}mm;
+      padding: ${m.top}in ${m.right}in ${m.bottom}in ${m.left}in;
       font-family: ${FONT_STACK};
       font-size: 12px;
       color: #000;
@@ -216,6 +253,7 @@ export function composePrintHtml(
        groups keeps paper and preview fragmenting identically. */
     thead, tfoot { display: table-row-group; }
     ${columnCss(doc, m, mode, pages)}
+    ${fillPageCss(doc, m)}
   `;
   const extra = doc.styleCss ? `<style>${doc.styleCss}</style>` : "";
   return [

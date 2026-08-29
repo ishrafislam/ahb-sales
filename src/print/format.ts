@@ -1,4 +1,12 @@
 import { currentLang } from "../i18n";
+import {
+  fmtMoney,
+  fmtQuantity,
+  localizeDigits,
+  toBengaliDigits,
+} from "../utils/numerals";
+
+export { toBengaliDigits };
 
 function locale(): string {
   return currentLang.value === "bn" ? "bn-BD" : "en-US";
@@ -38,44 +46,17 @@ export function shortDate(ddMmYyyy: string): string {
   });
 }
 
-export function toBengaliDigits(s: string): string {
-  return s.replace(/[0-9]/g, (d) => "০১২৩৪৫৬৭৮৯"[+d]!);
-}
-
-/**
- * "8,220.00", in Bengali digits when the app is in Bengali.
- *
- * The grouping is always Western three-digit, transliterated afterwards
- * rather than formatted with the bn-BD locale, which would group by lakh —
- * "১,০১,০১৩.০০" where the ledgers this replaces read "১০১,০১৩.০০".
- */
-export function money(n: number): string {
-  const value = Number.isFinite(n) ? n : 0;
-  const s = value.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  return currentLang.value === "bn" ? toBengaliDigits(s) : s;
-}
+/** "8,220.00", in Bengali digits when the app is in Bengali. */
+export const money = fmtMoney;
 
 /**
  * An id or other bare figure: transliterated in Bengali but never grouped,
  * since "১,০০০" would read as a thousand rather than as slot 1000.
  */
-export function digits(value: number | string): string {
-  const s = String(value);
-  return currentLang.value === "bn" ? toBengaliDigits(s) : s;
-}
+export const digits = localizeDigits;
 
-/**
- * "6", "1,500", "2.5" — a count rather than an amount, so no forced decimals.
- * Grouped and transliterated the same way as `money`.
- */
-export function quantity(n: number): string {
-  const value = Number.isFinite(n) ? n : 0;
-  const s = value.toLocaleString("en-US", { maximumFractionDigits: 2 });
-  return currentLang.value === "bn" ? toBengaliDigits(s) : s;
-}
+/** "6", "1,500", "2.5" — a count rather than an amount, so no forced decimals. */
+export const quantity = fmtQuantity;
 
 /** Customer and product names are user input, so they go through this. */
 export function esc(s: string): string {

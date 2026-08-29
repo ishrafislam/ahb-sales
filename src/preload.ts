@@ -12,7 +12,6 @@ type AppAPI = {
   // File operations
   newFile: () => Promise<void>;
   openFile: () => Promise<void>;
-  saveFile: () => Promise<void>;
   saveFileAs: () => Promise<void>;
   getFileInfo: () => Promise<{ path: string | null; isDirty: boolean }>;
   onFileInfo: (
@@ -59,6 +58,10 @@ type AppAPI = {
   ) => Promise<import("./main/data").ProductPurchaseLine[]>;
   // Phase 3: Purchase entry
   postPurchase: (payload: unknown) => Promise<import("./main/data").Purchase>;
+  updatePurchase: (
+    id: string,
+    payload: unknown
+  ) => Promise<import("./main/data").Purchase>;
   // Payments
   recordPayment: (customerId: number, amount: number) => Promise<void>;
   // Phase 4: Reports
@@ -98,6 +101,13 @@ type AppAPI = {
   openDailyReportWindow: () => Promise<void>;
   openPaymentReportWindow: () => Promise<void>;
   openClientSelectWindow: () => Promise<void>;
+  openSelectPrintWindow: () => Promise<void>;
+  writeClipboardText: (text: string) => Promise<void>;
+  readClipboardText: () => Promise<string>;
+  openRecordDetailsWindow: (
+    kind: "customer" | "product",
+    id: number
+  ) => Promise<void>;
   openClientReportWindow: (customerId?: number) => Promise<void>;
   // Printing
   openPrintPreview: (doc: PrintDocument) => Promise<string>;
@@ -143,7 +153,6 @@ type AppAPI = {
 const api: AppAPI = {
   newFile: () => ipcRenderer.invoke("app:new-file"),
   openFile: () => ipcRenderer.invoke("app:open-file"),
-  saveFile: () => ipcRenderer.invoke("app:save-file"),
   saveFileAs: () => ipcRenderer.invoke("app:save-file-as"),
   getFileInfo: () => ipcRenderer.invoke("app:get-file-info"),
   onFileInfo: (cb) => {
@@ -191,6 +200,8 @@ const api: AppAPI = {
   listProductPurchases: (productId) =>
     ipcRenderer.invoke("data:list-product-purchases", productId),
   postPurchase: (payload) => ipcRenderer.invoke("data:post-purchase", payload),
+  updatePurchase: (id, payload) =>
+    ipcRenderer.invoke("data:update-purchase", id, payload),
   recordPayment: (customerId, amount) =>
     ipcRenderer.invoke("data:record-payment", customerId, amount),
   reportMoneyTransactionsCustomerRange: (from, to) =>
@@ -230,6 +241,11 @@ const api: AppAPI = {
   openPaymentReportWindow: () =>
     ipcRenderer.invoke("window:open-payment-report"),
   openClientSelectWindow: () => ipcRenderer.invoke("window:open-client-select"),
+  openSelectPrintWindow: () => ipcRenderer.invoke("window:open-select-print"),
+  writeClipboardText: (text) => ipcRenderer.invoke("clipboard:write", text),
+  readClipboardText: () => ipcRenderer.invoke("clipboard:read"),
+  openRecordDetailsWindow: (kind, id) =>
+    ipcRenderer.invoke("window:open-record-details", kind, id),
   openClientReportWindow: (customerId) =>
     ipcRenderer.invoke("window:open-client-report", customerId),
   openPrintPreview: (doc) => ipcRenderer.invoke("print:create-job", doc),

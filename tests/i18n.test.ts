@@ -12,6 +12,8 @@ vi.mock("electron", () => {
 
 import fs from "node:fs";
 import path from "node:path";
+import en from "../src/locales/en.json";
+import bn from "../src/locales/bn.json";
 
 let getLanguage: typeof import("../src/main/i18n").getLanguage;
 let setLanguage: typeof import("../src/main/i18n").setLanguage;
@@ -45,5 +47,31 @@ describe("i18n settings persistence", () => {
     expect(getLanguage()).toBe("bn");
     const raw = fs.readFileSync(settingsPath, "utf8");
     expect(raw.includes('"language": "bn"')).toBe(true);
+  });
+});
+
+describe("locale files", () => {
+  const enKeys = Object.keys(en as Record<string, string>);
+  const bnKeys = Object.keys(bn as Record<string, string>);
+
+  it("carry the same keys", () => {
+    expect([...bnKeys].sort()).toEqual([...enKeys].sort());
+  });
+
+  // A Bengali value identical to the English one is a missed translation —
+  // that is how nineteen dashboard buttons stayed in English. Add a key here
+  // only if it is deliberately the same in both languages.
+  const SHARED = new Set<string>([]);
+
+  it("say something different in Bengali", () => {
+    const untranslated = enKeys.filter(
+      (k) =>
+        !SHARED.has(k) &&
+        (bn as Record<string, string>)[k] ===
+          (en as Record<string, string>)[k] &&
+        /[A-Za-z]{2}/.test((en as Record<string, string>)[k] ?? "")
+    );
+
+    expect(untranslated).toEqual([]);
   });
 });

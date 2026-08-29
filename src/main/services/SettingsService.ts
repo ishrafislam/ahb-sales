@@ -3,15 +3,37 @@ import path from "node:path";
 import fs from "node:fs";
 import { logger } from "./Logger";
 import { normalizeMargins, type PrintMargins } from "../../print/document";
+import { MM_PER_INCH } from "../../constants/business";
 
 export type ThemeSource = "system" | "light" | "dark";
 
 export type AppSettings = {
   language?: "bn" | "en";
   themeSource?: ThemeSource;
-  /** Last margins used in the print preview, reused as the default */
+  /** Last margins used in the print preview, in inches, reused as the default */
+  printMarginsIn?: PrintMargins;
+  /** Millimetre margins written before the switch to inches; read once */
   printMargins?: PrintMargins;
 };
+
+/**
+ * Settings written by an older build hold the margins in millimetres. Read as
+ * inches they would be a full-page border, so they are converted the first
+ * time they are read and rewritten under the new key on the next save.
+ */
+export function marginsFromSettings(
+  parsed: Partial<AppSettings>
+): PrintMargins | undefined {
+  if (parsed.printMarginsIn) return parsed.printMarginsIn;
+  const mm = parsed.printMargins;
+  if (!mm) return undefined;
+  return {
+    top: mm.top / MM_PER_INCH,
+    bottom: mm.bottom / MM_PER_INCH,
+    left: mm.left / MM_PER_INCH,
+    right: mm.right / MM_PER_INCH,
+  };
+}
 
 export class SettingsService {
   private getSettingsPath(): string {
@@ -29,7 +51,7 @@ export class SettingsService {
       return {
         language: parsed.language,
         themeSource: parsed.themeSource ?? "system",
-        printMargins: parsed.printMargins,
+        printMarginsIn: marginsFromSettings(parsed),
       };
     } catch {
       return { themeSource: "system" };
@@ -52,11 +74,11 @@ export class SettingsService {
   }
 
   getPrintMargins(): PrintMargins {
-    return normalizeMargins(this.loadSettings().printMargins);
+    return normalizeMargins(this.loadSettings().printMarginsIn);
   }
 
   setPrintMargins(margins: PrintMargins): void {
-    this.saveSettings({ printMargins: normalizeMargins(margins) });
+    this.saveSettings({ printMarginsIn: normalizeMargins(margins) });
   }
 
   private effectiveTheme(source: ThemeSource): "light" | "dark" {

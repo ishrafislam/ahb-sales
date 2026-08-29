@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   composePrintHtml,
   DEFAULT_MARGINS,
+  columnGapIn,
+  inToMm,
   mmToPx,
   normalizeMargins,
   pageContentSizeMm,
@@ -11,16 +13,16 @@ import {
 import {
   A4_HEIGHT_MM,
   A4_WIDTH_MM,
-  MAX_MARGIN_MM,
+  MAX_MARGIN_IN,
   MAX_PREVIEW_PAGES,
 } from "../src/constants/business";
 
 describe("normalizeMargins", () => {
   it("falls back to the defaults for missing or unusable values", () => {
     expect(normalizeMargins()).toEqual(DEFAULT_MARGINS);
-    expect(normalizeMargins({ top: 5 })).toEqual({
+    expect(normalizeMargins({ top: 1.25 })).toEqual({
       ...DEFAULT_MARGINS,
-      top: 5,
+      top: 1.25,
     });
     expect(
       normalizeMargins({ top: NaN, bottom: undefined } as never).top
@@ -30,8 +32,25 @@ describe("normalizeMargins", () => {
   it("clamps to the allowed range", () => {
     expect(normalizeMargins({ top: -10, bottom: 999 })).toMatchObject({
       top: 0,
-      bottom: MAX_MARGIN_MM,
+      bottom: MAX_MARGIN_IN,
     });
+  });
+
+  it("rounds off the float dust a 0.1 step leaves behind", () => {
+    expect(normalizeMargins({ top: 0.1 + 0.2 }).top).toBe(0.3);
+  });
+});
+
+describe("inToMm", () => {
+  it("converts inches to the millimetres the page is measured in", () => {
+    expect(inToMm(1)).toBeCloseTo(25.4, 5);
+    expect(inToMm(0.5)).toBeCloseTo(12.7, 5);
+  });
+});
+
+describe("columnGapIn", () => {
+  it("is the left plus the right margin, so the page period comes out exact", () => {
+    expect(columnGapIn({ top: 1, bottom: 1, left: 0.75, right: 0.25 })).toBe(1);
   });
 });
 
@@ -52,10 +71,14 @@ describe("page geometry", () => {
     });
   });
 
-  it("takes the margins out of the content box", () => {
-    expect(
-      pageContentSizeMm({}, { top: 10, bottom: 20, left: 15, right: 5 })
-    ).toEqual({ width: A4_WIDTH_MM - 20, height: A4_HEIGHT_MM - 30 });
+  it("takes the margins out of the content box, converting to millimetres", () => {
+    const box = pageContentSizeMm(
+      {},
+      { top: 0.5, bottom: 1, left: 0.25, right: 0.75 }
+    );
+
+    expect(box.width).toBeCloseTo(A4_WIDTH_MM - 25.4, 5);
+    expect(box.height).toBeCloseTo(A4_HEIGHT_MM - 38.1, 5);
   });
 });
 
@@ -87,15 +110,41 @@ describe("composePrintHtml", () => {
 
   it("puts the margins in the padding and asks the printer for none", () => {
     const html = composePrintHtml(doc, {
-      top: 40,
-      bottom: 10,
-      left: 15,
-      right: 5,
+      top: 1.5,
+      bottom: 0.4,
+      left: 0.6,
+      right: 0.2,
     });
 
     expect(html).toContain("@page { size: A4 portrait; margin: 0; }");
-    expect(html).toContain("padding: 40mm 5mm 10mm 15mm;");
+    expect(html).toContain("padding: 1.5in 0.2in 0.4in 0.6in;");
     expect(html).toContain(`width: ${A4_WIDTH_MM}mm;`);
+  });
+
+  it("stretches a fill-page document to the content height, and no other", () => {
+    const margins = { top: 0.5, bottom: 1, left: 0.5, right: 0.5 };
+    const html = composePrintHtml({ ...doc, fillPage: true }, margins);
+    const expected = pageContentSizeMm({}, margins).height;
+
+    expect(html).toContain(`min-height: ${expected}mm;`);
+    expect(html).toContain(".page-bottom { margin-top: auto; }");
+
+    // A report says nothing about filling the page and must be left alone
+    const plain = composePrintHtml(doc, margins);
+    expect(plain).not.toContain(".page-fill");
+    expect(plain).not.toContain(".page-bottom");
+  });
+
+  it("shrinks the fill height as the vertical margins grow", () => {
+    const tight = composePrintHtml({ ...doc, fillPage: true }, DEFAULT_MARGINS);
+    const roomy = composePrintHtml(
+      { ...doc, fillPage: true },
+      { ...DEFAULT_MARGINS, bottom: DEFAULT_MARGINS.bottom + 1 }
+    );
+    const heightOf = (html: string) =>
+      Number(/min-height: ([\d.]+)mm;/.exec(html)![1]);
+
+    expect(heightOf(tight) - heightOf(roomy)).toBeCloseTo(25.4, 5);
   });
 
   it("carries the caller's markup and css through", () => {
@@ -121,7 +170,7 @@ describe("composePrintHtml", () => {
     const html = composePrintHtml(doc, { top: 999 } as never);
 
     expect(html).toContain("<title>Money &lt;Report&gt;</title>");
-    expect(html).toContain(`padding: ${MAX_MARGIN_MM}mm`);
+    expect(html).toContain(`padding: ${MAX_MARGIN_IN}in`);
   });
 
   it("leaves a single-column document to the printer's own pagination", () => {
@@ -146,13 +195,13 @@ describe("composePrintHtml", () => {
   });
 
   it("previews a single-column document as one page-wide column", () => {
-    const margins = { top: 40, bottom: 40, left: 20, right: 10 };
+    const margins = { top: 1, bottom: 1, left: 0.75, right: 0.25 };
     const html = composePrintHtml(doc, margins, "preview");
 
     // One column to a page, overflowing sideways, so the preview breaks
     // between rows the way the printer will rather than slicing through them
     expect(html).toContain("column-count: 1");
-    expect(html).toContain(`column-gap: ${20 + 10}mm`);
+    expect(html).toContain(`column-gap: ${0.75 + 0.25}in`);
     // The whole page, not the content box: box-sizing takes the margins out
     // of it, and a short column would break earlier than the paper does
     expect(html).toContain(`height: ${A4_HEIGHT_MM}mm`);
@@ -170,18 +219,18 @@ describe("composePrintHtml", () => {
     expect(html).toContain("column-count: 2");
     expect(html).toContain("column-fill: auto");
     // Gap must equal left + right so the preview's page period works out
-    expect(html).toContain(`column-gap: ${12 + 12}mm`);
+    expect(html).toContain(`column-gap: ${0.5 + 0.5}in`);
     expect(html).not.toContain("column-width");
   });
 
   it("overflows sideways when previewing two columns", () => {
-    const margins = { top: 40, bottom: 40, left: 20, right: 10 };
+    const margins = { top: 1, bottom: 1, left: 0.75, right: 0.25 };
     const html = composePrintHtml({ ...doc, columns: 2 }, margins, "preview");
 
     // One page tall, so the columns spill into the next page
     expect(html).toContain(`height: ${A4_HEIGHT_MM}mm`);
     expect(html).toContain("width: auto");
-    expect(html).toContain(`column-gap: ${20 + 10}mm`);
+    expect(html).toContain(`column-gap: ${0.75 + 0.25}in`);
     // Two columns to the page
     expect(html).toContain("column-count: 2");
     expect(html).toContain("column-fill: auto");

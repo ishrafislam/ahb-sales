@@ -9,7 +9,8 @@
       <input
         id="client-id"
         ref="idInput"
-        v-model="idText"
+        :value="ld(idText)"
+        @input="idText = toLatinDigits(($event.target as HTMLInputElement).value)"
         :class="[fieldClass, 'text-right']"
         type="text"
         inputmode="numeric"
@@ -44,6 +45,11 @@
 defineOptions({ name: "AhbClientSelect" });
 import { ref, computed, watch, onMounted } from "vue";
 import { t } from "../i18n";
+import {
+  localizeDigits as ld,
+  parseNumber,
+  toLatinDigits,
+} from "../utils/numerals";
 import { MIN_CUSTOMER_ID, MAX_CUSTOMER_ID } from "../constants/business";
 import type { Customer } from "../main/data";
 
@@ -53,7 +59,7 @@ const idInput = ref<HTMLInputElement | null>(null);
 const running = ref(false);
 
 const customerId = computed(() => {
-  const n = Number(idText.value.trim());
+  const n = parseNumber(idText.value.trim());
   if (!Number.isInteger(n)) return null;
   if (n < MIN_CUSTOMER_ID || n > MAX_CUSTOMER_ID) return null;
   return n;

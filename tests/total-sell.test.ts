@@ -104,4 +104,22 @@ describe("reportTotalSell", () => {
     expect(rep.days[0]!.rows[0]!.productNameBn).toBeUndefined();
     expect(rep.days[0]!.rows[0]!.unit).toBeUndefined();
   });
+  it("leaves an item that was given away out of the report", () => {
+    const data = initData();
+    addProduct(data, { id: 1, nameBn: "চাল", unit: "kg", price: 50, stock: 100 });
+    addProduct(data, { id: 2, nameBn: "ডাল", unit: "kg", price: 80, stock: 100 });
+    addCustomer(data, { id: 7, nameBn: "রহিম" });
+    postInvoice(data, {
+      date: "2026-07-10T09:00:00.000Z",
+      customerId: 7,
+      lines: [
+        { productId: 1, quantity: 3, rate: 50 },
+        { productId: 2, quantity: 0, rate: 80 },
+      ],
+    });
+
+    const report = reportTotalSell(data, "2026-07-10", "2026-07-10");
+    const rows = report.days[0]!.rows;
+    expect(rows.map((r) => r.productId)).toEqual([1]);
+  });
 });

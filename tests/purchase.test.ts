@@ -3,6 +3,7 @@ import {
   initData,
   addProduct,
   postPurchase,
+  updatePurchase,
   listProductPurchases,
   type AhbDataV1,
 } from "../src/main/data";
@@ -36,7 +37,12 @@ describe("postPurchase (Phase 3)", () => {
     // listed in purchase history
     const rows = listProductPurchases(data, 10);
     expect(rows.length).toBe(1);
-    expect(rows[0]).toMatchObject({ productId: 10, unit: "kg", quantity: 7 });
+    expect(rows[0]).toMatchObject({
+      id: p.id,
+      productId: 10,
+      unit: "kg",
+      quantity: 7,
+    });
   });
 
   it("validates product, quantity, and date", () => {
@@ -64,5 +70,59 @@ describe("postPurchase (Phase 3)", () => {
     expect(() =>
       postPurchase(data, { productId: 1, quantity: 1, date: "nope" })
     ).toThrow(/Invalid date/);
+  });
+});
+
+describe("updatePurchase", () => {
+  function seed() {
+    const data: AhbDataV1 = initData();
+    addProduct(data, { id: 10, nameBn: "চাল", unit: "kg", price: 50, stock: 5 });
+    const purchase = postPurchase(data, { productId: 10, quantity: 20 });
+    return { data, purchase };
+  }
+
+  it("moves stock by the difference, in either direction", () => {
+    const { data, purchase } = seed();
+    // 5 to start with, plus the 20 that came in
+    expect(data.products.find((p) => p.id === 10)!.stock).toBe(25);
+
+    updatePurchase(data, purchase.id, { quantity: 23 });
+    expect(data.products.find((p) => p.id === 10)!.stock).toBe(28);
+
+    updatePurchase(data, purchase.id, { quantity: 8 });
+    expect(data.products.find((p) => p.id === 10)!.stock).toBe(13);
+  });
+
+  it("leaves the day it was bought on alone", () => {
+    const { data, purchase } = seed();
+    const updated = updatePurchase(data, purchase.id, { quantity: 4 });
+
+    expect(updated.id).toBe(purchase.id);
+    expect(updated.date).toBe(purchase.date);
+    expect(updated.createdAt).toBe(purchase.createdAt);
+    expect(updated.quantity).toBe(4);
+    // Corrected in place, not added alongside the original
+    const rows = listProductPurchases(data, 10);
+    expect(rows.length).toBe(1);
+    expect(rows[0]).toMatchObject({
+      id: purchase.id,
+      quantity: 4,
+    });
+  });
+
+  it("validates the purchase and the quantity", () => {
+    const { data, purchase } = seed();
+
+    expect(() => updatePurchase(data, "nope", { quantity: 1 })).toThrow(
+      /Purchase not found/
+    );
+    expect(() => updatePurchase(data, purchase.id, { quantity: 0 })).toThrow(
+      /Quantity must be > 0/
+    );
+    expect(() => updatePurchase(data, purchase.id, { quantity: -3 })).toThrow(
+      /Quantity must be > 0/
+    );
+    // A rejected edit moves nothing
+    expect(data.products.find((p) => p.id === 10)!.stock).toBe(25);
   });
 });

@@ -12,7 +12,8 @@
         <input
           id="customer-history-id"
           ref="idInputRef"
-          v-model="customerId"
+          :value="ld(customerId)"
+        @input="customerId = toLatinDigits(($event.target as HTMLInputElement).value)"
           type="text"
           inputmode="numeric"
           class="w-28 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm text-right dark:text-gray-100"
@@ -145,6 +146,11 @@
 defineOptions({ name: "AhbCustomerHistoryView" });
 import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
+import {
+  localizeDigits as ld,
+  parseInteger,
+  toLatinDigits,
+} from "../utils/numerals";
 import { printInvoice } from "../print/invoice";
 import {
   BUSINESS_NAME,
@@ -180,15 +186,17 @@ const rows = computed(() =>
 );
 
 function money(n: number) {
-  if (!Number.isFinite(n)) return "0.00";
-  return n.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  if (!Number.isFinite(n)) return ld("0.00");
+  return ld(
+    n.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
 }
 
 async function onLoadCustomer() {
-  const id = Number.parseInt(customerId.value, 10);
+  const id = parseInteger(customerId.value);
   if (Number.isNaN(id) || id < MIN_CUSTOMER_ID || id > MAX_CUSTOMER_ID) {
     loadedId.value = null;
     customer.value = null;

@@ -23,7 +23,7 @@
             <div
               class="w-14 shrink-0 px-3 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-700 dark:text-gray-100"
             >
-              {{ id }}
+              {{ ld(id) }}
             </div>
             <div
               class="px-3 py-2 text-sm truncate text-gray-700 dark:text-gray-200"
@@ -42,10 +42,10 @@
           <label :class="labelClass" for="item-id">{{ t("item_id") }}</label>
           <input
             id="item-id"
-            :value="String(selectedId)"
+            :value="ld(selectedId)"
             :class="fieldClass"
             type="text"
-            disabled
+            readonly
           />
         </div>
         <div>
@@ -58,7 +58,7 @@
             v-model="form.nameBn"
             :class="fieldClass"
             type="text"
-            :disabled="!unlocked"
+            :readonly="!unlocked"
           />
         </div>
       </div>
@@ -72,7 +72,7 @@
           v-model="form.description"
           :class="fieldClass"
           rows="2"
-          :disabled="!unlocked"
+          :readonly="!unlocked"
         ></textarea>
       </div>
 
@@ -87,7 +87,7 @@
             :class="[fieldClass, 'text-right no-spinner']"
             type="number"
             step="0.01"
-            :disabled="!unlocked"
+            :readonly="!unlocked"
           />
         </div>
         <div>
@@ -97,7 +97,7 @@
             v-model="form.unit"
             :class="fieldClass"
             type="text"
-            :disabled="!unlocked"
+            :readonly="!unlocked"
           />
         </div>
       </div>
@@ -107,10 +107,10 @@
           <label :class="labelClass" for="item-stock">{{ t("stock") }}</label>
           <input
             id="item-stock"
-            :value="stockText"
+            :value="ld(stockText)"
             :class="[fieldClass, 'text-right']"
             type="text"
-            disabled
+            readonly
           />
         </div>
         <div>
@@ -147,10 +147,10 @@
           }}</label>
           <input
             id="item-last-purchase-date"
-            :value="lastPurchaseDateText"
+            :value="ld(lastPurchaseDateText)"
             :class="fieldClass"
             type="text"
-            disabled
+            readonly
           />
         </div>
         <div>
@@ -159,10 +159,10 @@
           }}</label>
           <input
             id="item-last-purchase-amount"
-            :value="lastPurchaseQtyText"
+            :value="ld(lastPurchaseQtyText)"
             :class="[fieldClass, 'text-right']"
             type="text"
-            disabled
+            readonly
           />
         </div>
       </div>
@@ -218,6 +218,7 @@
 defineOptions({ name: "AhbProducts" });
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
+import { localizeDigits as ld } from "../utils/numerals";
 import { MAX_PRODUCT_ID } from "../constants/business";
 
 interface ProductRow {
@@ -413,7 +414,7 @@ const labelClass =
   "block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1";
 
 const fieldClass =
-  "block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";
+  "block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default";
 
 const buttonClass =
   "min-w-[7rem] bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-2 px-4 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";

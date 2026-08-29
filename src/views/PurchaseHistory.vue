@@ -23,7 +23,7 @@
             <div
               class="w-14 shrink-0 px-3 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-700 dark:text-gray-100"
             >
-              {{ id }}
+              {{ ld(id) }}
             </div>
             <div
               class="px-3 py-2 text-sm truncate text-gray-700 dark:text-gray-200"
@@ -51,6 +51,7 @@ defineOptions({ name: "AhbPurchaseHistory" });
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
 import HistoryTable from "../components/HistoryTable.vue";
+import { localizeDigits as ld } from "../utils/numerals";
 import { MAX_PRODUCT_ID } from "../constants/business";
 
 interface ProductRow {
@@ -91,8 +92,8 @@ function formatDate(iso: string) {
 
 const purchaseCells = computed(() =>
   purchases.value.map((p) => [
-    formatDate(p.date),
-    String(p.quantity),
+    ld(formatDate(p.date)),
+    ld(p.quantity),
     p.unit,
   ])
 );

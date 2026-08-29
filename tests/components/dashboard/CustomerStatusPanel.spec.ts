@@ -21,17 +21,17 @@ describe("CustomerStatusPanel", () => {
     });
   }
 
-  it("renders empty disabled fields without a status", () => {
+  it("renders empty read-only fields without a status", () => {
     const wrapper = mountPanel(null);
     const inputs = wrapper.findAll("input");
     expect(inputs.length).toBe(7);
     for (const input of inputs) {
       const el = input.element as HTMLInputElement;
-      expect(el.disabled).toBe(true);
+      expect(el.readOnly).toBe(true);
       expect(el.value).toBe("");
     }
     expect(
-      (wrapper.find("textarea").element as HTMLTextAreaElement).disabled
+      (wrapper.find("textarea").element as HTMLTextAreaElement).readOnly
     ).toBe(false);
     wrapper.unmount();
   });
@@ -64,7 +64,7 @@ describe("CustomerStatusPanel", () => {
   it("locks the comment when locked", () => {
     const wrapper = mountPanel(null, true);
     expect(
-      (wrapper.find("textarea").element as HTMLTextAreaElement).disabled
+      (wrapper.find("textarea").element as HTMLTextAreaElement).readOnly
     ).toBe(true);
     wrapper.unmount();
   });

@@ -3,6 +3,7 @@ import { mount } from "@vue/test-utils";
 import { createPinia } from "pinia";
 import Dashboard from "../src/views/Dashboard.vue";
 import { currentLang } from "../src/i18n";
+import { MAX_CUSTOMER_ID } from "../src/constants/business";
 
 type InvoiceStub = {
   date: string;
@@ -52,22 +53,38 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     return row!.find("input");
   }
 
-  function getDisabledInputs(wrapper: ReturnType<typeof mountDashboard>) {
-    return wrapper.findAll("input:disabled");
+  // Boxes the user reads rather than fills: read-only rather than disabled, so
+  // their text can still be selected and copied
+  function getReadonlyInputs(wrapper: ReturnType<typeof mountDashboard>) {
+    return wrapper.findAll("input[readonly]");
   }
 
-  it("renders product info, last bill, totals and status fields as always-disabled inputs", () => {
+  // The customer's name and address are editable, so they are not part of the
+  // read-only set the assertions below sweep
+  function customerField(
+    wrapper: ReturnType<typeof mountDashboard>,
+    which: "name" | "address"
+  ) {
+    return wrapper.find(`#customer-${which}`);
+  }
+
+  const customerValue = (
+    wrapper: ReturnType<typeof mountDashboard>,
+    which: "name" | "address"
+  ) => (customerField(wrapper, which).element as HTMLInputElement).value;
+
+  it("renders product info, last bill, totals and status fields as read-only inputs", () => {
     const wrapper = mountDashboard();
-    const disabled = getDisabledInputs(wrapper);
-    // 2 header + 2 last-bill + 3 customer info + grand total + bill
-    // + deposit + 7 status panel fields
-    expect(disabled.length).toBe(17);
+    const readonly = getReadonlyInputs(wrapper);
+    // 2 header + 2 last-bill + receivable + grand total + bill
+    // + deposit + 7 status panel fields; name and address are editable
+    expect(readonly.length).toBe(15);
     wrapper.unmount();
   });
 
   it("shows a read-only deposit of 0.00 from the start", () => {
     const wrapper = mountDashboard();
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(values).toContain("0.00");
@@ -103,7 +120,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(listInvoicesByCustomer).toHaveBeenCalledWith(12);
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(values).toContain(
@@ -121,19 +138,19 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(listInvoicesByCustomer).toHaveBeenCalledWith(7);
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    // Grid started for the valid customer: its empty row's price input is
-    // also disabled until a product loads; other empties are the customer
-    // info box, grand total, bill and the 7 status panel fields. The
-    // deposit field always shows 0.00.
+    // The empty boxes are the two header ones, the receivable, the grand
+    // total and the bill, then the 7 status panel fields. The deposit always
+    // shows 0.00. The empty row's price cell is disabled rather than read-only
+    // until a product loads, so it is not in this sweep.
     expect(values).toEqual([
       "",
       "",
       "—",
       "—",
-      ...Array(6).fill(""),
+      ...Array(3).fill(""),
       "0.00",
       ...Array(7).fill(""),
     ]);
@@ -148,7 +165,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(listInvoicesByCustomer).not.toHaveBeenCalled();
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(values).toEqual([
@@ -156,7 +173,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       "",
       "—",
       "—",
-      ...Array(5).fill(""),
+      ...Array(3).fill(""),
       "0.00",
       ...Array(7).fill(""),
     ]);
@@ -176,11 +193,11 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(getCustomerById).toHaveBeenCalledWith(12);
-    let values = getDisabledInputs(wrapper).map(
+    let values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).toContain("রহিম");
-    expect(values).toContain("ঢাকা");
+    expect(customerValue(wrapper, "name")).toBe("রহিম");
+    expect(customerValue(wrapper, "address")).toBe("ঢাকা");
     expect(values).toContain("250.50");
 
     // Unknown customer clears the box
@@ -188,12 +205,371 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await input.setValue("13");
     await input.trigger("keydown.enter");
     await new Promise((r) => setTimeout(r, 0));
-    values = getDisabledInputs(wrapper).map(
+    values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
-    expect(values).not.toContain("রহিম");
+    expect(customerValue(wrapper, "name")).toBe("");
     expect(values).not.toContain("250.50");
     wrapper.unmount();
+  });
+
+  describe("the Customer ID slot dropdown", () => {
+    const panelRows = () =>
+      Array.from(document.querySelectorAll('[data-role="slot-option"]'));
+
+    beforeEach(() => {
+      const listCustomers = vi.fn(async () => [
+        { id: 3, nameBn: "রহিম", address: "ঢাকা" },
+        { id: 30, nameBn: "করিম", address: "চট্টগ্রাম" },
+      ]);
+      (window as unknown as { ahb: Record<string, unknown> }).ahb = {
+        listInvoicesByCustomer,
+        getCustomerById,
+        listCustomers,
+      };
+    });
+
+    it("lists every slot when the caret is clicked, empty ones included", async () => {
+      const wrapper = mountDashboard();
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(panelRows().length).toBe(MAX_CUSTOMER_ID);
+      const third = panelRows()[2]!.textContent ?? "";
+      expect(third).toContain("রহিম");
+      expect(third).toContain("ঢাকা");
+      expect(panelRows()[0]!.textContent).toContain("Empty Slot");
+      wrapper.unmount();
+    });
+
+    it("does not open on focus alone", async () => {
+      const wrapper = mountDashboard();
+      await getCustomerIdInput(wrapper).trigger("focus");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(panelRows()).toHaveLength(0);
+      wrapper.unmount();
+    });
+
+    it("selects the whole id on focus, ready to be typed over", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await input.setValue("214");
+      const el = input.element as HTMLInputElement;
+      el.setSelectionRange(3, 3);
+
+      await input.trigger("focus");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(el.selectionStart).toBe(0);
+      expect(el.selectionEnd).toBe(3);
+      wrapper.unmount();
+    });
+
+    it("filters an open list as the id is typed, and never opens one", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await input.setValue("3");
+      await input.trigger("input");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(panelRows()).toHaveLength(0);
+
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+
+      // 3, 30-39, 300-399
+      expect(panelRows().length).toBe(111);
+      wrapper.unmount();
+    });
+
+    it("loads the highlighted customer on Enter", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+
+      for (let i = 0; i < 3; i++)
+        await input.trigger("keydown", { key: "ArrowDown" });
+      await input.trigger("keydown", { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(getCustomerById).toHaveBeenCalledWith(3);
+      expect((input.element as HTMLInputElement).value).toBe("3");
+      expect(panelRows()).toHaveLength(0);
+      wrapper.unmount();
+    });
+
+    it("still loads the typed id when nothing is highlighted", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await input.setValue("30");
+      await input.trigger("keydown", { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(listInvoicesByCustomer).toHaveBeenCalledWith(30);
+      wrapper.unmount();
+    });
+  });
+
+  describe("the name search boxes", () => {
+    const panelRows = () =>
+      Array.from(document.querySelectorAll('[data-role="slot-option"]'));
+
+    const openRecordDetailsWindow = vi.fn(async () => undefined);
+
+    beforeEach(() => {
+      openRecordDetailsWindow.mockClear();
+      (window as unknown as { ahb: Record<string, unknown> }).ahb = {
+        listInvoicesByCustomer,
+        getCustomerById,
+        openRecordDetailsWindow,
+        listCustomers: vi.fn(async () => [
+          { id: 12, nameBn: "Karim Store", address: "ঢাকা", active: true },
+          { id: 13, nameBn: "Rahim Traders", address: "চট্টগ্রাম", active: false },
+        ]),
+        listProducts: vi.fn(async () => [
+          { id: 5, nameBn: "চাল", description: "মোটা", active: true },
+        ]),
+      };
+    });
+
+    async function type(
+      wrapper: ReturnType<typeof mountDashboard>,
+      role: string,
+      value: string
+    ) {
+      const input = wrapper.find(`[data-role="${role}"]`);
+      await input.setValue(value);
+      await input.trigger("input");
+      await new Promise((r) => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 0));
+      return input;
+    }
+
+    const searchButton = (
+      wrapper: ReturnType<typeof mountDashboard>,
+      role: string
+    ) => wrapper.find(`[data-role="${role}"]`);
+
+    it("suggests customers as the name is typed, names and nothing else", async () => {
+      const wrapper = mountDashboard();
+      await type(wrapper, "customer-name-search", "karim");
+
+      expect(panelRows()).toHaveLength(1);
+      expect(panelRows()[0]!.textContent?.trim()).toBe("Karim Store");
+      wrapper.unmount();
+    });
+
+    it("suggests a close spelling when nothing matches outright", async () => {
+      const wrapper = mountDashboard();
+      await type(wrapper, "customer-name-search", "korim");
+
+      expect(panelRows()[0]!.textContent?.trim()).toBe("Karim Store");
+      wrapper.unmount();
+    });
+
+    it("keeps Search shut until a suggestion is picked, and reopens the pick", async () => {
+      const wrapper = mountDashboard();
+      const button = searchButton(wrapper, "customer-name-search-button");
+      expect((button.element as HTMLButtonElement).disabled).toBe(true);
+
+      const input = await type(wrapper, "customer-name-search", "karim");
+      expect((button.element as HTMLButtonElement).disabled).toBe(true);
+
+      (panelRows()[0] as HTMLElement).click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect((input.element as HTMLInputElement).value).toBe("Karim Store");
+      expect((button.element as HTMLButtonElement).disabled).toBe(false);
+
+      await button.trigger("click");
+      expect(openRecordDetailsWindow).toHaveBeenCalledWith("customer", 12);
+
+      // Editing afterwards means the box no longer names the picked record
+      await type(wrapper, "customer-name-search", "Karim Stor");
+      expect((button.element as HTMLButtonElement).disabled).toBe(true);
+      wrapper.unmount();
+    });
+
+    it("picks with the keyboard", async () => {
+      const wrapper = mountDashboard();
+      const input = await type(wrapper, "customer-name-search", "a");
+
+      await input.trigger("keydown", { key: "ArrowDown" });
+      await input.trigger("keydown", { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+
+      await searchButton(wrapper, "customer-name-search-button").trigger("click");
+      expect(openRecordDetailsWindow).toHaveBeenCalledWith("customer", 12);
+      wrapper.unmount();
+    });
+
+    it("searches products the same way, inactive records included", async () => {
+      const wrapper = mountDashboard();
+      await type(wrapper, "product-name-search", "চাল");
+
+      expect(panelRows()).toHaveLength(1);
+      expect(panelRows()[0]!.textContent?.trim()).toBe("চাল");
+
+      (panelRows()[0] as HTMLElement).click();
+      await new Promise((r) => setTimeout(r, 0));
+      await searchButton(wrapper, "product-name-search-button").trigger("click");
+
+      expect(openRecordDetailsWindow).toHaveBeenCalledWith("product", 5);
+      wrapper.unmount();
+    });
+
+    it("offers nothing for a name no record carries", async () => {
+      const wrapper = mountDashboard();
+      await type(wrapper, "customer-name-search", "elephant");
+
+      expect(panelRows()).toHaveLength(0);
+      expect(
+        (searchButton(wrapper, "customer-name-search-button")
+          .element as HTMLButtonElement).disabled
+      ).toBe(true);
+      wrapper.unmount();
+    });
+  });
+
+  describe("editing the customer's name and address", () => {
+    async function loadCustomer(
+      wrapper: ReturnType<typeof mountDashboard>,
+      id = "12"
+    ) {
+      const input = getCustomerIdInput(wrapper);
+      await input.setValue(id);
+      await input.trigger("keydown.enter");
+      await new Promise((r) => setTimeout(r, 0));
+    }
+
+    function withApi(extra: Record<string, unknown>) {
+      (window as unknown as { ahb: Record<string, unknown> }).ahb = {
+        listInvoicesByCustomer,
+        getCustomerById,
+        ...extra,
+      };
+    }
+
+    it("saves the name on Enter", async () => {
+      const updateCustomer = vi.fn(async () => ({}));
+      getCustomerById.mockResolvedValue({
+        nameBn: "রহিম",
+        address: "ঢাকা",
+        outstanding: 10,
+      });
+      withApi({ updateCustomer });
+      const wrapper = mountDashboard();
+      await loadCustomer(wrapper);
+
+      const name = customerField(wrapper, "name");
+      await name.setValue("করিম");
+      await name.trigger("keydown.enter");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(updateCustomer).toHaveBeenCalledWith(12, {
+        nameBn: "করিম",
+        address: "ঢাকা",
+      });
+      wrapper.unmount();
+    });
+
+    it("saves on blur, and writes nothing when nothing changed", async () => {
+      const updateCustomer = vi.fn(async () => ({}));
+      getCustomerById.mockResolvedValue({
+        nameBn: "রহিম",
+        address: "ঢাকা",
+        outstanding: 10,
+      });
+      withApi({ updateCustomer });
+      const wrapper = mountDashboard();
+      await loadCustomer(wrapper);
+
+      // Focus and leave without typing
+      await customerField(wrapper, "address").trigger("blur");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(updateCustomer).not.toHaveBeenCalled();
+
+      const address = customerField(wrapper, "address");
+      await address.setValue("চট্টগ্রাম");
+      await address.trigger("blur");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(updateCustomer).toHaveBeenCalledWith(12, {
+        nameBn: "রহিম",
+        address: "চট্টগ্রাম",
+      });
+      wrapper.unmount();
+    });
+
+    it("creates the customer when the slot is empty, then updates it", async () => {
+      const addCustomer = vi.fn(async () => ({}));
+      const updateCustomer = vi.fn(async () => ({}));
+      getCustomerById.mockResolvedValue(null);
+      withApi({ addCustomer, updateCustomer });
+      const wrapper = mountDashboard();
+      await loadCustomer(wrapper, "77");
+
+      const name = customerField(wrapper, "name");
+      await name.setValue("নতুন");
+      await name.trigger("keydown.enter");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(addCustomer).toHaveBeenCalledWith({
+        id: 77,
+        nameBn: "নতুন",
+        address: undefined,
+      });
+
+      // The record exists now, so the next edit patches it
+      await name.setValue("নতুন দোকান");
+      await name.trigger("keydown.enter");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(addCustomer).toHaveBeenCalledTimes(1);
+      expect(updateCustomer).toHaveBeenCalledWith(77, {
+        nameBn: "নতুন দোকান",
+        address: undefined,
+      });
+      wrapper.unmount();
+    });
+
+    it("creates nothing for an empty slot left blank", async () => {
+      const addCustomer = vi.fn(async () => ({}));
+      getCustomerById.mockResolvedValue(null);
+      withApi({ addCustomer });
+      const wrapper = mountDashboard();
+      await loadCustomer(wrapper, "77");
+
+      await customerField(wrapper, "name").trigger("blur");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(addCustomer).not.toHaveBeenCalled();
+      wrapper.unmount();
+    });
+
+    it("shows a rejected save and puts the old value back", async () => {
+      const updateCustomer = vi.fn(async () => {
+        throw new Error("Customer not found");
+      });
+      getCustomerById.mockResolvedValue({
+        nameBn: "রহিম",
+        address: "ঢাকা",
+        outstanding: 10,
+      });
+      withApi({ updateCustomer });
+      const wrapper = mountDashboard();
+      await loadCustomer(wrapper);
+
+      const name = customerField(wrapper, "name");
+      await name.setValue("করিম");
+      await name.trigger("keydown.enter");
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(wrapper.text()).toContain("Customer not found");
+      expect(customerValue(wrapper, "name")).toBe("রহিম");
+      wrapper.unmount();
+    });
   });
 
   it("starts product entry with one focused row after a valid customer Enter", async () => {
@@ -249,7 +625,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await rowInputs[1]!.setValue("3");
     await new Promise((r) => setTimeout(r, 0));
 
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(values).toContain("31.50");
@@ -260,7 +636,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     // Editing the amount in place (no Enter) updates the grand total
     await rowInputs[1]!.setValue("2");
     await new Promise((r) => setTimeout(r, 0));
-    let updated = getDisabledInputs(wrapper).map(
+    let updated = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(updated).toContain("21.00");
@@ -268,13 +644,13 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     // Editing the price only affects the total once committed with Enter
     await rowInputs[2]!.setValue("5");
     await new Promise((r) => setTimeout(r, 0));
-    updated = getDisabledInputs(wrapper).map(
+    updated = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(updated).toContain("21.00");
     await rowInputs[2]!.trigger("keydown.enter");
     await new Promise((r) => setTimeout(r, 0));
-    updated = getDisabledInputs(wrapper).map(
+    updated = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(updated).toContain("10.00");
@@ -309,11 +685,11 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await rowInputs[1]!.trigger("keydown.enter");
     await new Promise((r) => setTimeout(r, 0));
 
-    const disabledValues = () =>
-      getDisabledInputs(wrapper).map(
+    const readonlyValues = () =>
+      getReadonlyInputs(wrapper).map(
         (i) => (i.element as HTMLInputElement).value
       );
-    expect(disabledValues()).toContain("21.00");
+    expect(readonlyValues()).toContain("21.00");
 
     // Select the product row via the gutter and press Delete
     const gutter = wrapper
@@ -324,7 +700,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(wrapper.findAll("tbody tr").length).toBe(1);
-    expect(disabledValues()).not.toContain("21.00");
+    expect(readonlyValues()).not.toContain("21.00");
     wrapper.unmount();
   });
 
@@ -355,13 +731,13 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await rowInputs[1]!.setValue("2");
     await new Promise((r) => setTimeout(r, 0));
 
-    const disabledValues = () =>
-      getDisabledInputs(wrapper).map(
+    const readonlyValues = () =>
+      getReadonlyInputs(wrapper).map(
         (i) => (i.element as HTMLInputElement).value
       );
     // Bill mirrors the grand total (21.00) while no discount is committed
     expect(
-      disabledValues().filter((v) => v === "21.00").length
+      readonlyValues().filter((v) => v === "21.00").length
     ).toBe(2);
 
     // Discount input: typing alone does not change the bill
@@ -370,19 +746,19 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       .filter(
         (d) =>
           d.text().includes("Discount") &&
-          d.find("input:not([disabled])").exists()
+          d.find("input:not([readonly])").exists()
       );
     const discountInput = discountRows[discountRows.length - 1]!.find(
-      "input:not([disabled])"
+      "input:not([readonly])"
     );
     await discountInput.setValue("1");
     await new Promise((r) => setTimeout(r, 0));
-    expect(disabledValues().filter((v) => v === "21.00").length).toBe(2);
+    expect(readonlyValues().filter((v) => v === "21.00").length).toBe(2);
 
     // Enter commits: bill drops to 20.00, draft normalized to 1.00
     await discountInput.trigger("keydown.enter");
     await new Promise((r) => setTimeout(r, 0));
-    expect(disabledValues()).toContain("20.00");
+    expect(readonlyValues()).toContain("20.00");
     expect((discountInput.element as HTMLInputElement).value).toBe("1.00");
 
     // A discount above the grand total is rejected on Enter
@@ -390,7 +766,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await discountInput.trigger("keydown.enter");
     await new Promise((r) => setTimeout(r, 0));
     expect((discountInput.element as HTMLInputElement).value).toBe("1.00");
-    expect(disabledValues()).toContain("20.00");
+    expect(readonlyValues()).toContain("20.00");
     wrapper.unmount();
   });
 
@@ -433,9 +809,9 @@ describe("Dashboard v2 — customer ID quick entry", () => {
         .filter(
           (d) =>
             d.text().includes(label) &&
-            d.find("input:not([disabled])").exists()
+            d.find("input:not([readonly])").exists()
         );
-      return rows[rows.length - 1]!.find("input:not([disabled])");
+      return rows[rows.length - 1]!.find("input:not([readonly])");
     };
     await totalsInput("Discount").setValue("1");
     await totalsInput("Discount").trigger("keydown.enter");
@@ -468,7 +844,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect(wrapper.findAll("tbody tr").length).toBe(2);
 
     // Header stock shows the projection after this sale (40 - 2)
-    const headerValues = getDisabledInputs(wrapper).map(
+    const headerValues = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(headerValues[0]).toBe("5");
@@ -490,7 +866,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     });
 
     // Status panel shows the returned invoice values
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     for (const v of ["1.00", "20.00", "5.00", "15.00", "100.00", "115.00"]) {
@@ -500,13 +876,15 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       2
     );
 
-    // Form is locked: grid cells, discount, deposit, comment, Post Data
+    // Form is locked: grid cells, discount, deposit, comment, Post Data.
+    // The grid reads rather than disables, so a posted invoice can still be
+    // walked for its stock figures.
     const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
     for (const cell of rowInputs) {
-      expect((cell.element as HTMLInputElement).disabled).toBe(true);
+      expect((cell.element as HTMLInputElement).readOnly).toBe(true);
     }
     expect(
-      (wrapper.find("textarea").element as HTMLTextAreaElement).disabled
+      (wrapper.find("textarea").element as HTMLTextAreaElement).readOnly
     ).toBe(true);
     expect((postButton.element as HTMLButtonElement).disabled).toBe(true);
 
@@ -546,11 +924,13 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     // No "Customer not found" (or any other) error, and the customer info
     // box picks up the due the invoice just created
     expect(wrapper.find(".text-red-600").exists()).toBe(false);
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     // Customer info box: name, address, receivable
-    expect(values.slice(4, 7)).toEqual(["", "", "20.00"]);
+    expect(customerValue(wrapper, "name")).toBe("");
+    expect(customerValue(wrapper, "address")).toBe("");
+    expect(values[4]).toBe("20.00");
     expect((postButton.element as HTMLButtonElement).disabled).toBe(true);
     wrapper.unmount();
   });
@@ -619,7 +999,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     });
 
     // Status panel reflects the updated invoice; form locked again
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     expect(values).toContain("30.50");
@@ -689,9 +1069,11 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect((cells[1]!.element as HTMLInputElement).value).toBe("2");
     expect((cells[2]!.element as HTMLInputElement).value).toBe("10.50");
     for (const cell of cells) {
-      expect((cell.element as HTMLInputElement).disabled).toBe(true);
+      expect((cell.element as HTMLInputElement).readOnly).toBe(true);
     }
     expect(rows[0]!.text()).toContain("চাল");
+    // Entry lands on the first line, so the header opens on its stock
+    expect(document.activeElement).toBe(cells[0]!.element);
 
     // Buttons reflect the posted state
     const button = (label: string) =>
@@ -702,7 +1084,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect(button("Payment").disabled).toBe(false);
 
     // Status panel, deposit total and comment come from the invoice
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     for (const v of ["1.00", "20.00", "100.00", "112.00"]) {
@@ -842,7 +1224,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     wrapper.unmount();
   });
 
-  it("leaves Direct Print and Select Print unwired", async () => {
+  it("leaves Direct Print unwired, and Select Print prints nothing itself", async () => {
     const postInvoice = vi.fn(async () => ({
       id: "inv-1",
       no: 42,
@@ -856,10 +1238,11 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       currentDue: 120,
     }));
     const openPrintPreview = vi.fn(async () => "job-1");
+    const openSelectPrintWindow = vi.fn(async () => undefined);
     const { wrapper, postButton } = await setupPostableEntry(
       postInvoice,
       vi.fn(),
-      { openPrintPreview, getInvoiceById: vi.fn() }
+      { openPrintPreview, getInvoiceById: vi.fn(), openSelectPrintWindow }
     );
     await postButton.trigger("click");
     await new Promise((r) => setTimeout(r, 0));
@@ -870,7 +1253,10 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       await btn.trigger("click");
     }
     await new Promise((r) => setTimeout(r, 0));
+
+    // The sheet is built and printed in its own window, not from here
     expect(openPrintPreview).not.toHaveBeenCalled();
+    expect(openSelectPrintWindow).toHaveBeenCalledTimes(1);
     wrapper.unmount();
   });
 
@@ -901,7 +1287,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
 
     // Header follows the row: 40 stored, 2 about to be sold
     const stockValue = () =>
-      getDisabledInputs(wrapper)
+      getReadonlyInputs(wrapper)
         .map((i) => (i.element as HTMLInputElement).value)
         .find((v) => v === "38" || v === "88");
     await wrapper.findAll("tbody tr")[0]!.findAll("input")[1]!.trigger("focus");
@@ -963,7 +1349,7 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(getInvoiceById).toHaveBeenCalledWith("inv-1");
-    const values = getDisabledInputs(wrapper).map(
+    const values = getReadonlyInputs(wrapper).map(
       (i) => (i.element as HTMLInputElement).value
     );
     // Deposit total, status deposit, difference, next due and receivable
@@ -997,6 +1383,7 @@ describe("Dashboard v2 — action button navigation", () => {
   let openDailyReportWindow: ReturnType<typeof vi.fn>;
   let openClientSelectWindow: ReturnType<typeof vi.fn>;
   let openPaymentReportWindow: ReturnType<typeof vi.fn>;
+  let openSelectPrintWindow: ReturnType<typeof vi.fn>;
   let listCustomers: ReturnType<typeof vi.fn>;
   let listProducts: ReturnType<typeof vi.fn>;
   let openPrintPreview: ReturnType<typeof vi.fn>;
@@ -1007,6 +1394,7 @@ describe("Dashboard v2 — action button navigation", () => {
     openDailyReportWindow = vi.fn(async () => undefined);
     openClientSelectWindow = vi.fn(async () => undefined);
     openPaymentReportWindow = vi.fn(async () => undefined);
+    openSelectPrintWindow = vi.fn(async () => undefined);
     listCustomers = vi.fn(async () => [
       {
         id: 7,
@@ -1036,6 +1424,7 @@ describe("Dashboard v2 — action button navigation", () => {
       openDailyReportWindow,
       openClientSelectWindow,
       openPaymentReportWindow,
+      openSelectPrintWindow,
       listCustomers,
       listProducts,
       openPrintPreview,
@@ -1121,6 +1510,14 @@ describe("Dashboard v2 — action button navigation", () => {
     wrapper.unmount();
   });
 
+  it("Select Print opens the picking sheet window", async () => {
+    const wrapper = mountDashboard();
+    await findButton(wrapper, "Select Print").trigger("click");
+
+    expect(openSelectPrintWindow).toHaveBeenCalledTimes(1);
+    wrapper.unmount();
+  });
+
   it("Total Sell opens the date range window", async () => {
     const wrapper = mountDashboard();
     await findButton(wrapper, "Total Sell").trigger("click");
@@ -1134,7 +1531,9 @@ describe("Dashboard v2 — action button navigation", () => {
     await findButton(wrapper, "Cust. List").trigger("click");
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(listCustomers).toHaveBeenCalledTimes(1);
+    // Also called to fill the Customer ID dropdown, so just check the roll
+    expect(listCustomers).toHaveBeenCalled();
+    expect(openPrintPreview).toHaveBeenCalledTimes(1);
     const doc = openPrintPreview.mock.calls[0]![0] as {
       title: string;
       bodyHtml: string;

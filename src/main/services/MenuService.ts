@@ -29,7 +29,6 @@ export class MenuService {
       this.settingsService.loadSettings().themeSource ?? "system";
     const fs = this.getFileService();
     const currentFilePath = fs?.getCurrentFilePath() ?? null;
-    const isDirty = fs?.getIsDirty() ?? false;
 
     const template: MenuItemConstructorOptions[] = [
       {
@@ -57,14 +56,6 @@ export class MenuService {
             },
           },
           {
-            label: d.menu_save,
-            enabled: Boolean(currentFilePath && isDirty),
-            accelerator: process.platform === "darwin" ? "Cmd+S" : "Ctrl+S",
-            click: (): void => {
-              void this.getFileService()?.handleSaveFile();
-            },
-          },
-          {
             label: d.menu_save_as,
             enabled: Boolean(currentFilePath),
             accelerator:
@@ -89,6 +80,22 @@ export class MenuService {
               void this.quitAppFlow();
             },
           },
+        ],
+      },
+      // Clipboard accelerators come from these roles. A custom menu without
+      // them leaves Ctrl+C, Ctrl+V, Ctrl+X and Ctrl+A dead in every window —
+      // which is why a selected product name could not be copied.
+      {
+        label: d.menu_edit ?? d.edit ?? "Edit",
+        submenu: [
+          { role: "undo", label: d.menu_undo ?? "Undo" },
+          { role: "redo", label: d.menu_redo ?? "Redo" },
+          { type: "separator" },
+          { role: "cut", label: d.menu_cut ?? "Cut" },
+          { role: "copy", label: d.menu_copy ?? "Copy" },
+          { role: "paste", label: d.menu_paste ?? "Paste" },
+          { type: "separator" },
+          { role: "selectAll", label: d.menu_select_all ?? "Select All" },
         ],
       },
       {
@@ -189,15 +196,8 @@ export class MenuService {
 
   private async quitAppFlow(): Promise<void> {
     const { app } = await import("electron");
-    const fs = this.getFileService();
-    if (fs?.getIsDirty()) {
-      const decision = await fs.askToSaveChanges();
-      if (decision === "cancel") return;
-      if (decision === "save") {
-        const ok = await fs.saveCurrentPossiblyAs();
-        if (!ok) return;
-      }
-    }
+    // Changes save themselves; only a write still on the timer needs forcing
+    this.getFileService()?.flushPendingSave();
     app.quit();
   }
 }

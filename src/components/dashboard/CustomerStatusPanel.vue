@@ -11,17 +11,17 @@
       <input
         type="text"
         :value="field.value"
-        disabled
-        :class="[fieldClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+        readonly
+        :class="[fieldClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
       >
     </div>
     <div class="flex flex-col gap-1 flex-grow">
       <label class="text-xs whitespace-nowrap">{{ t("comment") }}:</label>
       <textarea
         v-model="comment"
-        :disabled="locked"
+        :readonly="locked"
         rows="3"
-        :class="[fieldClass, 'flex-grow resize-none disabled:opacity-70 disabled:cursor-not-allowed']"
+        :class="[fieldClass, 'flex-grow resize-none disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
       />
     </div>
   </div>
@@ -29,6 +29,7 @@
 
 <script setup lang="ts">
 defineOptions({ name: "AhbCustomerStatusPanel" });
+import { localizeDigits } from "../../utils/numerals";
 import { computed } from "vue";
 import { t } from "../../i18n";
 
@@ -51,7 +52,8 @@ const comment = defineModel<string>("comment", { required: true });
 
 const fields = computed(() => {
   const s = props.status;
-  const fmt = (n: number | undefined) => (n === undefined ? "" : n.toFixed(2));
+  const fmt = (n: number | undefined) =>
+    n === undefined ? "" : localizeDigits(n.toFixed(2));
   return [
     { key: "total_price", value: fmt(s?.totalPrice) },
     { key: "v2_discount", value: fmt(s?.discount) },

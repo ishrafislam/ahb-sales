@@ -49,21 +49,21 @@ describe("EditPaymentWindow", () => {
     return wrapper.findAll("button").find((b) => b.text() === label)!;
   }
 
-  it("pre-fills date/customer (disabled) and amount/comment (editable)", async () => {
+  it("pre-fills date/customer (read-only) and amount/comment (editable)", async () => {
     const wrapper = await mountWindow();
     expect(getInvoiceById).toHaveBeenCalledWith("inv-1");
     const inputs = wrapper.findAll("input");
     const [date, customer, amount] = inputs.map(
       (i) => i.element as HTMLInputElement
     );
-    expect(date!.disabled).toBe(true);
+    expect(date!.readOnly).toBe(true);
     expect(date!.value).toBe("23/07/2026");
-    expect(customer!.disabled).toBe(true);
+    expect(customer!.readOnly).toBe(true);
     expect(customer!.value).toBe("200");
-    expect(amount!.disabled).toBe(false);
+    expect(amount!.readOnly).toBe(false);
     expect(amount!.value).toBe("800.00");
     const textarea = wrapper.find("textarea").element as HTMLTextAreaElement;
-    expect(textarea.disabled).toBe(false);
+    expect(textarea.readOnly).toBe(false);
     expect(textarea.value).toBe("old comment");
     wrapper.unmount();
   });
@@ -106,12 +106,12 @@ describe("EditPaymentWindow", () => {
     expect((okay.element as HTMLButtonElement).disabled).toBe(true);
     await okay.trigger("click");
     expect(updateInvoicePayment).not.toHaveBeenCalled();
-    // Amount and comment stay disabled
+    // Amount and comment stay locked
     expect(
-      (wrapper.findAll("input")[2]!.element as HTMLInputElement).disabled
+      (wrapper.findAll("input")[2]!.element as HTMLInputElement).readOnly
     ).toBe(true);
     expect(
-      (wrapper.find("textarea").element as HTMLTextAreaElement).disabled
+      (wrapper.find("textarea").element as HTMLTextAreaElement).readOnly
     ).toBe(true);
     wrapper.unmount();
   });
