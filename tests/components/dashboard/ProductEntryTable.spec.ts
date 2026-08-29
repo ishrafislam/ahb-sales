@@ -105,6 +105,126 @@ describe("ProductEntryTable", () => {
     wrapper.unmount();
   });
 
+  it("loading a product by ID appends the next row straight away", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const { id } = cellInputs(wrapper, 0);
+    await id.setValue("5");
+    await id.trigger("keydown.enter");
+    await flush();
+
+    expect(wrapper.findAll("tbody tr").length).toBe(2);
+    expect(wrapper.vm.rows[1]!.product).toBeNull();
+    // The amount is still where entry carries on
+    expect(document.activeElement).toBe(cellInputs(wrapper, 0).amount.element);
+    wrapper.unmount();
+  });
+
+  it("blurring the ID cell loads the product, and a bad id clears it", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    await cellInputs(wrapper, 0).id.setValue("7");
+    await cellInputs(wrapper, 0).id.trigger("blur");
+    await flush();
+
+    expect(wrapper.vm.rows[0]!.product).toMatchObject({ id: 7, nameBn: "ডাল" });
+    expect(wrapper.findAll("tbody tr").length).toBe(2);
+
+    // An id naming nothing goes back to the product the row already holds
+    await cellInputs(wrapper, 0).id.setValue("999");
+    await cellInputs(wrapper, 0).id.trigger("blur");
+    await flush();
+    expect(wrapper.vm.rows[0]!.idText).toBe("7");
+    expect(wrapper.vm.rows[0]!.product).toMatchObject({ id: 7 });
+
+    // On a row with nothing loaded it simply clears
+    await cellInputs(wrapper, 1).id.setValue("999");
+    await cellInputs(wrapper, 1).id.trigger("blur");
+    await flush();
+    expect(wrapper.vm.rows[1]!.idText).toBe("");
+    expect(wrapper.vm.rows[1]!.product).toBeNull();
+    wrapper.unmount();
+  });
+
+  it("blurring an unchanged ID leaves a hand-edited price alone", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const first = cellInputs(wrapper, 0);
+    await first.id.setValue("5");
+    await first.id.trigger("keydown.enter");
+    await flush();
+    await first.price.setValue("60");
+    await first.price.trigger("keydown.enter");
+    await flush();
+
+    getProductById.mockClear();
+    await first.id.trigger("blur");
+    await flush();
+
+    expect(getProductById).not.toHaveBeenCalled();
+    expect(wrapper.vm.rows[0]!.price).toBe(60);
+    expect(wrapper.vm.rows[0]!.priceText).toBe("60.00");
+    wrapper.unmount();
+  });
+
+  it("blurring the amount keeps a real quantity and clears the rest", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const first = cellInputs(wrapper, 0);
+    await first.id.setValue("5");
+    await first.id.trigger("keydown.enter");
+    await flush();
+
+    await first.amount.setValue("3");
+    await first.amount.trigger("blur");
+    await flush();
+    expect(wrapper.vm.rows[0]!.amountText).toBe("3");
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37 });
+
+    await first.amount.setValue("0");
+    await first.amount.trigger("blur");
+    await flush();
+    expect(wrapper.vm.rows[0]!.amountText).toBe("");
+
+    await first.amount.setValue("abc");
+    await first.amount.trigger("blur");
+    await flush();
+    expect(wrapper.vm.rows[0]!.amountText).toBe("");
+    // Nothing sold, so the header is back at the stored stock
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 40 });
+    wrapper.unmount();
+  });
+
+  it("Enter in a price walks down the price column", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    for (const [idx, id] of [[0, "5"], [1, "7"]] as const) {
+      const cells = cellInputs(wrapper, idx);
+      await cells.id.setValue(id);
+      await cells.id.trigger("keydown.enter");
+      await flush();
+      await cells.amount.setValue("2");
+      await cells.amount.trigger("keydown.enter");
+      await flush();
+    }
+    expect(wrapper.findAll("tbody tr").length).toBe(3);
+
+    // Row 0's price commits and hands over to row 1's price
+    const first = cellInputs(wrapper, 0);
+    (first.price.element as HTMLInputElement).focus();
+    await first.price.setValue("60");
+    await first.price.trigger("keydown.enter");
+    await flush();
+    expect(wrapper.vm.rows[0]!.price).toBe(60);
+    expect(document.activeElement).toBe(cellInputs(wrapper, 1).price.element);
+
+    // The trailing row has no product, so entry drops into its ID cell
+    await cellInputs(wrapper, 1).price.trigger("keydown.enter");
+    await flush();
+    expect(document.activeElement).toBe(cellInputs(wrapper, 2).id.element);
+    wrapper.unmount();
+  });
+
   it("Enter on a valid amount appends a row and focuses its ID", async () => {
     const wrapper = mountHost();
     await startEntry(wrapper);
@@ -565,12 +685,19 @@ describe("ProductEntryTable", () => {
     expect(wrapper.vm.rows[0]!.price).toBe(60);
     expect(wrapper.vm.rows[0]!.priceText).toBe("60.00");
 
-    // An abandoned draft reverts to the committed price on blur
+    // Blur commits the same way Enter does
     await first.price.setValue("99");
     await first.price.trigger("blur");
     await flush();
-    expect(wrapper.vm.rows[0]!.price).toBe(60);
-    expect(wrapper.vm.rows[0]!.priceText).toBe("60.00");
+    expect(wrapper.vm.rows[0]!.price).toBe(99);
+    expect(wrapper.vm.rows[0]!.priceText).toBe("99.00");
+
+    // Text that is not a price at all falls back to the committed one
+    await first.price.setValue("abc");
+    await first.price.trigger("blur");
+    await flush();
+    expect(wrapper.vm.rows[0]!.price).toBe(99);
+    expect(wrapper.vm.rows[0]!.priceText).toBe("99.00");
 
     // Arrow keys inside the price cell do not move grid focus
     (first.price.element as HTMLInputElement).focus();

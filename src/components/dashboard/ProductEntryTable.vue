@@ -47,7 +47,7 @@
           <td :class="[cellBorderClass, 'px-2 py-1']">
             <div class="relative">
               <input
-                :ref="(el) => setCellRef(idx, 'id', el)"
+                :ref="(el) => setCellRef(row.key, 'id', el)"
                 v-model="row.idText"
                 type="text"
                 inputmode="numeric"
@@ -56,7 +56,7 @@
                 @keydown.enter.prevent="onIdEnter(idx)"
                 @keydown="onCellKeydown($event, idx, 'id')"
                 @focus="onIdCellFocus(idx)"
-                @blur="closeSlots"
+                @blur="onIdBlur(idx)"
               >
               <!-- Opening the list is a deliberate click: focus happens on
                    every arrow-key step through the rows -->
@@ -78,7 +78,7 @@
           </td>
           <td :class="[cellBorderClass, 'px-2 py-1']">
             <input
-              :ref="(el) => setCellRef(idx, 'amount', el)"
+              :ref="(el) => setCellRef(row.key, 'amount', el)"
               v-model="row.amountText"
               type="text"
               inputmode="decimal"
@@ -87,6 +87,7 @@
               @keydown.enter.prevent="onAmountEnter(idx)"
               @keydown="onCellKeydown($event, idx, 'amount')"
               @focus="onCellFocus(idx)"
+              @blur="onAmountBlur(idx)"
             >
           </td>
           <td :class="[cellBorderClass, 'px-2 py-1']">
@@ -94,6 +95,7 @@
           </td>
           <td :class="[cellBorderClass, 'px-2 py-1']">
             <input
+              :ref="(el) => setCellRef(row.key, 'price', el)"
               v-model="row.priceText"
               type="text"
               inputmode="decimal"
@@ -148,7 +150,7 @@ export type EntryRow = {
   price: number | null;
 };
 
-type Col = "id" | "amount";
+type Col = "id" | "amount" | "price";
 
 const rows = defineModel<EntryRow[]>("rows", { required: true });
 const props = withDefaults(defineProps<{ locked?: boolean }>(), {
@@ -224,10 +226,9 @@ function deleteSelected() {
   selectedKey.value = null;
   if (idx === -1) return;
   rows.value.splice(idx, 1);
-  if (rows.value.length === 0) {
-    rows.value.push(makeRow());
-    void focusCell(0, "id");
-  }
+  if (rows.value.length === 0) rows.value.push(makeRow());
+  // Entry carries on where the deleted row was
+  void focusCell(Math.min(idx, rows.value.length - 1), "id");
 }
 
 // Selection can become stale when rows are replaced (new customer,
@@ -263,35 +264,54 @@ function makeRow(): EntryRow {
   };
 }
 
+// Keyed by the row's own key rather than its position: rows are keyed in the
+// template, so deleting one re-runs the surviving rows' ref callbacks at their
+// new positions — and the departing row's `null` callback, arriving after
+// them, would drop an entry that now belongs to a row still on screen.
 const cellRefs = new Map<string, HTMLInputElement>();
-function setCellRef(idx: number, col: Col, el: unknown) {
-  const key = `${idx}:${col}`;
+function setCellRef(rowKey: number, col: Col, el: unknown) {
+  const key = `${rowKey}:${col}`;
   if (el) cellRefs.set(key, el as HTMLInputElement);
   else cellRefs.delete(key);
 }
 
+function cellEl(idx: number, col: Col): HTMLInputElement | undefined {
+  const row = rows.value[idx];
+  return row ? cellRefs.get(`${row.key}:${col}`) : undefined;
+}
+
 async function focusCell(idx: number, col: Col) {
   await nextTick();
-  const el = cellRefs.get(`${idx}:${col}`);
+  const el = cellEl(idx, col);
   if (!el) return;
   el.focus();
   el.select();
 }
 
-async function onIdEnter(idx: number) {
+/**
+ * Load the product the ID cell names. Shared by Enter and blur, so neither
+ * moves focus from here — that is the caller's business.
+ *
+ * The row below is added as soon as the product lands rather than waiting for
+ * the amount, so the next product can be typed straight away.
+ */
+async function commitId(idx: number): Promise<boolean> {
   const row = rows.value[idx];
-  if (!row) return;
-  closeSlots();
+  if (!row) return false;
   const id = Number.parseInt(row.idText, 10);
   if (Number.isNaN(id) || id < MIN_PRODUCT_ID || id > MAX_PRODUCT_ID) {
-    void focusCell(idx, "id");
-    return;
+    return false;
+  }
+  // Re-committing the id the row already holds would fetch the catalog price
+  // back over a hand-edited one
+  if (row.product?.id === id) {
+    row.idText = String(id);
+    return true;
   }
   const product = await window.ahb.getProductById(id);
-  if (!product) {
-    void focusCell(idx, "id");
-    return;
-  }
+  // The row can be spliced away while the lookup is in flight
+  if (rows.value[idx] !== row) return false;
+  if (!product) return false;
   row.product = {
     id: product.id,
     nameBn: product.nameBn,
@@ -302,7 +322,30 @@ async function onIdEnter(idx: number) {
   row.idText = String(product.id);
   row.priceText = product.price.toFixed(2);
   row.price = product.price;
-  void focusCell(idx, "amount");
+  emitSelected(row);
+  if (idx === rows.value.length - 1) rows.value.push(makeRow());
+  return true;
+}
+
+async function onIdEnter(idx: number) {
+  closeSlots();
+  const ok = await commitId(idx);
+  void focusCell(idx, ok ? "amount" : "id");
+}
+
+/**
+ * Leaving the cell commits it too. An id that names nothing clears back to
+ * whatever the row already had — blur never pulls focus, so the user is not
+ * held in a cell they are trying to leave.
+ */
+async function onIdBlur(idx: number) {
+  closeSlots();
+  const row = rows.value[idx];
+  if (!row || !row.idText.trim()) return;
+  if (await commitId(idx)) return;
+  const current = rows.value[idx];
+  if (!current) return;
+  current.idText = current.product ? String(current.product.id) : "";
 }
 
 async function onAmountEnter(idx: number) {
@@ -322,9 +365,19 @@ async function onAmountEnter(idx: number) {
   if (row.product) emitSelected(row);
 }
 
-// The edited price only takes effect on Enter; an abandoned draft
-// (blur without Enter) resets to the committed price.
-function onPriceEnter(idx: number) {
+// An amount that would sell nothing is not worth keeping around; the header
+// follows the cell back to the unsold figure.
+function onAmountBlur(idx: number) {
+  const row = rows.value[idx];
+  if (!row) return;
+  const amount = Number.parseFloat(row.amountText);
+  if (!Number.isFinite(amount) || amount <= 0) row.amountText = "";
+  emitSelected(row);
+}
+
+// Enter and blur commit the same way; a price that is not a number at all
+// falls back to the one already committed.
+function commitPrice(idx: number) {
   const row = rows.value[idx];
   if (!row || !row.product) return;
   const price = Number.parseFloat(row.priceText);
@@ -334,14 +387,26 @@ function onPriceEnter(idx: number) {
     row.price = price;
     row.priceText = price.toFixed(2);
   }
+}
+
+/**
+ * Enter walks down the price column, so a round of price corrections is one
+ * pass. A row with no product has a disabled price cell, so entry falls back
+ * to its ID cell.
+ */
+function onPriceEnter(idx: number) {
+  commitPrice(idx);
+  const next = rows.value[idx + 1];
+  if (next) {
+    void focusCell(idx + 1, next.product ? "price" : "id");
+    return;
+  }
   const el = document.activeElement;
   if (el instanceof HTMLInputElement) el.select();
 }
 
 function onPriceBlur(idx: number) {
-  const row = rows.value[idx];
-  if (!row) return;
-  row.priceText = row.price !== null ? row.price.toFixed(2) : "";
+  commitPrice(idx);
 }
 
 // Arrow navigation covers the ID and Amount columns; the Price cell is
@@ -391,9 +456,7 @@ const slotRow = ref<number | null>(null);
 let slotsLoaded = false;
 
 const slotAnchor = computed(() =>
-  slotRow.value === null
-    ? null
-    : (cellRefs.get(`${slotRow.value}:id`) ?? null)
+  slotRow.value === null ? null : (cellEl(slotRow.value, "id") ?? null)
 );
 
 const slotOptions = computed(() => {
