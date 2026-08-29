@@ -99,7 +99,9 @@ export function buildInvoiceDocument(
   const saleTime = fmtReceiptTime(inv.date, { bengali: isBn });
 
   // The receipt keeps its narrow column but sits at the top-left of the
-  // content box, so the margins the user sets are what position it.
+  // content box, so the margins the user sets are what position it. It fills
+  // the page's height (see `fillPage` below) so the totals can sit at the
+  // bottom of the sheet however few items the sale has.
   const styleCss = `
     .receipt { width: 72mm; font-family: ${fontFamily}; font-size: 10px; }
     .receipt h1 { font-size: 13px; margin: 0 0 2px; text-align: center; }
@@ -116,7 +118,7 @@ export function buildInvoiceDocument(
   `;
 
   const bodyHtml = `
-    <div class="receipt">
+    <div class="receipt page-fill">
       <h1>${opts.businessName ?? t("business_name")}</h1>
       <div class="addr">${t("business_address")}</div>
       <div class="addr">${t("phone_label")} : ${BUSINESS_PHONES[0]}</div>
@@ -138,17 +140,19 @@ export function buildInvoiceDocument(
       </table>
       <hr />
 
-      <table class="sum">
-        <tr><td>${t("bill")} :</td><td class="val">${fmt(inv.totals.subtotal)}</td></tr>
-        <tr><td>${t("discount")} :</td><td class="val">${fmt(inv.discount)}</td></tr>
-        <tr><td>${t("net_bill")} :</td><td class="val">${fmt(inv.totals.net)}</td></tr>
-        <tr><td>${t("previous_due")} :${prevDateStr}</td><td class="val">${fmt(inv.previousDue)}</td></tr>
-        <tr><td>${t("grand_total")} :</td><td class="val">${fmt(grandTotal)}</td></tr>
-        <tr><td>${t("deposit")} (${fmtReceiptDate(inv.date, { bengali: isBn })}) :</td><td class="val">${fmt(inv.paid)}</td></tr>
-        <tr><td>${t("current_due")} :</td><td class="val">${fmt(inv.currentDue)}</td></tr>
-      </table>
+      <div class="page-bottom">
+        <table class="sum">
+          <tr><td>${t("bill")} :</td><td class="val">${fmt(inv.totals.subtotal)}</td></tr>
+          <tr><td>${t("discount")} :</td><td class="val">${fmt(inv.discount)}</td></tr>
+          <tr><td>${t("net_bill")} :</td><td class="val">${fmt(inv.totals.net)}</td></tr>
+          <tr><td>${t("previous_due")} :${prevDateStr}</td><td class="val">${fmt(inv.previousDue)}</td></tr>
+          <tr><td>${t("grand_total")} :</td><td class="val">${fmt(grandTotal)}</td></tr>
+          <tr><td>${t("deposit")} (${fmtReceiptDate(inv.date, { bengali: isBn })}) :</td><td class="val">${fmt(inv.paid)}</td></tr>
+          <tr><td>${t("current_due")} :</td><td class="val">${fmt(inv.currentDue)}</td></tr>
+        </table>
 
-      ${inv.notes ? `<div class="notes">${t("notes")}: ${inv.notes}</div>` : ""}
+        ${inv.notes ? `<div class="notes">${t("notes")}: ${inv.notes}</div>` : ""}
+      </div>
     </div>
   `;
 
@@ -156,6 +160,7 @@ export function buildInvoiceDocument(
     title: `${t("invoice_no")} ${inv.no}`,
     bodyHtml,
     styleCss,
+    fillPage: true,
   };
 }
 

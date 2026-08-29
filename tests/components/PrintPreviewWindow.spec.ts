@@ -23,7 +23,7 @@ describe("Print preview window", () => {
     marginsCb = null;
     getPrintJob.mockReset().mockResolvedValue({
       doc,
-      margins: { top: 12, bottom: 12, left: 12, right: 12 },
+      margins: { top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 },
     });
     openPrintMargins.mockReset().mockResolvedValue(undefined);
     (window as unknown as { ahb: unknown }).ahb = {
@@ -64,7 +64,7 @@ describe("Print preview window", () => {
     expect(getPrintJob).toHaveBeenCalledWith("job-1");
     expect(wrapper.findAll('[data-role="sheet"]')).toHaveLength(1);
     expect(srcdoc(wrapper)).toContain("<h1>Rows</h1>");
-    expect(srcdoc(wrapper)).toContain("padding: 12mm 12mm 12mm 12mm;");
+    expect(srcdoc(wrapper)).toContain("padding: 0.5in 0.5in 0.5in 0.5in;");
     expect(wrapper.text()).toContain("Money Report");
     wrapper.unmount();
   });
@@ -220,17 +220,17 @@ describe("Print preview window", () => {
 
     marginsCb!({
       id: "other-job",
-      margins: { top: 40, bottom: 5, left: 5, right: 5 },
+      margins: { top: 2, bottom: 0.2, left: 0.2, right: 0.2 },
     });
     await wrapper.vm.$nextTick();
-    expect(srcdoc(wrapper)).toContain("padding: 12mm 12mm 12mm 12mm;");
+    expect(srcdoc(wrapper)).toContain("padding: 0.5in 0.5in 0.5in 0.5in;");
 
     marginsCb!({
       id: "job-1",
-      margins: { top: 40, bottom: 5, left: 15, right: 25 },
+      margins: { top: 2, bottom: 0.2, left: 0.6, right: 1 },
     });
     await wrapper.vm.$nextTick();
-    expect(srcdoc(wrapper)).toContain("padding: 40mm 25mm 5mm 15mm;");
+    expect(srcdoc(wrapper)).toContain("padding: 2in 1in 0.2in 0.6in;");
     wrapper.unmount();
   });
 });

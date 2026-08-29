@@ -210,7 +210,7 @@
   "amount": "Amount",
   "print_preview_title": "Print Preview",
   "page_margins_title": "Page Margins",
-  "margins_hint": "Margins are in millimetres and apply to every page.",
+  "margins_hint": "Margins are in inches and apply to every page.",
   "margin_top": "Top",
   "margin_bottom": "Bottom",
   "margin_left": "Left",

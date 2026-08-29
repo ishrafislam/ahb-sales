@@ -14,9 +14,9 @@
           v-model="form[side.key]"
           :class="[fieldClass, 'text-right no-spinner']"
           type="number"
-          :min="MIN_MARGIN_MM"
-          :max="MAX_MARGIN_MM"
-          step="1"
+          :min="MIN_MARGIN_IN"
+          :max="MAX_MARGIN_IN"
+          :step="MARGIN_STEP_IN"
           @input="onInput"
         />
       </div>
@@ -47,7 +47,11 @@ defineOptions({ name: "AhbPrintMargins" });
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { t } from "../i18n";
 import { normalizeMargins, type PrintMargins } from "../print/document";
-import { MIN_MARGIN_MM, MAX_MARGIN_MM } from "../constants/business";
+import {
+  MIN_MARGIN_IN,
+  MAX_MARGIN_IN,
+  MARGIN_STEP_IN,
+} from "../constants/business";
 
 const jobId = window.location.hash.replace(/^#/, "").split("/")[1] || "";
 
@@ -61,10 +65,10 @@ const sides = [
 type Side = (typeof sides)[number]["key"];
 
 const form = ref<Record<Side, string | number>>({
-  top: 12,
-  bottom: 12,
-  left: 12,
-  right: 12,
+  top: 0.5,
+  bottom: 0.5,
+  left: 0.5,
+  right: 0.5,
 });
 const error = ref("");
 const printing = ref(false);
@@ -74,8 +78,8 @@ function inRange(v: string | number) {
   return (
     String(v).trim() !== "" &&
     Number.isFinite(n) &&
-    n >= MIN_MARGIN_MM &&
-    n <= MAX_MARGIN_MM
+    n >= MIN_MARGIN_IN &&
+    n <= MAX_MARGIN_IN
   );
 }
 

@@ -109,6 +109,24 @@ describe("buildInvoiceDocument", () => {
     expect(styleCss).toContain("width: 72mm");
   });
 
+  it("keeps the totals at the bottom of the sheet", () => {
+    const { bodyHtml, fillPage } = buildInvoiceDocument(
+      { ...invoice, notes: "Delivered" } as unknown as Invoice,
+      opts
+    );
+
+    // The print module supplies the page-height box the block is pushed to
+    expect(fillPage).toBe(true);
+    expect(bodyHtml).toContain('class="receipt page-fill"');
+
+    const tail = bodyHtml.slice(bodyHtml.indexOf('<div class="page-bottom">'));
+    expect(tail).toContain("Bill :");
+    expect(tail).toContain("Current Due :");
+    expect(tail).toContain("Notes: Delivered");
+    // Only the totals travel down; the items stay where they are
+    expect(tail).not.toContain("Item 1");
+  });
+
   it("prints the customer's address and phone when the record has them", () => {
     const { bodyHtml } = buildInvoiceDocument(invoice, {
       ...opts,
