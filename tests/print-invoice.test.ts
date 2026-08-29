@@ -109,6 +109,27 @@ describe("buildInvoiceDocument", () => {
     expect(styleCss).toContain("width: 72mm");
   });
 
+  it("prints an item given away with no quantity and no price", () => {
+    const free = {
+      ...invoice,
+      lines: [
+        invoice.lines[0],
+        { productId: 3, quantity: 0, unit: "kg", rate: 12.5, lineTotal: 0 },
+      ],
+    } as unknown as Invoice;
+    const { bodyHtml } = buildInvoiceDocument(free, opts);
+
+    const rows = bodyHtml.split("<tr>");
+    const freeRow = rows.find((r) => r.includes("Item 3"))!;
+    expect(freeRow).toContain("<td>Item 3</td>");
+    expect(freeRow).toContain('<td style="text-align:center"></td>');
+    expect(freeRow).toContain('<td style="text-align:right"></td>');
+    // The paid line is untouched
+    const paidRow = rows.find((r) => r.includes("Item 1"))!;
+    expect(paidRow).toContain("25 Bag");
+    expect(paidRow).toContain("11650.00");
+  });
+
   it("keeps the totals at the bottom of the sheet", () => {
     const { bodyHtml, fillPage } = buildInvoiceDocument(
       { ...invoice, notes: "Delivered" } as unknown as Invoice,

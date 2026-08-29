@@ -874,10 +874,12 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       2
     );
 
-    // Form is locked: grid cells, discount, deposit, comment, Post Data
+    // Form is locked: grid cells, discount, deposit, comment, Post Data.
+    // The grid reads rather than disables, so a posted invoice can still be
+    // walked for its stock figures.
     const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
     for (const cell of rowInputs) {
-      expect((cell.element as HTMLInputElement).disabled).toBe(true);
+      expect((cell.element as HTMLInputElement).readOnly).toBe(true);
     }
     expect(
       (wrapper.find("textarea").element as HTMLTextAreaElement).disabled
@@ -1065,9 +1067,11 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect((cells[1]!.element as HTMLInputElement).value).toBe("2");
     expect((cells[2]!.element as HTMLInputElement).value).toBe("10.50");
     for (const cell of cells) {
-      expect((cell.element as HTMLInputElement).disabled).toBe(true);
+      expect((cell.element as HTMLInputElement).readOnly).toBe(true);
     }
     expect(rows[0]!.text()).toContain("চাল");
+    // Entry lands on the first line, so the header opens on its stock
+    expect(document.activeElement).toBe(cells[0]!.element);
 
     // Buttons reflect the posted state
     const button = (label: string) =>

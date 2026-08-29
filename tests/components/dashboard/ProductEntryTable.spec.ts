@@ -181,17 +181,56 @@ describe("ProductEntryTable", () => {
     expect(wrapper.vm.rows[0]!.amountText).toBe("3");
     expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37 });
 
-    await first.amount.setValue("0");
+    await first.amount.setValue("abc");
     await first.amount.trigger("blur");
     await flush();
     expect(wrapper.vm.rows[0]!.amountText).toBe("");
 
-    await first.amount.setValue("abc");
+    await first.amount.setValue("-2");
     await first.amount.trigger("blur");
     await flush();
     expect(wrapper.vm.rows[0]!.amountText).toBe("");
     // Nothing sold, so the header is back at the stored stock
     expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 40 });
+    wrapper.unmount();
+  });
+
+  it("a quantity of 0 is kept and drives the price to nothing", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const first = cellInputs(wrapper, 0);
+    await first.id.setValue("5");
+    await first.id.trigger("keydown.enter");
+    await flush();
+
+    await first.amount.setValue("0");
+    await first.amount.trigger("blur");
+    await flush();
+    expect(wrapper.vm.rows[0]!.amountText).toBe("0");
+    expect(wrapper.vm.rows[0]!.price).toBe(0);
+    expect(wrapper.vm.rows[0]!.priceText).toBe("0.00");
+    // Nothing leaves the shelf for a free item
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 40 });
+
+    // Coming back off zero restores the catalog price
+    await first.amount.setValue("2");
+    await first.amount.trigger("blur");
+    await flush();
+    expect(wrapper.vm.rows[0]!.price).toBe(55.5);
+    expect(wrapper.vm.rows[0]!.priceText).toBe("55.50");
+
+    // A price typed by hand survives a later zero-then-back round trip
+    await first.price.setValue("60");
+    await first.price.trigger("keydown.enter");
+    await flush();
+    await first.amount.setValue("0");
+    await first.amount.trigger("blur");
+    await flush();
+    expect(wrapper.vm.rows[0]!.price).toBe(0);
+    await first.amount.setValue("2");
+    await first.amount.trigger("blur");
+    await flush();
+    expect(wrapper.vm.rows[0]!.price).toBe(55.5);
     wrapper.unmount();
   });
 
@@ -461,19 +500,56 @@ describe("ProductEntryTable", () => {
     });
   });
 
-  it("locked disables every cell input", async () => {
+  it("locked makes every cell read-only, still walkable, and commits nothing", async () => {
     const wrapper = mountHost();
     await startEntry(wrapper);
     const first = cellInputs(wrapper, 0);
     await first.id.setValue("5");
     await first.id.trigger("keydown.enter");
     await flush();
+    await first.amount.setValue("3");
+    await first.amount.trigger("keydown.enter");
+    await flush();
+    const second = cellInputs(wrapper, 1);
+    await second.id.setValue("7");
+    await second.id.trigger("keydown.enter");
+    await flush();
 
     wrapper.vm.locked = true;
     await flush();
+
+    // Read-only rather than disabled: a posted invoice can be read through
     for (const cell of Object.values(cellInputs(wrapper, 0))) {
-      expect((cell.element as HTMLInputElement).disabled).toBe(true);
+      const el = cell.element as HTMLInputElement;
+      expect(el.disabled).toBe(false);
+      expect(el.readOnly).toBe(true);
     }
+    // The catalog stays shut
+    expect(
+      (wrapper.find('[data-role="slots-toggle"]').element as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
+
+    // Arrows still walk the rows, and the header follows
+    (cellInputs(wrapper, 0).id.element as HTMLInputElement).focus();
+    await flush();
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 5, stock: 37 });
+    await cellInputs(wrapper, 0).id.trigger("keydown", { key: "ArrowDown" });
+    await flush();
+    expect(document.activeElement).toBe(cellInputs(wrapper, 1).id.element);
+    expect(wrapper.vm.selected.at(-1)).toEqual({ id: 7, stock: 12 });
+
+    // Enter changes nothing, and no row is added
+    getProductById.mockClear();
+    const rowCount = wrapper.vm.rows.length;
+    await cellInputs(wrapper, 0).amount.setValue("99");
+    await cellInputs(wrapper, 0).amount.trigger("keydown.enter");
+    await cellInputs(wrapper, 0).price.setValue("1");
+    await cellInputs(wrapper, 0).price.trigger("blur");
+    await flush();
+    expect(wrapper.vm.rows.length).toBe(rowCount);
+    expect(wrapper.vm.rows[0]!.price).toBe(55.5);
+    expect(getProductById).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 

@@ -51,8 +51,8 @@
                 v-model="row.idText"
                 type="text"
                 inputmode="numeric"
-                :disabled="locked"
-                :class="[cellInputClass, 'pr-5 disabled:opacity-70 disabled:cursor-not-allowed']"
+                :readonly="locked"
+                :class="[cellInputClass, 'pr-5 disabled:opacity-70 disabled:cursor-not-allowed', locked ? lockedInputClass : '']"
                 @keydown.enter.prevent="onIdEnter(idx)"
                 @keydown="onCellKeydown($event, idx, 'id')"
                 @focus="onIdCellFocus(idx)"
@@ -82,8 +82,8 @@
               v-model="row.amountText"
               type="text"
               inputmode="decimal"
-              :disabled="locked"
-              :class="[cellInputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              :readonly="locked"
+              :class="[cellInputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed', locked ? lockedInputClass : '']"
               @keydown.enter.prevent="onAmountEnter(idx)"
               @keydown="onCellKeydown($event, idx, 'amount')"
               @focus="onCellFocus(idx)"
@@ -99,8 +99,9 @@
               v-model="row.priceText"
               type="text"
               inputmode="decimal"
-              :disabled="locked || !row.product"
-              :class="[cellInputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              :disabled="!row.product"
+              :readonly="locked"
+              :class="[cellInputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed', locked ? lockedInputClass : '']"
               @keydown.enter.prevent="onPriceEnter(idx)"
               @blur="onPriceBlur(idx)"
               @focus="onCellFocus(idx)"
@@ -296,6 +297,7 @@ async function focusCell(idx: number, col: Col) {
  * the amount, so the next product can be typed straight away.
  */
 async function commitId(idx: number): Promise<boolean> {
+  if (props.locked) return false;
   const row = rows.value[idx];
   if (!row) return false;
   const id = Number.parseInt(row.idText, 10);
@@ -348,11 +350,34 @@ async function onIdBlur(idx: number) {
   current.idText = current.product ? String(current.product.id) : "";
 }
 
+/**
+ * Enter and blur commit the amount the same way.
+ *
+ * Zero is a quantity like any other: the item is named on the receipt with
+ * nothing charged for it, so the row's price goes to 0 with it. Coming back
+ * off zero restores the catalog price — but only if the price is still the 0
+ * this put there, never over one the user typed.
+ */
+function commitAmount(idx: number): boolean {
+  if (props.locked) return false;
+  const row = rows.value[idx];
+  if (!row) return false;
+  const amount = Number.parseFloat(row.amountText);
+  if (!Number.isFinite(amount) || amount < 0) return false;
+  if (amount === 0) {
+    row.price = 0;
+    row.priceText = "0.00";
+  } else if (row.price === 0 && row.product) {
+    row.price = row.product.price;
+    row.priceText = row.product.price.toFixed(2);
+  }
+  return true;
+}
+
 async function onAmountEnter(idx: number) {
   const row = rows.value[idx];
   if (!row) return;
-  const amount = Number.parseFloat(row.amountText);
-  if (!Number.isFinite(amount) || amount <= 0) {
+  if (!commitAmount(idx)) {
     void focusCell(idx, "amount");
     return;
   }
@@ -365,19 +390,20 @@ async function onAmountEnter(idx: number) {
   if (row.product) emitSelected(row);
 }
 
-// An amount that would sell nothing is not worth keeping around; the header
+// A negative or unreadable amount is not worth keeping around; the header
 // follows the cell back to the unsold figure.
 function onAmountBlur(idx: number) {
+  if (props.locked) return;
   const row = rows.value[idx];
   if (!row) return;
-  const amount = Number.parseFloat(row.amountText);
-  if (!Number.isFinite(amount) || amount <= 0) row.amountText = "";
+  if (!commitAmount(idx)) row.amountText = "";
   emitSelected(row);
 }
 
 // Enter and blur commit the same way; a price that is not a number at all
 // falls back to the one already committed.
 function commitPrice(idx: number) {
+  if (props.locked) return;
   const row = rows.value[idx];
   if (!row || !row.product) return;
   const price = Number.parseFloat(row.priceText);
@@ -523,10 +549,29 @@ function selectSlot(option: SlotOption) {
   void onIdEnter(idx);
 }
 
-defineExpose({ startEntry, resumeEntry, refreshProductStock, reloadSlots });
+/**
+ * Put the cursor on the first row's ID cell. Used when a posted invoice is
+ * loaded: the rows are read-only, but walking them is how the header shows
+ * each product's stock.
+ */
+function focusFirstRow() {
+  void focusCell(0, "id");
+}
+
+defineExpose({
+  startEntry,
+  resumeEntry,
+  focusFirstRow,
+  refreshProductStock,
+  reloadSlots,
+});
 
 const cellInputClass =
   "w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-1.5 py-0.5 text-xs dark:text-gray-100";
 
 const cellBorderClass = "border border-gray-300 dark:border-gray-600";
+
+// A posted invoice reads like a locked one, but its cells still take focus so
+// the rows can be walked and the header can follow them
+const lockedInputClass = "opacity-70 cursor-default";
 </script>

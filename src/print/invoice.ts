@@ -82,11 +82,13 @@ export function buildInvoiceDocument(
       const info = opts.products[ln.productId];
       const name = info?.name ?? String(ln.productId);
       const unit = info?.unit ?? "";
-      const qtyUnit = `${ln.quantity} ${unit}`.trim();
+      // An item given away carries no quantity and no price on the receipt
+      const free = !(ln.quantity > 0);
+      const qtyUnit = free ? "" : `${ln.quantity} ${unit}`.trim();
       return `<tr>
         <td>${name}</td>
         <td style="text-align:center">${qtyUnit}</td>
-        <td style="text-align:right">${fmt(ln.lineTotal)}</td>
+        <td style="text-align:right">${free ? "" : fmt(ln.lineTotal)}</td>
       </tr>`;
     })
     .join("");

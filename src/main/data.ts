@@ -161,8 +161,10 @@ function buildInvoiceBody(
     const prod = data.products.find((p) => p.id === ln.productId);
     if (!prod) throw new Error(`Product not found: ${ln.productId}`);
     const qty = Number(ln.quantity);
-    if (!Number.isFinite(qty) || qty <= 0)
-      throw new Error("Quantity must be > 0");
+    // Zero is allowed: an item given away is named on the receipt without a
+    // quantity or a price against it
+    if (!Number.isFinite(qty) || qty < 0)
+      throw new Error("Quantity must be >= 0");
     const rate = Number(ln.rate ?? prod.price ?? 0);
     if (!Number.isFinite(rate) || rate < 0)
       throw new Error("Rate must be >= 0");
@@ -1272,6 +1274,8 @@ export function reportTotalSell(
     }
     for (const ln of inv.lines) {
       const qty = Number(ln.quantity) || 0;
+      // An item that moved nothing has no place in a sales report
+      if (qty <= 0) continue;
       byProduct.set(ln.productId, ceil2((byProduct.get(ln.productId) ?? 0) + qty));
     }
   }

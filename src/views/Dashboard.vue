@@ -738,7 +738,7 @@ const grandTotal = computed(() =>
   entryRows.value.reduce((sum, row) => {
     if (!row.product) return sum;
     const amount = Number.parseFloat(row.amountText);
-    if (!Number.isFinite(amount) || amount <= 0) return sum;
+    if (!Number.isFinite(amount) || amount < 0) return sum;
     if (row.price === null) return sum;
     return sum + ceil2(amount * row.price);
   }, 0)
@@ -853,7 +853,8 @@ async function onPostData() {
   const lines = entryRows.value.flatMap((row) => {
     if (!row.product || row.price === null) return [];
     const quantity = Number.parseFloat(row.amountText);
-    if (!Number.isFinite(quantity) || quantity <= 0) return [];
+    // A quantity of 0 is a real line: the item is named, nothing is charged
+    if (!Number.isFinite(quantity) || quantity < 0) return [];
     return [{ productId: row.product.id, quantity, rate: row.price }];
   });
   if (!lines.length) return;
@@ -882,7 +883,7 @@ async function onPostData() {
     entryRows.value = entryRows.value.filter((row) => {
       if (!row.product) return false;
       const quantity = Number.parseFloat(row.amountText);
-      if (!Number.isFinite(quantity) || quantity <= 0) return false;
+      if (!Number.isFinite(quantity) || quantity < 0) return false;
       // The sale has left the shelf now: carry the row's cached stock forward
       // by whatever this post moved, and mark the quantity as accounted for so
       // the header stops projecting it.
@@ -958,6 +959,9 @@ async function loadLastBill() {
     // An invoice from today loads into the locked posted state, exactly
     // as right after Post Data: Edit unlocks it, Payment applies to it.
     await loadPostedInvoice(todayInvoice);
+    // Entry mode lands on the first ID cell; a loaded invoice does the same,
+    // so the header opens on the first line's product and stock
+    entryTable.value?.focusFirstRow();
   } else {
     // Start product entry: focus moves into the first row's ID cell
     entryTable.value?.startEntry();
