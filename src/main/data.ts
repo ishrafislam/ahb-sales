@@ -725,6 +725,8 @@ export function listProductSales(
 }
 
 export type ProductPurchaseLine = {
+  /** The purchase's own id, so a history row can be edited */
+  id: string;
   date: string;
   productId: number;
   productNameBn?: string;
@@ -741,6 +743,7 @@ export function listProductPurchases(
   return data.purchases
     .filter((p) => p.productId === productId)
     .map((p) => ({
+      id: p.id,
       date: p.date,
       productId: p.productId,
       productNameBn: prod?.nameBn,
@@ -767,6 +770,11 @@ export type Purchase = {
 export type PostPurchaseInput = {
   date?: string;
   productId: number;
+  quantity: number;
+  notes?: string;
+};
+
+export type UpdatePurchaseInput = {
   quantity: number;
   notes?: string;
 };
@@ -814,6 +822,45 @@ export function postPurchase(
   data.products[prodIdx] = {
     ...prod,
     stock: (Number(prod.stock) || 0) + qty,
+    updatedAt: nowIso(),
+  };
+
+  return purchase;
+}
+
+/**
+ * Correct a purchase already on the books. The date it was bought on is not
+ * up for revision — only how much came in — so the product's stock moves by
+ * the difference rather than by the whole amount.
+ */
+export function updatePurchase(
+  data: AhbDataV1,
+  id: string,
+  input: UpdatePurchaseInput
+): Purchase {
+  ensurePhase3(data);
+  const idx = data.purchases.findIndex((p) => p.id === id);
+  if (idx === -1) throw new Error("Purchase not found");
+  const existing = data.purchases[idx];
+  if (!existing) throw new Error("Purchase not found");
+  const qty = Number(input.quantity);
+  if (!Number.isFinite(qty) || qty <= 0)
+    throw new Error("Quantity must be > 0");
+
+  const prodIdx = data.products.findIndex((p) => p.id === existing.productId);
+  const prod = prodIdx === -1 ? undefined : data.products[prodIdx];
+  if (!prod) throw new Error("Product not found");
+
+  const purchase: Purchase = {
+    ...existing,
+    quantity: qty,
+    notes: input.notes?.trim() || existing.notes,
+    updatedAt: nowIso(),
+  };
+  data.purchases[idx] = purchase;
+  data.products[prodIdx] = {
+    ...prod,
+    stock: (Number(prod.stock) || 0) + (qty - existing.quantity),
     updatedAt: nowIso(),
   };
 

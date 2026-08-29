@@ -128,6 +128,8 @@
         :columns="[t('date'), t('amount'), t('unit')]"
         :rows="purchaseCells"
         :empty-text="t('no_purchases')"
+        :action-label="t('edit')"
+        @action="startEdit"
       />
 
       <div class="grid grid-cols-2 gap-4">
@@ -135,7 +137,7 @@
           <label :class="labelClass" for="purchase-date">{{ t("date") }}</label>
           <input
             id="purchase-date"
-            :value="todayText"
+            :value="editingId ? editingDateText : todayText"
             :class="[fieldClass, 'text-right']"
             type="text"
             disabled
@@ -163,6 +165,14 @@
       </p>
 
       <div class="mt-auto flex justify-end gap-3 pt-2">
+        <button
+          v-if="editingId"
+          type="button"
+          :class="buttonClass"
+          @click="cancelEdit"
+        >
+          {{ t("cancel") }}
+        </button>
         <button
           type="button"
           :class="buttonClass"
@@ -195,6 +205,7 @@ interface ProductRow {
 }
 
 interface PurchaseRow {
+  id: string;
   date: string;
   unit: string;
   quantity: number;
@@ -207,6 +218,11 @@ const amountText = ref<string | number>("");
 const error = ref("");
 const lastPurchaseDateText = ref("");
 const lastPurchaseQtyText = ref("");
+
+// A history row loaded for correction: its id, and the day it was bought,
+// which the date box shows in place of today's
+const editingId = ref<string | null>(null);
+const editingDateText = ref("");
 
 // Opened either bare or as `#purchase-entry/<productId>` from the item form
 function initialSelectedId(): number {
@@ -259,9 +275,9 @@ const purchaseCells = computed(() =>
 function select(id: number) {
   if (id === selectedId.value) return;
   selectedId.value = id;
-  // A typed amount belongs to the item it was typed for
-  amountText.value = "";
-  error.value = "";
+  // A typed amount, and a row loaded for editing, belong to the item they
+  // were opened for
+  cancelEdit();
   void loadPurchases(id);
   void scrollSelectedIntoView();
 }
@@ -299,30 +315,67 @@ async function loadPurchases(id: number) {
   // Arrow keys can move the selection on before this resolves
   if (id !== selectedId.value) return;
   purchases.value = (list || []).map((p) => ({
+    id: p.id,
     date: p.date,
     unit: p.unit,
     quantity: p.quantity,
   }));
+  // The row being edited can vanish under another window's changes
+  if (editingId.value && !purchases.value.some((p) => p.id === editingId.value))
+    cancelEdit();
   const latest = purchases.value[0];
   if (!latest) return;
   lastPurchaseDateText.value = formatDate(latest.date);
   lastPurchaseQtyText.value = String(latest.quantity);
 }
 
+/** Load a history row into the entry fields for correction. */
+function startEdit(rowIndex: number) {
+  const row = purchases.value[rowIndex];
+  if (!row) return;
+  editingId.value = row.id;
+  editingDateText.value = formatDate(row.date);
+  amountText.value = row.quantity;
+  error.value = "";
+  void focusAmount();
+}
+
+function cancelEdit() {
+  editingId.value = null;
+  editingDateText.value = "";
+  amountText.value = "";
+  error.value = "";
+}
+
+async function focusAmount() {
+  await nextTick();
+  const el = document.getElementById("purchase-amount");
+  if (el instanceof HTMLInputElement) {
+    el.focus();
+    el.select();
+  }
+}
+
 async function update() {
   if (!canUpdate.value) return;
   error.value = "";
   try {
-    await window.ahb.postPurchase({
-      productId: selectedId.value,
-      quantity: amountValue.value,
-    });
+    if (editingId.value) {
+      await window.ahb.updatePurchase(editingId.value, {
+        quantity: amountValue.value,
+      });
+    } else {
+      await window.ahb.postPurchase({
+        productId: selectedId.value,
+        quantity: amountValue.value,
+      });
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
     return;
   }
   // Ready for the next entry; Update disables itself again
-  amountText.value = "";
+  cancelEdit();
   await load();
   await loadPurchases(selectedId.value);
 }

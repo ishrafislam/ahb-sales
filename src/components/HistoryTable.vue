@@ -20,13 +20,16 @@
           >
             {{ label }}
           </th>
+          <th v-if="actionLabel" :class="headCellClass">
+            {{ actionLabel }}
+          </th>
         </tr>
       </thead>
       <tbody>
         <tr v-if="rows.length === 0">
           <td
             class="px-3 py-3 text-center text-gray-500 dark:text-gray-400"
-            :colspan="columns.length"
+            :colspan="actionLabel ? columns.length + 1 : columns.length"
           >
             {{ emptyText }}
           </td>
@@ -40,9 +43,24 @@
           <td
             v-for="(cell, c) in row"
             :key="c"
-            :class="[bodyCellClass, c < row.length - 1 ? 'border-r' : '']"
+            :class="[
+              bodyCellClass,
+              c < row.length - 1 || actionLabel ? 'border-r' : '',
+            ]"
           >
             {{ cell }}
+          </td>
+          <td v-if="actionLabel" :class="[bodyCellClass, 'p-0']">
+            <button
+              type="button"
+              class="w-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+              data-role="row-action"
+              :title="actionTitle ?? actionLabel"
+              :aria-label="actionTitle ?? actionLabel"
+              @click="emit('action', i)"
+            >
+              ✎
+            </button>
           </td>
         </tr>
       </tbody>
@@ -59,7 +77,12 @@ defineProps<{
   columns: string[];
   rows: string[][];
   emptyText: string;
+  /** Header for a trailing button column. Absent leaves the column off. */
+  actionLabel?: string;
+  actionTitle?: string;
 }>();
+
+const emit = defineEmits<{ (e: "action", rowIndex: number): void }>();
 
 const gridBorderClass = "border-gray-300 dark:border-gray-600";
 

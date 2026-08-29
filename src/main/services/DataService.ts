@@ -14,6 +14,7 @@ import {
   listProductSales,
   listProductPurchases,
   postPurchase,
+  updatePurchase,
   reportMoneyTransactionsCustomerRange,
   reportMoneyTransactionsDayWise,
   reportDailyPayments,
@@ -292,6 +293,30 @@ export class DataService {
       id: purchase.productId,
     });
     // Notify product stock update
+    this.fileService.notifyDataChanged({
+      kind: "product",
+      action: "stock-updated",
+      id: purchase.productId,
+    });
+    this.markDirty();
+    return purchase;
+  }
+
+  updatePurchase(id: string, payload: Parameters<typeof updatePurchase>[2]) {
+    const purchase = updatePurchase(this.getData(), id, payload);
+
+    // Same as postPurchase: the stock bump replaced the product object, so the
+    // index has to be fed the one now in `data`
+    const prod = this.getData().products.find(
+      (p) => p.id === purchase.productId
+    );
+    if (prod) this.index.updateProduct(prod);
+
+    this.fileService.notifyDataChanged({
+      kind: "purchase",
+      action: "update",
+      id: purchase.productId,
+    });
     this.fileService.notifyDataChanged({
       kind: "product",
       action: "stock-updated",

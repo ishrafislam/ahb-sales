@@ -58,6 +58,10 @@ type AppAPI = {
   ) => Promise<import("./main/data").ProductPurchaseLine[]>;
   // Phase 3: Purchase entry
   postPurchase: (payload: unknown) => Promise<import("./main/data").Purchase>;
+  updatePurchase: (
+    id: string,
+    payload: unknown
+  ) => Promise<import("./main/data").Purchase>;
   // Payments
   recordPayment: (customerId: number, amount: number) => Promise<void>;
   // Phase 4: Reports
@@ -193,6 +197,8 @@ const api: AppAPI = {
   listProductPurchases: (productId) =>
     ipcRenderer.invoke("data:list-product-purchases", productId),
   postPurchase: (payload) => ipcRenderer.invoke("data:post-purchase", payload),
+  updatePurchase: (id, payload) =>
+    ipcRenderer.invoke("data:update-purchase", id, payload),
   recordPayment: (customerId, amount) =>
     ipcRenderer.invoke("data:record-payment", customerId, amount),
   reportMoneyTransactionsCustomerRange: (from, to) =>

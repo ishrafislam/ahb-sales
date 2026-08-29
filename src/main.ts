@@ -746,6 +746,10 @@ ipcMain.handle("data:post-purchase", async (e, payload) => {
   return getCtx(e.sender).dataService.postPurchase(payload);
 });
 
+ipcMain.handle("data:update-purchase", async (e, id: string, payload) => {
+  return getCtx(e.sender).dataService.updatePurchase(id, payload);
+});
+
 // Reports — routed to the sender's window context
 ipcMain.handle(
   "report:money-customer-range",
