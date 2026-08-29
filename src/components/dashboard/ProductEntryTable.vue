@@ -28,7 +28,7 @@
           v-for="(row, idx) in rows"
           :key="row.key"
           :class="
-            row.key === selectedKey
+            selectedKeys.has(row.key)
               ? 'bg-blue-50 dark:bg-blue-950'
               : 'bg-white dark:bg-gray-900'
           "
@@ -36,12 +36,14 @@
           <td :class="[cellBorderClass, 'p-0 w-8 h-px']">
             <button
               type="button"
-              :disabled="locked || !row.product"
+              :disabled="!row.product"
               class="row-selector block w-full h-full text-center text-xs bg-gray-50 dark:bg-gray-800 disabled:cursor-not-allowed"
-              @click="selectRow(row)"
+              @click="selectRow(row, $event)"
+              @mousedown="startDrag(idx, $event)"
+              @mouseenter="extendDrag(idx)"
               @keydown.delete.prevent="deleteSelected"
             >
-              {{ row.key === selectedKey ? "►" : "" }}
+              {{ selectedKeys.has(row.key) ? "►" : "" }}
             </button>
           </td>
           <td :class="[cellBorderClass, 'px-2 py-1']">
@@ -125,11 +127,12 @@
 
 <script setup lang="ts">
 defineOptions({ name: "AhbProductEntryTable" });
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { t } from "../../i18n";
 import SlotDropdown from "./SlotDropdown.vue";
 import { toSlots, filterSlots, type SlotOption } from "./slotOptions";
 import { MIN_PRODUCT_ID, MAX_PRODUCT_ID } from "../../constants/business";
+import { rowsToTsv, type SheetRow } from "./selectionClipboard";
 import {
   localizeDigits as ld,
   parseInteger,
@@ -215,51 +218,143 @@ function onCellFocus(idx: number) {
   emitSelected(rows.value[idx]);
 }
 
-// Excel-style row selection via the left gutter column: click selects,
-// Delete removes the row from the draft (the invoice itself is only
-// updated on Post Data).
-const selectedKey = ref<number | null>(null);
+// Excel-style row selection via the left gutter column: click picks one row,
+// Ctrl+click adds another, dragging down the gutter takes a run of them.
+// Delete removes them from the draft (the invoice itself is only updated on
+// Post Data), Ctrl+C puts them on the clipboard.
+const selectedKeys = ref<Set<number>>(new Set());
 
-// Clicking an already-selected row's gutter deselects it (toggle); rows
-// without a loaded product (the fresh entry row) cannot be selected.
-function selectRow(row: EntryRow) {
+function selectableRow(idx: number): EntryRow | undefined {
+  const row = rows.value[idx];
+  return row?.product ? row : undefined;
+}
+
+/**
+ * Click picks this row alone, and clicking the only selected row clears it.
+ * Ctrl (or Cmd) keeps what is already picked and toggles this one.
+ */
+function selectRow(row: EntryRow, e?: MouseEvent) {
   if (!row.product) return;
-  const selecting = selectedKey.value !== row.key;
-  selectedKey.value = selecting ? row.key : null;
-  // Show the selected product's projected stock in the header
-  if (selecting) emitSelected(row);
+  const current = selectedKeys.value;
+  let next: Set<number>;
+  if (e && (e.ctrlKey || e.metaKey)) {
+    next = new Set(current);
+    if (next.has(row.key)) next.delete(row.key);
+    else next.add(row.key);
+  } else if (current.size === 1 && current.has(row.key)) {
+    // Clicking the one picked row is how it is put back
+    next = new Set();
+  } else {
+    next = new Set([row.key]);
+  }
+  selectedKeys.value = next;
+  // Show the row's projected stock in the header while it is picked
+  if (next.has(row.key)) emitSelected(row);
+}
+
+// Dragging the gutter: the row the press started on anchors a range that
+// follows the pointer until the button comes back up anywhere on screen.
+let dragAnchor: number | null = null;
+let dragBase: Set<number> | null = null;
+
+function startDrag(idx: number, e: MouseEvent) {
+  if (!selectableRow(idx)) return;
+  dragAnchor = idx;
+  dragBase = e.ctrlKey || e.metaKey ? new Set(selectedKeys.value) : new Set();
+  window.addEventListener("mouseup", endDrag);
+}
+
+function extendDrag(idx: number) {
+  if (dragAnchor === null) return;
+  const [from, to] =
+    dragAnchor <= idx ? [dragAnchor, idx] : [idx, dragAnchor];
+  const next = new Set(dragBase ?? []);
+  for (let i = from; i <= to; i++) {
+    const row = selectableRow(i);
+    if (row) next.add(row.key);
+  }
+  selectedKeys.value = next;
+}
+
+function endDrag() {
+  dragAnchor = null;
+  dragBase = null;
+  window.removeEventListener("mouseup", endDrag);
 }
 
 function deleteSelected() {
-  if (props.locked || selectedKey.value === null) return;
-  const idx = rows.value.findIndex((r) => r.key === selectedKey.value);
-  selectedKey.value = null;
-  if (idx === -1) return;
-  rows.value.splice(idx, 1);
+  if (props.locked || selectedKeys.value.size === 0) return;
+  const doomed = rows.value
+    .map((r, i) => (selectedKeys.value.has(r.key) ? i : -1))
+    .filter((i) => i !== -1);
+  selectedKeys.value = new Set();
+  if (doomed.length === 0) return;
+  // Back to front, so the indexes ahead of each splice stay put
+  for (const idx of [...doomed].reverse()) rows.value.splice(idx, 1);
   if (rows.value.length === 0) rows.value.push(makeRow());
-  // Entry carries on where the deleted row was
-  void focusCell(Math.min(idx, rows.value.length - 1), "id");
+  // Entry carries on where the first deleted row was
+  void focusCell(Math.min(doomed[0]!, rows.value.length - 1), "id");
 }
 
-// Selection can become stale when rows are replaced (new customer,
-// posting prunes rows) or the grid locks
+/** The picked rows as they go on the clipboard: id, name, quantity, unit. */
+function selectedSheetRows(): SheetRow[] {
+  return rows.value.flatMap((row) =>
+    row.product && selectedKeys.value.has(row.key)
+      ? [
+          {
+            id: row.product.id,
+            name: row.product.nameBn,
+            quantity: parseNumber(row.amountText) || 0,
+            unit: row.product.unit,
+          },
+        ]
+      : []
+  );
+}
+
+async function copySelection() {
+  const picked = selectedSheetRows();
+  if (picked.length === 0) return;
+  try {
+    await window.ahb.writeClipboardText(rowsToTsv(picked));
+  } catch {
+    // A clipboard that will not take the rows is not worth an error line
+  }
+}
+
+// Ctrl+C anywhere in the window copies the picked rows — except inside a cell,
+// where it still means "copy the text I have highlighted".
+function onDocumentKeydown(e: KeyboardEvent) {
+  if (e.key !== "c" || !(e.ctrlKey || e.metaKey)) return;
+  const target = e.target as HTMLElement | null;
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+    return;
+  }
+  if (selectedKeys.value.size === 0) return;
+  e.preventDefault();
+  void copySelection();
+}
+
+onMounted(() => {
+  document.addEventListener("keydown", onDocumentKeydown);
+});
+onUnmounted(() => {
+  document.removeEventListener("keydown", onDocumentKeydown);
+  endDrag();
+});
+
+// Selection can become stale when rows are replaced (new customer, posting
+// prunes rows)
 watch(
   rows,
   () => {
-    if (
-      selectedKey.value !== null &&
-      !rows.value.some((r) => r.key === selectedKey.value)
-    ) {
-      selectedKey.value = null;
-    }
+    const live = new Set(rows.value.map((r) => r.key));
+    if ([...selectedKeys.value].every((k) => live.has(k))) return;
+    selectedKeys.value = new Set(
+      [...selectedKeys.value].filter((k) => live.has(k))
+    );
   },
   { deep: true }
-);
-watch(
-  () => props.locked,
-  (locked) => {
-    if (locked) selectedKey.value = null;
-  }
 );
 
 let nextKey = 1;
@@ -471,7 +566,7 @@ function onCellKeydown(e: KeyboardEvent, idx: number, col: Col) {
 }
 
 function startEntry() {
-  selectedKey.value = null;
+  selectedKeys.value = new Set();
   rows.value = [makeRow()];
   void focusCell(0, "id");
 }
@@ -479,7 +574,7 @@ function startEntry() {
 // Re-entering edit mode on a posted invoice: the trailing empty row was
 // pruned at post time, so append a fresh one for new products.
 function resumeEntry() {
-  selectedKey.value = null;
+  selectedKeys.value = new Set();
   rows.value.push(makeRow());
   void focusCell(rows.value.length - 1, "id");
 }

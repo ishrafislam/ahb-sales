@@ -1037,7 +1037,10 @@ const printButtons: Array<{
 }> = [
   { key: "v2_single_print", handler: () => void onSinglePrint(), enabled: posted },
   { key: "v2_direct_print" },
-  { key: "v2_select_print" },
+  {
+    key: "v2_select_print",
+    handler: () => void window.ahb.openSelectPrintWindow(),
+  },
 ];
 
 /** Send the posted invoice's receipt to the print preview window. */

@@ -101,6 +101,9 @@ type AppAPI = {
   openDailyReportWindow: () => Promise<void>;
   openPaymentReportWindow: () => Promise<void>;
   openClientSelectWindow: () => Promise<void>;
+  openSelectPrintWindow: () => Promise<void>;
+  writeClipboardText: (text: string) => Promise<void>;
+  readClipboardText: () => Promise<string>;
   openRecordDetailsWindow: (
     kind: "customer" | "product",
     id: number
@@ -238,6 +241,9 @@ const api: AppAPI = {
   openPaymentReportWindow: () =>
     ipcRenderer.invoke("window:open-payment-report"),
   openClientSelectWindow: () => ipcRenderer.invoke("window:open-client-select"),
+  openSelectPrintWindow: () => ipcRenderer.invoke("window:open-select-print"),
+  writeClipboardText: (text) => ipcRenderer.invoke("clipboard:write", text),
+  readClipboardText: () => ipcRenderer.invoke("clipboard:read"),
   openRecordDetailsWindow: (kind, id) =>
     ipcRenderer.invoke("window:open-record-details", kind, id),
   openClientReportWindow: (customerId) =>

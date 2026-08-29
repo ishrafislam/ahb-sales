@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeTheme } from "electron";
+import { app, BrowserWindow, clipboard, ipcMain, nativeTheme } from "electron";
 // Load environment variables from .env (dev convenience)
 import * as dotenv from "dotenv";
 try {
@@ -211,6 +211,7 @@ const totalSellWindows = new Map<number, BrowserWindow>();
 const dailyReportWindows = new Map<number, BrowserWindow>();
 const clientSelectWindows = new Map<number, BrowserWindow>();
 const recordDetailsWindows = new Map<number, BrowserWindow>();
+const selectPrintWindows = new Map<number, BrowserWindow>();
 const clientReportWindows = new Map<number, BrowserWindow>();
 const paymentReportWindows = new Map<number, BrowserWindow>();
 // Print windows are keyed by job id, not by opener: printing twice from the
@@ -518,6 +519,16 @@ async function openRecordDetailsWindow(
     `record-details/${kind}/${id}`,
     { width: 460, height: 420, resizable: false }
   );
+}
+
+async function openSelectPrintWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, selectPrintWindows, "select-print", {
+    width: 820,
+    height: 700,
+    resizable: true,
+  });
 }
 
 async function openClientSelectWindow(
@@ -837,6 +848,17 @@ ipcMain.handle(
     await openRecordDetailsWindow(e.sender, kind, id);
   }
 );
+ipcMain.handle("window:open-select-print", async (e) => {
+  await openSelectPrintWindow(e.sender);
+});
+
+// The renderer cannot reach the system clipboard on its own
+ipcMain.handle("clipboard:write", async (_e, text: string) => {
+  clipboard.writeText(String(text ?? ""));
+});
+
+ipcMain.handle("clipboard:read", async () => clipboard.readText());
+
 ipcMain.handle("window:open-client-select", async (e) => {
   await openClientSelectWindow(e.sender);
 });

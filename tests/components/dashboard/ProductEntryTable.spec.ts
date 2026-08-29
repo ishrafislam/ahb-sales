@@ -20,6 +20,7 @@ describe("ProductEntryTable", () => {
     typeof vi.fn<(id: number) => Promise<ProductStub | null>>
   >;
   let listProducts: ReturnType<typeof vi.fn>;
+  const writeClipboardText = vi.fn();
 
   beforeEach(() => {
     currentLang.value = "en";
@@ -34,7 +35,12 @@ describe("ProductEntryTable", () => {
       { id: 5, nameBn: "চাল", description: "মোটা", unit: "kg", price: 55.5, stock: 40 },
       { id: 7, nameBn: "ডাল", unit: "kg", price: 120, stock: 12 },
     ]);
-    (window as unknown as { ahb: unknown }).ahb = { getProductById, listProducts };
+    writeClipboardText.mockReset().mockResolvedValue(undefined);
+    (window as unknown as { ahb: unknown }).ahb = {
+      getProductById,
+      listProducts,
+      writeClipboardText,
+    };
   });
 
   const Host = defineComponent({
@@ -730,7 +736,119 @@ describe("ProductEntryTable", () => {
     wrapper.unmount();
   });
 
-  it("locking disables the gutter and clears the selection", async () => {
+  it("picks several rows with Ctrl+click, and one plain click drops the rest", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    await enterProductRow(wrapper, 0, "5", "3");
+    await enterProductRow(wrapper, 1, "7", "2");
+
+    await gutterButton(wrapper, 0).trigger("click");
+    await gutterButton(wrapper, 1).trigger("click", { ctrlKey: true });
+    expect(gutterButton(wrapper, 0).text()).toBe("►");
+    expect(gutterButton(wrapper, 1).text()).toBe("►");
+
+    // Ctrl+click again takes that one back out
+    await gutterButton(wrapper, 1).trigger("click", { ctrlKey: true });
+    expect(gutterButton(wrapper, 1).text()).toBe("");
+
+    // A plain click on the other row leaves only it picked
+    await gutterButton(wrapper, 1).trigger("click");
+    expect(gutterButton(wrapper, 0).text()).toBe("");
+    expect(gutterButton(wrapper, 1).text()).toBe("►");
+    wrapper.unmount();
+  });
+
+  it("drags a run of rows down the gutter", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    await enterProductRow(wrapper, 0, "5", "3");
+    await enterProductRow(wrapper, 1, "7", "2");
+    await enterProductRow(wrapper, 2, "5", "1");
+
+    await gutterButton(wrapper, 0).trigger("mousedown");
+    await gutterButton(wrapper, 1).trigger("mouseenter");
+    await gutterButton(wrapper, 2).trigger("mouseenter");
+    expect([0, 1, 2].map((i) => gutterButton(wrapper, i).text())).toEqual([
+      "►",
+      "►",
+      "►",
+    ]);
+
+    // The empty trailing row is never dragged into the selection
+    expect(gutterButton(wrapper, 3).text()).toBe("");
+
+    // Once the button is up, moving over another row changes nothing
+    window.dispatchEvent(new MouseEvent("mouseup"));
+    await gutterButton(wrapper, 3).trigger("mouseenter");
+    expect(gutterButton(wrapper, 0).text()).toBe("►");
+    wrapper.unmount();
+  });
+
+  it("Delete removes every picked row at once", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    await enterProductRow(wrapper, 0, "5", "3");
+    await enterProductRow(wrapper, 1, "7", "2");
+    await enterProductRow(wrapper, 2, "5", "1");
+    expect(wrapper.findAll("tbody tr").length).toBe(4);
+
+    await gutterButton(wrapper, 0).trigger("click");
+    await gutterButton(wrapper, 2).trigger("click", { ctrlKey: true });
+    await gutterButton(wrapper, 0).trigger("keydown", { key: "Delete" });
+    await flush();
+
+    // The middle row and the trailing empty one are what is left
+    expect(wrapper.vm.rows.map((r: EntryRow) => r.product?.id)).toEqual([
+      7,
+      undefined,
+    ]);
+    wrapper.unmount();
+  });
+
+  it("Ctrl+C puts the picked rows on the clipboard, except inside a cell", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    await enterProductRow(wrapper, 0, "5", "3");
+    await enterProductRow(wrapper, 1, "7", "2");
+
+    await gutterButton(wrapper, 0).trigger("click");
+    await gutterButton(wrapper, 1).trigger("click", { ctrlKey: true });
+
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "c", ctrlKey: true })
+    );
+    await flush();
+    expect(writeClipboardText).toHaveBeenCalledWith("5\tচাল\t3\tkg\n7\tডাল\t2\tkg");
+
+    // Ctrl+C in a cell still means the text the user highlighted there
+    writeClipboardText.mockClear();
+    await cellInputs(wrapper, 0).amount.trigger("keydown", {
+      key: "c",
+      ctrlKey: true,
+    });
+    await flush();
+    expect(writeClipboardText).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("copies from a posted invoice too", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    await enterProductRow(wrapper, 0, "5", "3");
+    wrapper.vm.locked = true;
+    await flush();
+
+    await gutterButton(wrapper, 0).trigger("click");
+    document.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "c", ctrlKey: true })
+    );
+    await flush();
+
+    expect(writeClipboardText).toHaveBeenCalledWith("5\tচাল\t3\tkg");
+    wrapper.unmount();
+  });
+
+  it("a locked grid still selects, but Delete does nothing", async () => {
     const wrapper = mountHost();
     await startEntry(wrapper);
     await enterProductRow(wrapper, 0, "5", "3");
@@ -740,10 +858,13 @@ describe("ProductEntryTable", () => {
 
     wrapper.vm.locked = true;
     await flush();
-    expect(gutterButton(wrapper, 0).text()).toBe("");
+
+    // A posted invoice is still worth picking rows out of, to copy them
     expect(
       (gutterButton(wrapper, 0).element as HTMLButtonElement).disabled
-    ).toBe(true);
+    ).toBe(false);
+    expect(gutterButton(wrapper, 0).text()).toBe("►");
+
     await gutterButton(wrapper, 0).trigger("keydown", { key: "Delete" });
     await flush();
     expect(wrapper.findAll("tbody tr").length).toBe(2);
