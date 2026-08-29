@@ -11,17 +11,17 @@
       <input
         type="text"
         :value="field.value"
-        disabled
-        :class="[fieldClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+        readonly
+        :class="[fieldClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
       >
     </div>
     <div class="flex flex-col gap-1 flex-grow">
       <label class="text-xs whitespace-nowrap">{{ t("comment") }}:</label>
       <textarea
         v-model="comment"
-        :disabled="locked"
+        :readonly="locked"
         rows="3"
-        :class="[fieldClass, 'flex-grow resize-none disabled:opacity-70 disabled:cursor-not-allowed']"
+        :class="[fieldClass, 'flex-grow resize-none disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
       />
     </div>
   </div>

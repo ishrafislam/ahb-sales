@@ -8,7 +8,7 @@
           :value="ld(dateText)"
           :class="[fieldClass, 'w-40']"
           type="text"
-          disabled
+          readonly
         >
       </div>
       <div class="flex flex-col gap-1">
@@ -130,7 +130,7 @@ const labelClass =
   "block text-sm font-medium text-gray-600 dark:text-gray-300";
 
 const fieldClass =
-  "block bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";
+  "block bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default";
 
 const buttonClass =
   "min-w-[7rem] bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-2 px-4 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";

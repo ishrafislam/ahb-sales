@@ -44,7 +44,7 @@
           :value="ld(selectedId)"
           :class="fieldClass"
           type="text"
-          disabled
+          readonly
         />
       </div>
 
@@ -55,7 +55,7 @@
           :value="selected?.nameBn || ''"
           :class="fieldClass"
           type="text"
-          disabled
+          readonly
         />
       </div>
 
@@ -68,7 +68,7 @@
           :value="selected?.description || ''"
           :class="fieldClass"
           rows="2"
-          disabled
+          readonly
         ></textarea>
       </div>
 
@@ -80,7 +80,7 @@
             :value="ld(stockText)"
             :class="[fieldClass, 'text-right']"
             type="text"
-            disabled
+            readonly
           />
         </div>
         <div>
@@ -90,7 +90,7 @@
             :value="selected?.unit || ''"
             :class="fieldClass"
             type="text"
-            disabled
+            readonly
           />
         </div>
       </div>
@@ -104,7 +104,7 @@
           :value="ld(lastPurchaseDateText)"
           :class="fieldClass"
           type="text"
-          disabled
+          readonly
         />
       </div>
 
@@ -117,7 +117,7 @@
           :value="ld(lastPurchaseQtyText)"
           :class="[fieldClass, 'text-right']"
           type="text"
-          disabled
+          readonly
         />
       </div>
     </div>
@@ -140,7 +140,7 @@
             :value="ld(editingId ? editingDateText : todayText)"
             :class="[fieldClass, 'text-right']"
             type="text"
-            disabled
+            readonly
           />
         </div>
         <div>
@@ -153,7 +153,7 @@
             :class="[fieldClass, 'text-right no-spinner']"
             type="text"
             inputmode="decimal"
-            :disabled="!exists"
+            :readonly="!exists"
             @input="amountText = toLatinDigits(($event.target as HTMLInputElement).value)"
             @keydown.enter.prevent="update"
           />
@@ -430,7 +430,7 @@ const labelClass =
   "block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1";
 
 const fieldClass =
-  "block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";
+  "block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default";
 
 const buttonClass =
   "min-w-[7rem] bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-2 px-4 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";

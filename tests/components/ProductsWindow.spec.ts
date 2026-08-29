@@ -92,11 +92,15 @@ describe("Products window", () => {
     expect(field(wrapper, "item-unit").value).toBe("Bag");
     expect(field(wrapper, "item-stock").value).toBe("50");
 
-    // Locked until Edit
-    expect(field(wrapper, "item-name").disabled).toBe(true);
-    expect(field(wrapper, "item-details").disabled).toBe(true);
-    expect(field(wrapper, "item-price").disabled).toBe(true);
-    expect(field(wrapper, "item-unit").disabled).toBe(true);
+    // Locked until Edit — read-only rather than disabled, so the name can
+    // still be selected and copied out of the form
+    for (const id of ["item-name", "item-details", "item-price", "item-unit"]) {
+      expect(field(wrapper, id).readOnly, id).toBe(true);
+      expect(field(wrapper, id).disabled, id).toBe(false);
+    }
+    // The figures the form only ever displays are the same
+    expect(field(wrapper, "item-id").disabled).toBe(false);
+    expect(field(wrapper, "item-stock").disabled).toBe(false);
     wrapper.unmount();
   });
 
@@ -109,15 +113,15 @@ describe("Products window", () => {
 
   it("keeps stock read-only in every state", async () => {
     const wrapper = await mountView();
-    expect(field(wrapper, "item-stock").disabled).toBe(true);
+    expect(field(wrapper, "item-stock").readOnly).toBe(true);
 
     await button(wrapper, "Edit")!.trigger("click");
     await new Promise((r) => setTimeout(r, 0));
-    expect(field(wrapper, "item-stock").disabled).toBe(true);
+    expect(field(wrapper, "item-stock").readOnly).toBe(true);
 
     // Empty slot: an add form, but stock still starts at 0 and is not editable
     await selectRow(wrapper, 2);
-    expect(field(wrapper, "item-stock").disabled).toBe(true);
+    expect(field(wrapper, "item-stock").readOnly).toBe(true);
     expect(field(wrapper, "item-stock").value).toBe("0");
     wrapper.unmount();
   });
@@ -127,7 +131,7 @@ describe("Products window", () => {
     await button(wrapper, "Edit")!.trigger("click");
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(field(wrapper, "item-name").disabled).toBe(false);
+    expect(field(wrapper, "item-name").readOnly).toBe(false);
     expect(button(wrapper, "Edit")).toBeUndefined();
     const save = button(wrapper, "Save")!;
     expect(save).toBeTruthy();
@@ -148,7 +152,7 @@ describe("Products window", () => {
     });
     expect(addProduct).not.toHaveBeenCalled();
     // Re-locks after saving
-    expect(field(wrapper, "item-name").disabled).toBe(true);
+    expect(field(wrapper, "item-name").readOnly).toBe(true);
     expect(button(wrapper, "Edit")).toBeTruthy();
     wrapper.unmount();
   });
@@ -159,8 +163,8 @@ describe("Products window", () => {
 
     // No Edit click needed
     expect(field(wrapper, "item-name").value).toBe("");
-    expect(field(wrapper, "item-name").disabled).toBe(false);
-    expect(field(wrapper, "item-details").disabled).toBe(false);
+    expect(field(wrapper, "item-name").readOnly).toBe(false);
+    expect(field(wrapper, "item-details").readOnly).toBe(false);
     expect(button(wrapper, "Edit")).toBeUndefined();
     expect(button(wrapper, "Save")).toBeUndefined();
     const add = button(wrapper, "Add")!;
@@ -207,7 +211,7 @@ describe("Products window", () => {
 
     expect(button(wrapper, "Add")).toBeUndefined();
     expect(button(wrapper, "Edit")).toBeTruthy();
-    expect(field(wrapper, "item-name").disabled).toBe(true);
+    expect(field(wrapper, "item-name").readOnly).toBe(true);
     expect(field(wrapper, "item-name").value).toBe("New Item");
     wrapper.unmount();
   });
@@ -225,8 +229,8 @@ describe("Products window", () => {
 
     expect(field(wrapper, "item-last-purchase-date").value).toBe("07/05/2026");
     expect(field(wrapper, "item-last-purchase-amount").value).toBe("150");
-    expect(field(wrapper, "item-last-purchase-date").disabled).toBe(true);
-    expect(field(wrapper, "item-last-purchase-amount").disabled).toBe(true);
+    expect(field(wrapper, "item-last-purchase-date").readOnly).toBe(true);
+    expect(field(wrapper, "item-last-purchase-amount").readOnly).toBe(true);
 
     // An item with no purchases leaves both blank
     await selectRow(wrapper, 3);
@@ -268,7 +272,7 @@ describe("Products window", () => {
 
     expect(button(wrapper, "Save")).toBeUndefined();
     expect(field(wrapper, "item-name").value).toBe("Item 3");
-    expect(field(wrapper, "item-name").disabled).toBe(true);
+    expect(field(wrapper, "item-name").readOnly).toBe(true);
     wrapper.unmount();
   });
 
@@ -281,7 +285,7 @@ describe("Products window", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(wrapper.text()).toContain("Product not found");
-    expect(field(wrapper, "item-name").disabled).toBe(false);
+    expect(field(wrapper, "item-name").readOnly).toBe(false);
     wrapper.unmount();
   });
 

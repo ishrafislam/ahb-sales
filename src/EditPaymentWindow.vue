@@ -7,8 +7,8 @@
       <input
         :value="ld(dateText)"
         type="text"
-        disabled
-        class="flex-1 px-2 py-1 border rounded bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-right disabled:opacity-70 disabled:cursor-not-allowed"
+        readonly
+        class="flex-1 px-2 py-1 border rounded bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default"
       />
     </div>
     <div class="flex items-center gap-3">
@@ -18,8 +18,8 @@
       <input
         :value="customerText"
         type="text"
-        disabled
-        class="flex-1 px-2 py-1 border rounded bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-right disabled:opacity-70 disabled:cursor-not-allowed"
+        readonly
+        class="flex-1 px-2 py-1 border rounded bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default"
       />
     </div>
     <div class="flex items-center gap-3">
@@ -31,8 +31,8 @@
         :value="ld(amountText)"
         @input="amountText = toLatinDigits(($event.target as HTMLInputElement).value)"
         type="text"
-        :disabled="!hasPayment"
-        class="flex-1 px-2 py-1 border rounded bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-right disabled:opacity-70 disabled:cursor-not-allowed"
+        :readonly="!hasPayment"
+        class="flex-1 px-2 py-1 border rounded bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default"
         @keydown.enter.prevent="onOkay"
       />
     </div>
@@ -42,8 +42,8 @@
       }}:</label>
       <textarea
         v-model="notes"
-        :disabled="!hasPayment"
-        class="flex-1 h-full px-2 py-1 border rounded bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 resize-none disabled:opacity-70 disabled:cursor-not-allowed"
+        :readonly="!hasPayment"
+        class="flex-1 h-full px-2 py-1 border rounded bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 resize-none disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default"
       ></textarea>
     </div>
     <p v-if="error" class="text-sm text-red-600 dark:text-red-400">

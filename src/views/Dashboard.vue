@@ -13,8 +13,8 @@
           <input
             type="text"
             :value="ld(selectedProductIdText)"
-            disabled
-            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            readonly
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
           />
         </div>
         <div class="flex items-center gap-2">
@@ -22,8 +22,8 @@
           <input
             type="text"
             :value="ld(selectedProductStockText)"
-            disabled
-            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            readonly
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
           />
         </div>
       </div>
@@ -85,8 +85,8 @@
           <input
             type="text"
             :value="ld(lastBillDateText)"
-            disabled
-            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            readonly
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
           />
         </div>
         <div class="flex items-center gap-2">
@@ -94,8 +94,8 @@
           <input
             type="text"
             :value="ld(lastBillText)"
-            disabled
-            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            readonly
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
           />
         </div>
       </div>
@@ -213,8 +213,8 @@
             <input
               type="text"
               :value="ld(customerReceivableText)"
-              disabled
-              :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              readonly
+              :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
             />
           </div>
           <p
@@ -297,8 +297,8 @@
             <input
               type="text"
               :value="ld(grandTotalText)"
-              disabled
-              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              readonly
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
             />
           </div>
           <div class="flex items-center gap-2">
@@ -309,8 +309,8 @@
               type="text"
               inputmode="decimal"
               @input="discountText = toLatinDigits(($event.target as HTMLInputElement).value)"
-              :disabled="posted"
-              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              :readonly="posted"
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
               @keydown.enter.prevent="onDiscountEnter"
               @blur="onDiscountBlur"
             />
@@ -320,8 +320,8 @@
             <input
               type="text"
               :value="ld(billText)"
-              disabled
-              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              readonly
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
             />
           </div>
           <div class="flex items-center gap-2">
@@ -329,8 +329,8 @@
             <input
               type="text"
               :value="ld(paidTotalText)"
-              disabled
-              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              readonly
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
             />
           </div>
         </div>

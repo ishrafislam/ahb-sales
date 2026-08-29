@@ -46,7 +46,7 @@
           :value="ld(selectedId)"
           :class="fieldClass"
           type="text"
-          disabled
+          readonly
         />
       </div>
 
@@ -60,7 +60,7 @@
           v-model="form.nameBn"
           :class="fieldClass"
           type="text"
-          :disabled="!editing"
+          :readonly="!editing"
         />
       </div>
 
@@ -73,7 +73,7 @@
           v-model="form.address"
           :class="fieldClass"
           type="text"
-          :disabled="!editing"
+          :readonly="!editing"
         />
       </div>
 
@@ -85,7 +85,7 @@
           :class="fieldClass"
           type="text"
           maxlength="50"
-          :disabled="!editing"
+          :readonly="!editing"
         />
       </div>
 
@@ -98,7 +98,7 @@
           :value="outstandingText"
           :class="[fieldClass, 'text-right font-medium', outstandingClass]"
           type="text"
-          disabled
+          readonly
         />
       </div>
 
@@ -330,7 +330,7 @@ const labelClass =
   "block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1";
 
 const fieldClass =
-  "block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";
+  "block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default";
 
 const buttonClass =
   "min-w-[7rem] bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-2 px-4 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";

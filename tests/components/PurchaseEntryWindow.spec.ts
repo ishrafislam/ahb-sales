@@ -130,7 +130,7 @@ describe("Purchase entry window", () => {
       "item-last-purchase-amount",
       "purchase-date",
     ]) {
-      expect(field(wrapper, id).disabled, id).toBe(true);
+      expect(field(wrapper, id).readOnly, id).toBe(true);
     }
     wrapper.unmount();
   });
@@ -180,7 +180,7 @@ describe("Purchase entry window", () => {
 
     // An empty slot has nothing to add stock to
     await selectRow(wrapper, 2);
-    expect(field(wrapper, "purchase-amount").disabled).toBe(true);
+    expect(field(wrapper, "purchase-amount").readOnly).toBe(true);
     expect(disabled()).toBe(true);
     wrapper.unmount();
   });
