@@ -9,8 +9,22 @@ import {
 import { initData } from "../data";
 import { logger } from "./Logger";
 import { FileCache } from "./FileCache";
+import { dict, getLanguage } from "../i18n";
 import { logMemoryUsage } from "../utils/memory";
 import { createSaveScheduler, type SaveScheduler } from "../utils/saveScheduler";
+
+/**
+ * The dictionary is read per call, not once at module load: the language menu
+ * rebuilds the UI without a restart, and these dialogs have to follow it.
+ */
+function tr(key: string, params?: Record<string, string>): string {
+  const value = (dict[getLanguage()] as Record<string, string>)[key] ?? key;
+  if (!params) return value;
+  return Object.entries(params).reduce(
+    (out, [name, replacement]) => out.split(`{${name}}`).join(replacement),
+    value
+  );
+}
 
 export class FileService {
   private currentFilePath: string | null = null;
@@ -85,8 +99,10 @@ export class FileService {
       if (this.lastSaveError !== message) {
         this.lastSaveError = message;
         dialog.showErrorBox(
-          "Cannot save file",
-          `Your changes could not be written to ${this.currentFilePath}.\n\n${message}`
+          tr("cannot_save_file"),
+          `${tr("cannot_save_file_detail", {
+            path: this.currentFilePath ?? "",
+          })}\n\n${message}`
         );
       }
     }
@@ -161,7 +177,7 @@ export class FileService {
   async handleNewFile(): Promise<void> {
     const res = await dialog.showSaveDialog(this.win!, {
       defaultPath: "untitled.ahbs",
-      filters: [{ name: "AHB Sales Files", extensions: ["ahbs"] }],
+      filters: [{ name: tr("file_type_ahbs"), extensions: ["ahbs"] }],
     });
     if (res.canceled || !res.filePath) return;
 
@@ -185,7 +201,7 @@ export class FileService {
   async handleOpenFile(): Promise<void> {
     const res = await dialog.showOpenDialog(this.win!, {
       properties: ["openFile"],
-      filters: [{ name: "AHB Sales Files", extensions: ["ahbs"] }],
+      filters: [{ name: tr("file_type_ahbs"), extensions: ["ahbs"] }],
     });
     if (res.canceled || res.filePaths.length === 0) return;
 
@@ -232,9 +248,8 @@ export class FileService {
       logger.error("Failed to open/decrypt file", "FileService", err);
       await dialog.showMessageBox(this.win!, {
         type: "error",
-        title: "Cannot open file",
-        message:
-          "This file could not be opened. It may be corrupted, not an AHB Sales file, or encrypted with a different key.",
+        title: tr("cannot_open_file"),
+        message: tr("cannot_open_file_detail"),
         detail: `${(err as Error).message}`,
       });
     }
@@ -243,7 +258,7 @@ export class FileService {
   async handleSaveFileAs(): Promise<void> {
     const res = await dialog.showSaveDialog(this.win!, {
       defaultPath: this.currentFilePath ?? "untitled.ahbs",
-      filters: [{ name: "AHB Sales Files", extensions: ["ahbs"] }],
+      filters: [{ name: tr("file_type_ahbs"), extensions: ["ahbs"] }],
     });
     if (res.canceled || !res.filePath) return;
 
@@ -309,9 +324,8 @@ export class FileService {
       logger.error("Failed to open file by path", "FileService", err);
       await dialog.showMessageBox(this.win!, {
         type: "error",
-        title: "Cannot open file",
-        message:
-          "This file could not be opened. It may be corrupted or encrypted with a different key.",
+        title: tr("cannot_open_file"),
+        message: tr("cannot_open_file_detail"),
         detail: `${(err as Error).message}`,
       });
     }

@@ -225,5 +225,13 @@
   "end_before_start": "End date cannot be before the start date.",
   "item_not_found": "Item not found",
   "customer_details": "Customer Details",
-  "product_details": "Item Details"
+  "product_details": "Item Details",
+  "file_saved": "Saved",
+  "file_unsaved": "Unsaved",
+  "file_unsaved_changes": "Unsaved changes",
+  "file_type_ahbs": "AHB Sales Files",
+  "cannot_save_file": "Cannot save file",
+  "cannot_save_file_detail": "Your changes could not be written to {path}.",
+  "cannot_open_file": "Cannot open file",
+  "cannot_open_file_detail": "This file could not be opened. It may be corrupted, not an AHB Sales file, or encrypted with a different key."
 }

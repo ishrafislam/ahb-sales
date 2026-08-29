@@ -5,7 +5,7 @@
     <div class="flex items-center gap-3">
       <label class="text-sm whitespace-nowrap w-32 shrink-0">{{ t("v2_date") }}:</label>
       <input
-        :value="dateText"
+        :value="ld(dateText)"
         type="text"
         disabled
         class="flex-1 px-2 py-1 border rounded bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-right disabled:opacity-70 disabled:cursor-not-allowed"
@@ -28,7 +28,8 @@
       }}:</label>
       <input
         ref="amountInput"
-        v-model="amountText"
+        :value="ld(amountText)"
+        @input="amountText = toLatinDigits(($event.target as HTMLInputElement).value)"
         type="text"
         :disabled="!hasPayment"
         class="flex-1 px-2 py-1 border rounded bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-right disabled:opacity-70 disabled:cursor-not-allowed"
@@ -70,6 +71,11 @@
 defineOptions({ name: "AhbEditPaymentWindow" });
 import { onMounted, ref, watchEffect } from "vue";
 import { t, initI18n } from "./i18n";
+import {
+  localizeDigits as ld,
+  parseNumber,
+  toLatinDigits,
+} from "./utils/numerals";
 
 const amountInput = ref<HTMLInputElement | null>(null);
 const dateText = ref("");
@@ -116,7 +122,7 @@ watchEffect(() => {
 
 async function onOkay() {
   if (!hasPayment.value || saving) return;
-  const amount = Number.parseFloat(amountText.value);
+  const amount = parseNumber(amountText.value);
   if (!Number.isFinite(amount) || amount <= 0) {
     error.value = t("payment_amount_invalid");
     return;

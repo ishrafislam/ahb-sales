@@ -24,7 +24,7 @@
           </h3>
           <button
             class="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-            aria-label="Close"
+            :aria-label="t('close')"
             @click="onClose"
           >
             ✕
@@ -40,6 +40,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
+import { t } from "../i18n";
 defineOptions({ name: "AhbBaseModal" });
 
 const props = defineProps<{

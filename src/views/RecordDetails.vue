@@ -32,6 +32,7 @@
 defineOptions({ name: "AhbRecordDetails" });
 import { ref, computed, onMounted } from "vue";
 import { t } from "../i18n";
+import { localizeDigits as ld } from "../utils/numerals";
 import type { Customer, Product } from "../main/data";
 
 // #record-details/<kind>/<id>
@@ -55,23 +56,23 @@ const fields = computed<Array<{ key: string; value: string }>>(() => {
   const c = customer.value;
   if (c) {
     return [
-      { key: "v2_customer_id", value: String(c.id) },
+      { key: "v2_customer_id", value: ld(c.id) },
       { key: "v2_customer_name", value: dash(c.nameBn) },
       { key: "address", value: dash(c.address) },
       { key: "phone", value: dash(c.phone) },
-      { key: "outstanding", value: c.outstanding.toFixed(2) },
+      { key: "outstanding", value: ld(c.outstanding.toFixed(2)) },
       { key: "status", value: statusText(c.active) },
     ];
   }
   const p = product.value;
   if (!p) return [];
   return [
-    { key: "item_id", value: String(p.id) },
+    { key: "item_id", value: ld(p.id) },
     { key: "item_name", value: dash(p.nameBn) },
     { key: "item_details", value: dash(p.description) },
     { key: "unit", value: dash(p.unit) },
-    { key: "unit_price", value: p.price.toFixed(2) },
-    { key: "stock", value: String(p.stock) },
+    { key: "unit_price", value: ld(p.price.toFixed(2)) },
+    { key: "stock", value: ld(p.stock) },
     { key: "status", value: statusText(p.active) },
   ];
 });

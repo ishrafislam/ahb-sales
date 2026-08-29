@@ -29,6 +29,7 @@
 
 <script setup lang="ts">
 defineOptions({ name: "AhbCustomerStatusPanel" });
+import { localizeDigits } from "../../utils/numerals";
 import { computed } from "vue";
 import { t } from "../../i18n";
 
@@ -51,7 +52,8 @@ const comment = defineModel<string>("comment", { required: true });
 
 const fields = computed(() => {
   const s = props.status;
-  const fmt = (n: number | undefined) => (n === undefined ? "" : n.toFixed(2));
+  const fmt = (n: number | undefined) =>
+    n === undefined ? "" : localizeDigits(n.toFixed(2));
   return [
     { key: "total_price", value: fmt(s?.totalPrice) },
     { key: "v2_discount", value: fmt(s?.discount) },

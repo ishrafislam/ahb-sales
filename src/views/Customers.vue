@@ -23,7 +23,7 @@
             <div
               class="w-14 shrink-0 px-3 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-700 dark:text-gray-100"
             >
-              {{ id }}
+              {{ ld(id) }}
             </div>
             <div
               class="px-3 py-2 text-sm truncate text-gray-700 dark:text-gray-200"
@@ -43,7 +43,7 @@
         }}</label>
         <input
           id="customer-id"
-          :value="String(selectedId)"
+          :value="ld(selectedId)"
           :class="fieldClass"
           type="text"
           disabled
@@ -162,6 +162,7 @@
 defineOptions({ name: "AhbCustomers" });
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
+import { localizeDigits as ld } from "../utils/numerals";
 import { MAX_CUSTOMER_ID } from "../constants/business";
 
 interface CustomerRow {
@@ -210,7 +211,8 @@ const statusRadio = computed({
 // The colour carries the direction, so the amount is always shown unsigned.
 const outstanding = computed(() => selected.value?.outstanding ?? 0);
 const outstandingText = computed(
-  () => `${t("currency_taka")} ${Math.abs(outstanding.value).toFixed(2)}`
+  () =>
+    `${t("currency_taka")} ${ld(Math.abs(outstanding.value).toFixed(2))}`
 );
 const outstandingClass = computed(() => {
   if (outstanding.value > 0) return "text-red-600 dark:text-red-400";

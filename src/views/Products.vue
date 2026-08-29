@@ -23,7 +23,7 @@
             <div
               class="w-14 shrink-0 px-3 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-700 dark:text-gray-100"
             >
-              {{ id }}
+              {{ ld(id) }}
             </div>
             <div
               class="px-3 py-2 text-sm truncate text-gray-700 dark:text-gray-200"
@@ -42,7 +42,7 @@
           <label :class="labelClass" for="item-id">{{ t("item_id") }}</label>
           <input
             id="item-id"
-            :value="String(selectedId)"
+            :value="ld(selectedId)"
             :class="fieldClass"
             type="text"
             disabled
@@ -107,7 +107,7 @@
           <label :class="labelClass" for="item-stock">{{ t("stock") }}</label>
           <input
             id="item-stock"
-            :value="stockText"
+            :value="ld(stockText)"
             :class="[fieldClass, 'text-right']"
             type="text"
             disabled
@@ -147,7 +147,7 @@
           }}</label>
           <input
             id="item-last-purchase-date"
-            :value="lastPurchaseDateText"
+            :value="ld(lastPurchaseDateText)"
             :class="fieldClass"
             type="text"
             disabled
@@ -159,7 +159,7 @@
           }}</label>
           <input
             id="item-last-purchase-amount"
-            :value="lastPurchaseQtyText"
+            :value="ld(lastPurchaseQtyText)"
             :class="[fieldClass, 'text-right']"
             type="text"
             disabled
@@ -218,6 +218,7 @@
 defineOptions({ name: "AhbProducts" });
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
+import { localizeDigits as ld } from "../utils/numerals";
 import { MAX_PRODUCT_ID } from "../constants/business";
 
 interface ProductRow {

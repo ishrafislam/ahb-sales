@@ -23,7 +23,7 @@
             <div
               class="w-14 shrink-0 px-3 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-700 dark:text-gray-100"
             >
-              {{ id }}
+              {{ ld(id) }}
             </div>
             <div
               class="px-3 py-2 text-sm truncate text-gray-700 dark:text-gray-200"
@@ -41,7 +41,7 @@
         <label :class="labelClass" for="item-id">{{ t("item_id") }}</label>
         <input
           id="item-id"
-          :value="String(selectedId)"
+          :value="ld(selectedId)"
           :class="fieldClass"
           type="text"
           disabled
@@ -77,7 +77,7 @@
           <label :class="labelClass" for="item-stock">{{ t("stock") }}</label>
           <input
             id="item-stock"
-            :value="stockText"
+            :value="ld(stockText)"
             :class="[fieldClass, 'text-right']"
             type="text"
             disabled
@@ -101,7 +101,7 @@
         }}</label>
         <input
           id="item-last-purchase-date"
-          :value="lastPurchaseDateText"
+          :value="ld(lastPurchaseDateText)"
           :class="fieldClass"
           type="text"
           disabled
@@ -114,7 +114,7 @@
         }}</label>
         <input
           id="item-last-purchase-amount"
-          :value="lastPurchaseQtyText"
+          :value="ld(lastPurchaseQtyText)"
           :class="[fieldClass, 'text-right']"
           type="text"
           disabled
@@ -137,7 +137,7 @@
           <label :class="labelClass" for="purchase-date">{{ t("date") }}</label>
           <input
             id="purchase-date"
-            :value="editingId ? editingDateText : todayText"
+            :value="ld(editingId ? editingDateText : todayText)"
             :class="[fieldClass, 'text-right']"
             type="text"
             disabled
@@ -149,12 +149,12 @@
           }}</label>
           <input
             id="purchase-amount"
-            v-model="amountText"
+            :value="ld(amountText)"
             :class="[fieldClass, 'text-right no-spinner']"
-            type="number"
-            min="0"
-            step="0.01"
+            type="text"
+            inputmode="decimal"
             :disabled="!exists"
+            @input="amountText = toLatinDigits(($event.target as HTMLInputElement).value)"
             @keydown.enter.prevent="update"
           />
         </div>
@@ -194,6 +194,11 @@ defineOptions({ name: "AhbPurchaseEntry" });
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
 import HistoryTable from "../components/HistoryTable.vue";
+import {
+  localizeDigits as ld,
+  parseNumber,
+  toLatinDigits,
+} from "../utils/numerals";
 import { MAX_PRODUCT_ID, MAX_PURCHASE_QUANTITY } from "../constants/business";
 
 interface ProductRow {
@@ -213,8 +218,8 @@ interface PurchaseRow {
 
 const products = ref<ProductRow[]>([]);
 const purchases = ref<PurchaseRow[]>([]);
-// A number input hands back a number, an empty box an empty string
-const amountText = ref<string | number>("");
+// Kept as the Latin text the box was typed with; the display transliterates
+const amountText = ref<string>("");
 const error = ref("");
 const lastPurchaseDateText = ref("");
 const lastPurchaseQtyText = ref("");
@@ -251,7 +256,7 @@ const stockText = computed(() =>
   selected.value ? String(selected.value.stock) : ""
 );
 
-const amountValue = computed(() => Number(amountText.value));
+const amountValue = computed(() => parseNumber(amountText.value));
 const canUpdate = computed(
   () =>
     exists.value &&
@@ -266,8 +271,8 @@ function formatDate(iso: string) {
 
 const purchaseCells = computed(() =>
   purchases.value.map((p) => [
-    formatDate(p.date),
-    String(p.quantity),
+    ld(formatDate(p.date)),
+    ld(p.quantity),
     p.unit,
   ])
 );
@@ -337,7 +342,7 @@ function startEdit(rowIndex: number) {
   if (!row?.id) return;
   editingId.value = row.id;
   editingDateText.value = formatDate(row.date);
-  amountText.value = row.quantity;
+  amountText.value = String(row.quantity);
   error.value = "";
   void focusAmount();
 }

@@ -12,7 +12,7 @@
           <label class="text-xs whitespace-nowrap w-24">{{ t("v2_product_id") }}:</label>
           <input
             type="text"
-            :value="selectedProductIdText"
+            :value="ld(selectedProductIdText)"
             disabled
             :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
           />
@@ -21,7 +21,7 @@
           <label class="text-xs whitespace-nowrap w-24">{{ t("v2_stock_qty") }}:</label>
           <input
             type="text"
-            :value="selectedProductStockText"
+            :value="ld(selectedProductStockText)"
             disabled
             :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
           />
@@ -45,7 +45,7 @@
           <div class="relative flex-1 min-w-0 max-w-[9rem]">
             <input
               ref="customerIdInput"
-              v-model="customerId"
+              :value="ld(customerId)"
               type="text"
               :class="[inputClass, 'w-full pr-6 text-right']"
               @focus="onCustomerIdFocus"
@@ -84,7 +84,7 @@
           <label class="text-xs whitespace-nowrap w-32">{{ t("v2_last_bill_date") }}:</label>
           <input
             type="text"
-            :value="lastBillDateText"
+            :value="ld(lastBillDateText)"
             disabled
             :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
           />
@@ -93,7 +93,7 @@
           <label class="text-xs whitespace-nowrap w-32">{{ t("v2_last_bill") }}:</label>
           <input
             type="text"
-            :value="lastBillText"
+            :value="ld(lastBillText)"
             disabled
             :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
           />
@@ -212,7 +212,7 @@
             <label class="text-xs whitespace-nowrap w-14">{{ t("v2_receivable") }}:</label>
             <input
               type="text"
-              :value="customerReceivableText"
+              :value="ld(customerReceivableText)"
               disabled
               :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
             />
@@ -296,7 +296,7 @@
             <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_grand_total") }}:</label>
             <input
               type="text"
-              :value="grandTotalText"
+              :value="ld(grandTotalText)"
               disabled
               :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
             />
@@ -305,9 +305,10 @@
             <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_discount") }}:</label>
             <input
               ref="discountInput"
-              v-model="discountText"
+              :value="ld(discountText)"
               type="text"
               inputmode="decimal"
+              @input="discountText = toLatinDigits(($event.target as HTMLInputElement).value)"
               :disabled="posted"
               :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
               @keydown.enter.prevent="onDiscountEnter"
@@ -318,7 +319,7 @@
             <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_bill") }}:</label>
             <input
               type="text"
-              :value="billText"
+              :value="ld(billText)"
               disabled
               :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
             />
@@ -327,7 +328,7 @@
             <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_deposit") }}:</label>
             <input
               type="text"
-              :value="paidTotalText"
+              :value="ld(paidTotalText)"
               disabled
               :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
             />
@@ -389,6 +390,11 @@ import type { Invoice } from "../main/data";
 import SlotDropdown from "../components/dashboard/SlotDropdown.vue";
 import { toSlots, filterSlots, type SlotOption } from "../components/dashboard/slotOptions";
 import { matchByName } from "../utils/fuzzy";
+import {
+  localizeDigits as ld,
+  parseNumber,
+  toLatinDigits,
+} from "../utils/numerals";
 import ProductEntryTable, {
   type EntryRow,
 } from "../components/dashboard/ProductEntryTable.vue";
@@ -556,7 +562,9 @@ function closeCustomerSlots() {
 
 // Typing re-filters an open list; it never opens one — that is the caret's
 // job. The old highlight no longer points at the same row afterwards.
-function onCustomerIdInput() {
+// The box shows the app's numerals; the model behind it is always Latin
+function onCustomerIdInput(e: Event) {
+  customerId.value = toLatinDigits((e.target as HTMLInputElement).value);
   customerHighlight.value = -1;
 }
 
@@ -737,7 +745,7 @@ const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
 const grandTotal = computed(() =>
   entryRows.value.reduce((sum, row) => {
     if (!row.product) return sum;
-    const amount = Number.parseFloat(row.amountText);
+    const amount = parseNumber(row.amountText);
     if (!Number.isFinite(amount) || amount < 0) return sum;
     if (row.price === null) return sum;
     return sum + ceil2(amount * row.price);
@@ -754,7 +762,7 @@ const discountText = ref("");
 const discount = ref(0);
 
 function onDiscountEnter() {
-  const d = Number.parseFloat(discountText.value);
+  const d = parseNumber(discountText.value);
   if (!Number.isFinite(d) || d < 0 || d > grandTotal.value) {
     discountText.value = discount.value > 0 ? discount.value.toFixed(2) : "";
   } else {
@@ -852,7 +860,7 @@ async function onPostData() {
   if (custId === undefined) return;
   const lines = entryRows.value.flatMap((row) => {
     if (!row.product || row.price === null) return [];
-    const quantity = Number.parseFloat(row.amountText);
+    const quantity = parseNumber(row.amountText);
     // A quantity of 0 is a real line: the item is named, nothing is charged
     if (!Number.isFinite(quantity) || quantity < 0) return [];
     return [{ productId: row.product.id, quantity, rate: row.price }];
@@ -882,7 +890,7 @@ async function onPostData() {
     // Hide incomplete rows (e.g. the auto-appended trailing empty row)
     entryRows.value = entryRows.value.filter((row) => {
       if (!row.product) return false;
-      const quantity = Number.parseFloat(row.amountText);
+      const quantity = parseNumber(row.amountText);
       if (!Number.isFinite(quantity) || quantity < 0) return false;
       // The sale has left the shelf now: carry the row's cached stock forward
       // by whatever this post moved, and mark the quantity as accounted for so
@@ -1076,7 +1084,7 @@ async function onSinglePrint() {
 }
 
 function parseCustomerId(): number | undefined {
-  const id = Number.parseInt(customerId.value, 10);
+  const id = Number.parseInt(toLatinDigits(customerId.value), 10);
   if (Number.isNaN(id) || id < MIN_CUSTOMER_ID || id > MAX_CUSTOMER_ID) {
     return undefined;
   }

@@ -48,9 +48,10 @@
             <div class="relative">
               <input
                 :ref="(el) => setCellRef(row.key, 'id', el)"
-                v-model="row.idText"
+                :value="ld(row.idText)"
                 type="text"
                 inputmode="numeric"
+                @input="row.idText = toLatinDigits(($event.target as HTMLInputElement).value)"
                 :readonly="locked"
                 :class="[cellInputClass, 'pr-5 disabled:opacity-70 disabled:cursor-not-allowed', locked ? lockedInputClass : '']"
                 @keydown.enter.prevent="onIdEnter(idx)"
@@ -79,9 +80,10 @@
           <td :class="[cellBorderClass, 'px-2 py-1']">
             <input
               :ref="(el) => setCellRef(row.key, 'amount', el)"
-              v-model="row.amountText"
+              :value="ld(row.amountText)"
               type="text"
               inputmode="decimal"
+              @input="row.amountText = toLatinDigits(($event.target as HTMLInputElement).value)"
               :readonly="locked"
               :class="[cellInputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed', locked ? lockedInputClass : '']"
               @keydown.enter.prevent="onAmountEnter(idx)"
@@ -96,9 +98,10 @@
           <td :class="[cellBorderClass, 'px-2 py-1']">
             <input
               :ref="(el) => setCellRef(row.key, 'price', el)"
-              v-model="row.priceText"
+              :value="ld(row.priceText)"
               type="text"
               inputmode="decimal"
+              @input="row.priceText = toLatinDigits(($event.target as HTMLInputElement).value)"
               :disabled="!row.product"
               :readonly="locked"
               :class="[cellInputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed', locked ? lockedInputClass : '']"
@@ -127,6 +130,12 @@ import { t } from "../../i18n";
 import SlotDropdown from "./SlotDropdown.vue";
 import { toSlots, filterSlots, type SlotOption } from "./slotOptions";
 import { MIN_PRODUCT_ID, MAX_PRODUCT_ID } from "../../constants/business";
+import {
+  localizeDigits as ld,
+  parseInteger,
+  parseNumber,
+  toLatinDigits,
+} from "../../utils/numerals";
 
 export type EntryRow = {
   key: number;
@@ -170,7 +179,7 @@ const emit = defineEmits<{
 // amount projects. Display only — real stock changes when the invoice is
 // posted.
 function projectedStock(row: EntryRow): number {
-  const amount = Number.parseFloat(row.amountText);
+  const amount = parseNumber(row.amountText);
   const sold = Number.isFinite(amount) && amount > 0 ? amount : 0;
   const pending = sold - (row.appliedQty ?? 0);
   return Math.round((row.product!.stock - pending) * 100) / 100;
@@ -300,7 +309,7 @@ async function commitId(idx: number): Promise<boolean> {
   if (props.locked) return false;
   const row = rows.value[idx];
   if (!row) return false;
-  const id = Number.parseInt(row.idText, 10);
+  const id = parseInteger(row.idText);
   if (Number.isNaN(id) || id < MIN_PRODUCT_ID || id > MAX_PRODUCT_ID) {
     return false;
   }
@@ -362,7 +371,7 @@ function commitAmount(idx: number): boolean {
   if (props.locked) return false;
   const row = rows.value[idx];
   if (!row) return false;
-  const amount = Number.parseFloat(row.amountText);
+  const amount = parseNumber(row.amountText);
   if (!Number.isFinite(amount) || amount < 0) return false;
   if (amount === 0) {
     row.price = 0;
@@ -406,7 +415,7 @@ function commitPrice(idx: number) {
   if (props.locked) return;
   const row = rows.value[idx];
   if (!row || !row.product) return;
-  const price = Number.parseFloat(row.priceText);
+  const price = parseNumber(row.priceText);
   if (!Number.isFinite(price) || price < 0) {
     row.priceText = row.price !== null ? row.price.toFixed(2) : "";
   } else {

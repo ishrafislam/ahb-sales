@@ -7,11 +7,11 @@ import {
   DEFAULT_MARGINS,
   type PrintDocument,
 } from "./document";
-import { toBengaliDigits } from "./format";
+import { money, quantity, toBengaliDigits } from "./format";
 
-function fmt(n: number): string {
-  return Number.isFinite(n) ? n.toFixed(2) : "0.00";
-}
+// Money on the receipt reads the way it reads in the reports: grouped, two
+// decimals, Bengali numerals when the app is in Bengali
+const fmt = money;
 
 function fmtReceiptDate(
   isoOrYmd: string,
@@ -84,7 +84,7 @@ export function buildInvoiceDocument(
       const unit = info?.unit ?? "";
       // An item given away carries no quantity and no price on the receipt
       const free = !(ln.quantity > 0);
-      const qtyUnit = free ? "" : `${ln.quantity} ${unit}`.trim();
+      const qtyUnit = free ? "" : `${quantity(ln.quantity)} ${unit}`.trim();
       return `<tr>
         <td>${name}</td>
         <td style="text-align:center">${qtyUnit}</td>

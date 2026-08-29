@@ -120,6 +120,30 @@ describe("ProductEntryTable", () => {
     wrapper.unmount();
   });
 
+  it("takes an id typed in Bengali digits", async () => {
+    currentLang.value = "bn";
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const { id, amount } = cellInputs(wrapper, 0);
+
+    await id.setValue("৫");
+    await id.trigger("keydown.enter");
+    await flush();
+
+    expect(getProductById).toHaveBeenCalledWith(5);
+    // And the loaded id reads back in Bengali
+    expect((cellInputs(wrapper, 0).id.element as HTMLInputElement).value).toBe(
+      "৫"
+    );
+
+    await amount.setValue("২.৫");
+    await amount.trigger("keydown.enter");
+    await flush();
+    expect(wrapper.vm.rows[0]!.amountText).toBe("2.5");
+    currentLang.value = "en";
+    wrapper.unmount();
+  });
+
   it("blurring the ID cell loads the product, and a bad id clears it", async () => {
     const wrapper = mountHost();
     await startEntry(wrapper);

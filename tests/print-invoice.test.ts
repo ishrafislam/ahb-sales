@@ -59,11 +59,11 @@ describe("buildInvoiceDocument", () => {
     expect(bodyHtml).toContain("Item 3");
     expect(bodyHtml).toContain("2 kg");
     // net, previous due, grand total, paid, current due
-    expect(bodyHtml).toContain("11175.00");
+    expect(bodyHtml).toContain("11,175.00");
     expect(bodyHtml).toContain("300.00");
-    expect(bodyHtml).toContain("11475.00");
-    expect(bodyHtml).toContain("1000.00");
-    expect(bodyHtml).toContain("10475.00");
+    expect(bodyHtml).toContain("11,475.00");
+    expect(bodyHtml).toContain("1,000.00");
+    expect(bodyHtml).toContain("10,475.00");
   });
 
   it("falls back to the product id when a name is missing", () => {
@@ -127,7 +127,7 @@ describe("buildInvoiceDocument", () => {
     // The paid line is untouched
     const paidRow = rows.find((r) => r.includes("Item 1"))!;
     expect(paidRow).toContain("25 Bag");
-    expect(paidRow).toContain("11650.00");
+    expect(paidRow).toContain("11,650.00");
   });
 
   it("keeps the totals at the bottom of the sheet", () => {
@@ -190,6 +190,10 @@ describe("buildInvoiceDocument", () => {
     // Customer id and date render in Bengali digits
     expect(bodyHtml).toContain("১০০");
     expect(bodyHtml).toContain("৩০/০৭/২৬");
+    // Line quantities and every figure in the totals block too
+    expect(bodyHtml).toContain("২৫ Bag");
+    expect(bodyHtml).toContain("১১,৬৫০.০০");
+    expect(bodyHtml).toContain("১০,৪৭৫.০০");
     expect(styleCss).toContain("Noto Sans Bengali");
     // The sale time reads as a part of the day, in Bengali digits
     expect(bodyHtml).toMatch(/রাত|সকাল|দুপুর|বিকাল|সন্ধ্যা/);

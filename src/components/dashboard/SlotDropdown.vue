@@ -27,7 +27,7 @@
             v-if="!nameOnly"
             class="w-10 shrink-0 tabular-nums text-gray-500 dark:text-gray-400"
           >
-            {{ opt.id }}
+            {{ ld(opt.id) }}
           </span>
           <span v-if="opt.primary" class="font-medium truncate">
             {{ opt.primary }}
@@ -51,6 +51,7 @@
 defineOptions({ name: "AhbSlotDropdown" });
 import { ref, watch, nextTick, onUnmounted } from "vue";
 import { t } from "../../i18n";
+import { localizeDigits as ld } from "../../utils/numerals";
 import type { SlotOption } from "./slotOptions";
 
 const props = defineProps<{

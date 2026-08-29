@@ -4,12 +4,10 @@
  * slightly wrong still finds its record.
  */
 
-const BENGALI_ZERO = "০".codePointAt(0)!;
+import { toLatinDigits } from "./numerals";
 
-/** Bengali numerals type the same as Latin ones as far as matching goes. */
-export function toLatinDigits(s: string): string {
-  return s.replace(/[০-৯]/g, (d) => String(d.codePointAt(0)! - BENGALI_ZERO));
-}
+// Kept exported here for the callers that came before the numerals module
+export { toLatinDigits };
 
 function normalise(s: string): string {
   return toLatinDigits(s).trim().toLowerCase();
