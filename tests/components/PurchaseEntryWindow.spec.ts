@@ -231,6 +231,23 @@ describe("Purchase entry window", () => {
     wrapper.unmount();
   });
 
+  it("will not half-load a row that carries no id", async () => {
+    listProductPurchases.mockResolvedValue([
+      { date: "2026-07-30T10:00:00.000Z", unit: "Bag", quantity: 120 },
+    ] as unknown as PurchaseStub[]);
+    const wrapper = await mountView();
+
+    await editButtons(wrapper)[0]!.trigger("click");
+    await wrapper.vm.$nextTick();
+
+    // Nothing loaded, so Enter cannot quietly post a new purchase instead
+    expect(field(wrapper, "purchase-amount").value).toBe("");
+    expect(field(wrapper, "purchase-date").value).toBe(
+      new Date().toLocaleDateString("en-GB")
+    );
+    wrapper.unmount();
+  });
+
   it("updates the loaded purchase instead of posting a new one", async () => {
     const wrapper = await mountView();
     await editButtons(wrapper)[0]!.trigger("click");

@@ -332,7 +332,9 @@ async function loadPurchases(id: number) {
 /** Load a history row into the entry fields for correction. */
 function startEdit(rowIndex: number) {
   const row = purchases.value[rowIndex];
-  if (!row) return;
+  // Without an id there is nothing to correct, and loading the fields anyway
+  // would turn the next Enter into a fresh purchase
+  if (!row?.id) return;
   editingId.value = row.id;
   editingDateText.value = formatDate(row.date);
   amountText.value = row.quantity;
