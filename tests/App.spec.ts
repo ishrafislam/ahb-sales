@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { nextTick } from "vue";
 import { mount } from "@vue/test-utils";
 import { createPinia } from "pinia";
@@ -22,7 +22,6 @@ describe("App.vue", () => {
       openFile: async () => {
         if (docCb) docCb();
       },
-      saveFile: async () => Promise.resolve(),
       saveFileAs: async () => Promise.resolve(),
       onLanguageChanged: (cb: (l: "bn" | "en") => void) => {
         langCb = cb;
@@ -69,5 +68,51 @@ describe("App.vue", () => {
     // Simulate opening/creating a file so the UI shows the dashboard
     docCb?.();
     await nextTick();
+  });
+
+  it("saves by itself: Ctrl+S does nothing, Ctrl+Shift+S still saves a copy", async () => {
+    const saveFileAs = vi.fn(async () => undefined);
+    let docCb: null | (() => void) = null as null | (() => void);
+    window.ahb = {
+      getLanguage: async () => "en",
+      setLanguage: async () => undefined,
+      newFile: async () => undefined,
+      openFile: async () => undefined,
+      saveFileAs,
+      onLanguageChanged: (): (() => void) => () => undefined,
+      onDocumentChanged: (cb: () => void): (() => void) => {
+        docCb = cb;
+        return () => undefined;
+      },
+      onDocumentClosed: (): (() => void) => () => undefined,
+      onFileInfo: (): (() => void) => () => undefined,
+      onDataChanged: (): (() => void) => () => undefined,
+      getFileInfo: async () => ({ path: "shop.ahbs", isDirty: false }),
+      listProducts: async (): Promise<unknown[]> => [],
+      listCustomers: async (): Promise<unknown[]> => [],
+    } as unknown as Window["ahb"];
+
+    const wrapper = mount(App, {
+      global: { plugins: [createPinia()] },
+      attachTo: document.body,
+    });
+    await Promise.resolve();
+    await nextTick();
+    docCb?.();
+    await nextTick();
+
+    const press = (shift: boolean) =>
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "s", ctrlKey: true, shiftKey: shift })
+      );
+
+    press(false);
+    await nextTick();
+    expect(saveFileAs).not.toHaveBeenCalled();
+
+    press(true);
+    await nextTick();
+    expect(saveFileAs).toHaveBeenCalled();
+    wrapper.unmount();
   });
 });

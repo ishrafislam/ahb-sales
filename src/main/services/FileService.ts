@@ -9,7 +9,22 @@ import {
 import { initData } from "../data";
 import { logger } from "./Logger";
 import { FileCache } from "./FileCache";
+import { dict, getLanguage } from "../i18n";
 import { logMemoryUsage } from "../utils/memory";
+import { createSaveScheduler, type SaveScheduler } from "../utils/saveScheduler";
+
+/**
+ * The dictionary is read per call, not once at module load: the language menu
+ * rebuilds the UI without a restart, and these dialogs have to follow it.
+ */
+function tr(key: string, params?: Record<string, string>): string {
+  const value = (dict[getLanguage()] as Record<string, string>)[key] ?? key;
+  if (!params) return value;
+  return Object.entries(params).reduce(
+    (out, [name, replacement]) => out.split(`{${name}}`).join(replacement),
+    value
+  );
+}
 
 export class FileService {
   private currentFilePath: string | null = null;
@@ -18,6 +33,9 @@ export class FileService {
   private cache = new FileCache();
   private dataChangedCallbacks: Array<() => void> = [];
   private subscriberWindows = new Set<BrowserWindow>();
+  private saves: SaveScheduler = createSaveScheduler(() => this.saveNow());
+  /** Last write failure already reported, so one bad disk is one dialog. */
+  private lastSaveError: string | null = null;
 
   constructor(private win: BrowserWindow | null = null) {
     if (win) this.subscriberWindows.add(win);
@@ -53,8 +71,42 @@ export class FileService {
     return this.isDirty;
   }
 
+  /**
+   * Marking the document dirty is what schedules its save: there is no manual
+   * Save, so every mutation persists on its own a moment later.
+   */
   setDirty(dirty: boolean): void {
     this.isDirty = dirty;
+    if (dirty) this.saves.schedule();
+  }
+
+  /** Write a pending save immediately — before closing or switching files. */
+  flushPendingSave(): void {
+    this.saves.flush();
+  }
+
+  private saveNow(): void {
+    if (!this.currentFilePath) return;
+    try {
+      this.writeCurrentTo(this.currentFilePath);
+      this.isDirty = false;
+      this.lastSaveError = null;
+    } catch (err) {
+      // Nothing prompts the user any more, so a file that cannot be written has
+      // to say so itself. The document stays dirty and the next change retries.
+      const message = (err as Error).message;
+      logger.error("Autosave failed", "FileService", err);
+      if (this.lastSaveError !== message) {
+        this.lastSaveError = message;
+        dialog.showErrorBox(
+          tr("cannot_save_file"),
+          `${tr("cannot_save_file_detail", {
+            path: this.currentFilePath ?? "",
+          })}\n\n${message}`
+        );
+      }
+    }
+    this.broadcastFileInfo();
   }
 
   getFileInfo() {
@@ -125,7 +177,7 @@ export class FileService {
   async handleNewFile(): Promise<void> {
     const res = await dialog.showSaveDialog(this.win!, {
       defaultPath: "untitled.ahbs",
-      filters: [{ name: "AHB Sales Files", extensions: ["ahbs"] }],
+      filters: [{ name: tr("file_type_ahbs"), extensions: ["ahbs"] }],
     });
     if (res.canceled || !res.filePath) return;
 
@@ -149,7 +201,7 @@ export class FileService {
   async handleOpenFile(): Promise<void> {
     const res = await dialog.showOpenDialog(this.win!, {
       properties: ["openFile"],
-      filters: [{ name: "AHB Sales Files", extensions: ["ahbs"] }],
+      filters: [{ name: tr("file_type_ahbs"), extensions: ["ahbs"] }],
     });
     if (res.canceled || res.filePaths.length === 0) return;
 
@@ -196,28 +248,17 @@ export class FileService {
       logger.error("Failed to open/decrypt file", "FileService", err);
       await dialog.showMessageBox(this.win!, {
         type: "error",
-        title: "Cannot open file",
-        message:
-          "This file could not be opened. It may be corrupted, not an AHB Sales file, or encrypted with a different key.",
+        title: tr("cannot_open_file"),
+        message: tr("cannot_open_file_detail"),
         detail: `${(err as Error).message}`,
       });
     }
   }
 
-  async handleSaveFile(): Promise<void> {
-    if (!this.currentFilePath) {
-      await this.handleSaveFileAs();
-      return;
-    }
-    this.writeCurrentTo(this.currentFilePath);
-    this.isDirty = false;
-    this.broadcastFileInfo();
-  }
-
   async handleSaveFileAs(): Promise<void> {
     const res = await dialog.showSaveDialog(this.win!, {
       defaultPath: this.currentFilePath ?? "untitled.ahbs",
-      filters: [{ name: "AHB Sales Files", extensions: ["ahbs"] }],
+      filters: [{ name: tr("file_type_ahbs"), extensions: ["ahbs"] }],
     });
     if (res.canceled || !res.filePath) return;
 
@@ -232,6 +273,7 @@ export class FileService {
 
   async closeFile(): Promise<void> {
     if (!this.currentFilePath) return; // nothing to close
+    this.saves.cancel();
 
     // Don't clear cache - keep for potential reopen
 
@@ -246,66 +288,21 @@ export class FileService {
     this.broadcastFileInfo();
   }
 
-  async askToSaveChanges(): Promise<"save" | "dont" | "cancel"> {
-    if (!this.isDirty) return "dont";
-    const result = await dialog.showMessageBox(this.win!, {
-      type: "question",
-      buttons: ["Save", "Don't Save", "Cancel"],
-      defaultId: 0,
-      cancelId: 2,
-      title: "Unsaved changes",
-      message: "You have unsaved changes. Do you want to save them?",
-    });
-    return result.response === 0
-      ? "save"
-      : result.response === 1
-        ? "dont"
-        : "cancel";
-  }
-
-  async saveCurrentPossiblyAs(): Promise<boolean> {
-    if (this.currentFilePath) {
-      await this.handleSaveFile();
-      return true;
-    }
-    await this.handleSaveFileAs();
-    return Boolean(this.currentFilePath);
-  }
-
+  // Each flow leaves the current document behind, so anything still waiting on
+  // the timer is written first.
   async newFileFlow(): Promise<void> {
-    if (this.isDirty) {
-      const decision = await this.askToSaveChanges();
-      if (decision === "cancel") return;
-      if (decision === "save") {
-        const ok = await this.saveCurrentPossiblyAs();
-        if (!ok) return; // user canceled save-as
-      }
-    }
+    this.flushPendingSave();
     await this.handleNewFile();
   }
 
   async openFileFlow(): Promise<void> {
-    if (this.isDirty) {
-      const decision = await this.askToSaveChanges();
-      if (decision === "cancel") return;
-      if (decision === "save") {
-        const ok = await this.saveCurrentPossiblyAs();
-        if (!ok) return;
-      }
-    }
+    this.flushPendingSave();
     await this.handleOpenFile();
   }
 
   async closeFileFlow(): Promise<void> {
     if (!this.currentFilePath) return; // nothing to close
-    if (this.isDirty) {
-      const decision = await this.askToSaveChanges();
-      if (decision === "cancel") return;
-      if (decision === "save") {
-        const ok = await this.saveCurrentPossiblyAs();
-        if (!ok) return;
-      }
-    }
+    this.flushPendingSave();
     await this.closeFile();
   }
 
@@ -327,9 +324,8 @@ export class FileService {
       logger.error("Failed to open file by path", "FileService", err);
       await dialog.showMessageBox(this.win!, {
         type: "error",
-        title: "Cannot open file",
-        message:
-          "This file could not be opened. It may be corrupted or encrypted with a different key.",
+        title: tr("cannot_open_file"),
+        message: tr("cannot_open_file_detail"),
         detail: `${(err as Error).message}`,
       });
     }

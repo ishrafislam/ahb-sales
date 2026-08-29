@@ -28,8 +28,12 @@ export const PRINT_WINDOW_DELAY = 100;
 // Page geometry (millimetres)
 export const A4_WIDTH_MM = 210;
 export const A4_HEIGHT_MM = 297;
-export const MIN_MARGIN_MM = 0;
-export const MAX_MARGIN_MM = 50;
+export const MM_PER_INCH = 25.4;
+
+// Page margins (inches)
+export const MIN_MARGIN_IN = 0;
+export const MAX_MARGIN_IN = 4;
+export const MARGIN_STEP_IN = 0.1;
 
 // Print preview zoom
 export const ZOOM_MIN = 0.25;

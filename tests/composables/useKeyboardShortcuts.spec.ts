@@ -17,7 +17,7 @@ describe("useKeyboardShortcuts", () => {
     handler2 = vi.fn();
     shortcuts = [
       { key: "n", ctrl: true, handler: handler1, description: "New file" },
-      { key: "s", ctrl: true, handler: handler2, description: "Save file" },
+      { key: "o", ctrl: true, handler: handler2, description: "Open file" },
     ];
   });
 

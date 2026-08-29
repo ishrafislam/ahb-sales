@@ -23,7 +23,7 @@
             <div
               class="w-14 shrink-0 px-3 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-700 dark:text-gray-100"
             >
-              {{ id }}
+              {{ ld(id) }}
             </div>
             <div
               class="px-3 py-2 text-sm truncate text-gray-700 dark:text-gray-200"
@@ -41,10 +41,10 @@
         <label :class="labelClass" for="item-id">{{ t("item_id") }}</label>
         <input
           id="item-id"
-          :value="String(selectedId)"
+          :value="ld(selectedId)"
           :class="fieldClass"
           type="text"
-          disabled
+          readonly
         />
       </div>
 
@@ -55,7 +55,7 @@
           :value="selected?.nameBn || ''"
           :class="fieldClass"
           type="text"
-          disabled
+          readonly
         />
       </div>
 
@@ -68,7 +68,7 @@
           :value="selected?.description || ''"
           :class="fieldClass"
           rows="2"
-          disabled
+          readonly
         ></textarea>
       </div>
 
@@ -77,10 +77,10 @@
           <label :class="labelClass" for="item-stock">{{ t("stock") }}</label>
           <input
             id="item-stock"
-            :value="stockText"
+            :value="ld(stockText)"
             :class="[fieldClass, 'text-right']"
             type="text"
-            disabled
+            readonly
           />
         </div>
         <div>
@@ -90,7 +90,7 @@
             :value="selected?.unit || ''"
             :class="fieldClass"
             type="text"
-            disabled
+            readonly
           />
         </div>
       </div>
@@ -101,10 +101,10 @@
         }}</label>
         <input
           id="item-last-purchase-date"
-          :value="lastPurchaseDateText"
+          :value="ld(lastPurchaseDateText)"
           :class="fieldClass"
           type="text"
-          disabled
+          readonly
         />
       </div>
 
@@ -114,10 +114,10 @@
         }}</label>
         <input
           id="item-last-purchase-amount"
-          :value="lastPurchaseQtyText"
+          :value="ld(lastPurchaseQtyText)"
           :class="[fieldClass, 'text-right']"
           type="text"
-          disabled
+          readonly
         />
       </div>
     </div>
@@ -128,6 +128,8 @@
         :columns="[t('date'), t('amount'), t('unit')]"
         :rows="purchaseCells"
         :empty-text="t('no_purchases')"
+        :action-label="t('edit')"
+        @action="startEdit"
       />
 
       <div class="grid grid-cols-2 gap-4">
@@ -135,10 +137,10 @@
           <label :class="labelClass" for="purchase-date">{{ t("date") }}</label>
           <input
             id="purchase-date"
-            :value="todayText"
+            :value="ld(editingId ? editingDateText : todayText)"
             :class="[fieldClass, 'text-right']"
             type="text"
-            disabled
+            readonly
           />
         </div>
         <div>
@@ -147,12 +149,12 @@
           }}</label>
           <input
             id="purchase-amount"
-            v-model="amountText"
+            :value="ld(amountText)"
             :class="[fieldClass, 'text-right no-spinner']"
-            type="number"
-            min="0"
-            step="0.01"
-            :disabled="!exists"
+            type="text"
+            inputmode="decimal"
+            :readonly="!exists"
+            @input="amountText = toLatinDigits(($event.target as HTMLInputElement).value)"
             @keydown.enter.prevent="update"
           />
         </div>
@@ -163,6 +165,14 @@
       </p>
 
       <div class="mt-auto flex justify-end gap-3 pt-2">
+        <button
+          v-if="editingId"
+          type="button"
+          :class="buttonClass"
+          @click="cancelEdit"
+        >
+          {{ t("cancel") }}
+        </button>
         <button
           type="button"
           :class="buttonClass"
@@ -184,6 +194,11 @@ defineOptions({ name: "AhbPurchaseEntry" });
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
 import HistoryTable from "../components/HistoryTable.vue";
+import {
+  localizeDigits as ld,
+  parseNumber,
+  toLatinDigits,
+} from "../utils/numerals";
 import { MAX_PRODUCT_ID, MAX_PURCHASE_QUANTITY } from "../constants/business";
 
 interface ProductRow {
@@ -195,6 +210,7 @@ interface ProductRow {
 }
 
 interface PurchaseRow {
+  id: string;
   date: string;
   unit: string;
   quantity: number;
@@ -202,11 +218,16 @@ interface PurchaseRow {
 
 const products = ref<ProductRow[]>([]);
 const purchases = ref<PurchaseRow[]>([]);
-// A number input hands back a number, an empty box an empty string
-const amountText = ref<string | number>("");
+// Kept as the Latin text the box was typed with; the display transliterates
+const amountText = ref<string>("");
 const error = ref("");
 const lastPurchaseDateText = ref("");
 const lastPurchaseQtyText = ref("");
+
+// A history row loaded for correction: its id, and the day it was bought,
+// which the date box shows in place of today's
+const editingId = ref<string | null>(null);
+const editingDateText = ref("");
 
 // Opened either bare or as `#purchase-entry/<productId>` from the item form
 function initialSelectedId(): number {
@@ -235,7 +256,7 @@ const stockText = computed(() =>
   selected.value ? String(selected.value.stock) : ""
 );
 
-const amountValue = computed(() => Number(amountText.value));
+const amountValue = computed(() => parseNumber(amountText.value));
 const canUpdate = computed(
   () =>
     exists.value &&
@@ -250,8 +271,8 @@ function formatDate(iso: string) {
 
 const purchaseCells = computed(() =>
   purchases.value.map((p) => [
-    formatDate(p.date),
-    String(p.quantity),
+    ld(formatDate(p.date)),
+    ld(p.quantity),
     p.unit,
   ])
 );
@@ -259,9 +280,9 @@ const purchaseCells = computed(() =>
 function select(id: number) {
   if (id === selectedId.value) return;
   selectedId.value = id;
-  // A typed amount belongs to the item it was typed for
-  amountText.value = "";
-  error.value = "";
+  // A typed amount, and a row loaded for editing, belong to the item they
+  // were opened for
+  cancelEdit();
   void loadPurchases(id);
   void scrollSelectedIntoView();
 }
@@ -299,30 +320,69 @@ async function loadPurchases(id: number) {
   // Arrow keys can move the selection on before this resolves
   if (id !== selectedId.value) return;
   purchases.value = (list || []).map((p) => ({
+    id: p.id,
     date: p.date,
     unit: p.unit,
     quantity: p.quantity,
   }));
+  // The row being edited can vanish under another window's changes
+  if (editingId.value && !purchases.value.some((p) => p.id === editingId.value))
+    cancelEdit();
   const latest = purchases.value[0];
   if (!latest) return;
   lastPurchaseDateText.value = formatDate(latest.date);
   lastPurchaseQtyText.value = String(latest.quantity);
 }
 
+/** Load a history row into the entry fields for correction. */
+function startEdit(rowIndex: number) {
+  const row = purchases.value[rowIndex];
+  // Without an id there is nothing to correct, and loading the fields anyway
+  // would turn the next Enter into a fresh purchase
+  if (!row?.id) return;
+  editingId.value = row.id;
+  editingDateText.value = formatDate(row.date);
+  amountText.value = String(row.quantity);
+  error.value = "";
+  void focusAmount();
+}
+
+function cancelEdit() {
+  editingId.value = null;
+  editingDateText.value = "";
+  amountText.value = "";
+  error.value = "";
+}
+
+async function focusAmount() {
+  await nextTick();
+  const el = document.getElementById("purchase-amount");
+  if (el instanceof HTMLInputElement) {
+    el.focus();
+    el.select();
+  }
+}
+
 async function update() {
   if (!canUpdate.value) return;
   error.value = "";
   try {
-    await window.ahb.postPurchase({
-      productId: selectedId.value,
-      quantity: amountValue.value,
-    });
+    if (editingId.value) {
+      await window.ahb.updatePurchase(editingId.value, {
+        quantity: amountValue.value,
+      });
+    } else {
+      await window.ahb.postPurchase({
+        productId: selectedId.value,
+        quantity: amountValue.value,
+      });
+    }
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
     return;
   }
   // Ready for the next entry; Update disables itself again
-  amountText.value = "";
+  cancelEdit();
   await load();
   await loadPurchases(selectedId.value);
 }
@@ -370,7 +430,7 @@ const labelClass =
   "block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1";
 
 const fieldClass =
-  "block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";
+  "block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default";
 
 const buttonClass =
   "min-w-[7rem] bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-2 px-4 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";

@@ -139,6 +139,26 @@ describe("postInvoice (Phase 2)", () => {
     ).toThrow(/exceed subtotal/);
   });
 
+  it("takes a quantity of 0 as an item given away", () => {
+    const data = initData();
+    addProduct(data, { id: 1, nameBn: "চিনি", unit: "kg", price: 100, stock: 10 });
+    addProduct(data, { id: 2, nameBn: "চাল", unit: "kg", price: 50, stock: 20 });
+    addCustomer(data, { id: 1, nameBn: "C" });
+
+    const inv = postInvoice(data, {
+      customerId: 1,
+      lines: [
+        { productId: 1, quantity: 2, rate: 100 },
+        { productId: 2, quantity: 0, rate: 50 },
+      ],
+    });
+
+    expect(inv.lines[1]).toMatchObject({ quantity: 0, lineTotal: 0 });
+    expect(inv.totals.subtotal).toBe(200);
+    // Nothing left the shelf for the free line
+    expect(data.products.find((p) => p.id === 2)!.stock).toBe(20);
+  });
+
   it("allows negative stock and rejects invalid quantities/rates", () => {
     const data = initData();
     addProduct(data, {
@@ -163,9 +183,9 @@ describe("postInvoice (Phase 2)", () => {
     expect(() =>
       postInvoice(data, {
         customerId: 1,
-        lines: [{ productId: 1, quantity: 0 }],
+        lines: [{ productId: 1, quantity: -1 }],
       })
-    ).toThrow(/Quantity must be > 0/);
+    ).toThrow(/Quantity must be >= 0/);
 
     // Negative rate override
     expect(() =>
@@ -298,9 +318,9 @@ describe("postInvoice on an empty customer slot", () => {
       postInvoice(data, {
         customerId: 100,
         createMissingCustomer: true,
-        lines: [{ productId: 1, quantity: 0 }],
+        lines: [{ productId: 1, quantity: -1 }],
       })
-    ).toThrow(/Quantity must be > 0/);
+    ).toThrow(/Quantity must be >= 0/);
     expect(data.customers.length).toBe(0);
   });
 

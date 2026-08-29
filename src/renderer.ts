@@ -46,6 +46,8 @@ import DailyReportRangeWindow from "./DailyReportRangeWindow.vue";
 import ClientSelectWindow from "./ClientSelectWindow.vue";
 import ClientReportRangeWindow from "./ClientReportRangeWindow.vue";
 import PaymentReportRangeWindow from "./PaymentReportRangeWindow.vue";
+import RecordDetailsWindow from "./RecordDetailsWindow.vue";
+import SelectPrintWindow from "./SelectPrintWindow.vue";
 
 void initTheme();
 const pinia = createPinia();
@@ -56,6 +58,8 @@ const hash = window.location.hash;
 // "#edit-payment" and so on.
 const routes = [
   ["#customer-history", CustomerHistoryWindow],
+  ["#record-details", RecordDetailsWindow],
+  ["#select-print", SelectPrintWindow],
   ["#customers", CustomersWindow],
   ["#products", ProductsWindow],
   ["#purchase-entry", PurchaseEntryWindow],

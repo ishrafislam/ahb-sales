@@ -12,18 +12,18 @@
           <label class="text-xs whitespace-nowrap w-24">{{ t("v2_product_id") }}:</label>
           <input
             type="text"
-            :value="selectedProductIdText"
-            disabled
-            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            :value="ld(selectedProductIdText)"
+            readonly
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
           />
         </div>
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap w-24">{{ t("v2_stock_qty") }}:</label>
           <input
             type="text"
-            :value="selectedProductStockText"
-            disabled
-            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            :value="ld(selectedProductStockText)"
+            readonly
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
           />
         </div>
       </div>
@@ -40,12 +40,39 @@
         </div>
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_customer_id") }}:</label>
-          <input
-            ref="customerIdInput"
-            v-model="customerId"
-            type="text"
-            :class="[inputClass, 'max-w-[9rem] text-right']"
-            @keydown.enter="loadLastBill"
+          <!-- The caret opens the slot list; focus alone only selects the id
+               so the next one typed replaces it -->
+          <div class="relative flex-1 min-w-0 max-w-[9rem]">
+            <input
+              ref="customerIdInput"
+              :value="ld(customerId)"
+              type="text"
+              :class="[inputClass, 'w-full pr-6 text-right']"
+              @focus="onCustomerIdFocus"
+              @input="onCustomerIdInput"
+              @blur="closeCustomerSlots"
+              @keydown.down.prevent="moveCustomerHighlight(1)"
+              @keydown.up.prevent="moveCustomerHighlight(-1)"
+              @keydown.esc.prevent="closeCustomerSlots"
+              @keydown.enter="onCustomerIdEnter"
+            />
+            <button
+              type="button"
+              class="absolute inset-y-0 right-0 px-1.5 text-[0.6rem] leading-none text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              :aria-label="t('v2_customer_id')"
+              data-role="customer-slots-toggle"
+              @mousedown.prevent
+              @click="toggleCustomerSlots"
+            >
+              ▼
+            </button>
+          </div>
+          <SlotDropdown
+            :open="customerSlotsOpen"
+            :options="customerSlotOptions"
+            :highlight="customerHighlight"
+            :anchor="customerIdInput"
+            @select="selectCustomerSlot"
           />
         </div>
       </div>
@@ -57,18 +84,18 @@
           <label class="text-xs whitespace-nowrap w-32">{{ t("v2_last_bill_date") }}:</label>
           <input
             type="text"
-            :value="lastBillDateText"
-            disabled
-            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            :value="ld(lastBillDateText)"
+            readonly
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
           />
         </div>
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap w-32">{{ t("v2_last_bill") }}:</label>
           <input
             type="text"
-            :value="lastBillText"
-            disabled
-            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+            :value="ld(lastBillText)"
+            readonly
+            :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
           />
         </div>
       </div>
@@ -76,17 +103,73 @@
       <div
         class="lg:col-span-5 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
       >
+        <!-- Name search: type to get suggestions, pick one, then Search opens
+             that record's details in its own window -->
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap w-24">{{ t("v2_customer_name") }}:</label>
-          <input type="text" :class="inputClass" />
-          <button type="button" :class="[buttonClass, 'px-4 h-8 text-xs']">
+          <input
+            ref="customerNameInput"
+            v-model="customerNameQuery"
+            type="text"
+            :class="inputClass"
+            data-role="customer-name-search"
+            @input="onCustomerNameInput"
+            @blur="customerNameOpen = false"
+            @keydown.down.prevent="moveNameHighlight('customer', 1)"
+            @keydown.up.prevent="moveNameHighlight('customer', -1)"
+            @keydown.esc.prevent="customerNameOpen = false"
+            @keydown.enter.prevent="onCustomerNameEnter"
+          />
+          <SlotDropdown
+            :open="customerNameOpen"
+            :options="customerNameOptions"
+            :highlight="customerNameHighlight"
+            :anchor="customerNameInput"
+            name-only
+            fit-anchor
+            @select="pickCustomerName"
+          />
+          <button
+            type="button"
+            :class="[buttonClass, 'px-4 h-8 text-xs disabled:opacity-70 disabled:cursor-not-allowed']"
+            :disabled="pickedCustomerId === null"
+            data-role="customer-name-search-button"
+            @click="openCustomerDetails"
+          >
             {{ t("v2_search") }}
           </button>
         </div>
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap w-24">{{ t("v2_product_name") }}:</label>
-          <input type="text" :class="inputClass" />
-          <button type="button" :class="[buttonClass, 'px-4 h-8 text-xs']">
+          <input
+            ref="productNameInput"
+            v-model="productNameQuery"
+            type="text"
+            :class="inputClass"
+            data-role="product-name-search"
+            @input="onProductNameInput"
+            @blur="productNameOpen = false"
+            @keydown.down.prevent="moveNameHighlight('product', 1)"
+            @keydown.up.prevent="moveNameHighlight('product', -1)"
+            @keydown.esc.prevent="productNameOpen = false"
+            @keydown.enter.prevent="onProductNameEnter"
+          />
+          <SlotDropdown
+            :open="productNameOpen"
+            :options="productNameOptions"
+            :highlight="productNameHighlight"
+            :anchor="productNameInput"
+            name-only
+            fit-anchor
+            @select="pickProductName"
+          />
+          <button
+            type="button"
+            :class="[buttonClass, 'px-4 h-8 text-xs disabled:opacity-70 disabled:cursor-not-allowed']"
+            :disabled="pickedProductId === null"
+            data-role="product-name-search-button"
+            @click="openProductDetails"
+          >
             {{ t("v2_search") }}
           </button>
         </div>
@@ -100,33 +183,46 @@
         <div
           class="shrink-0 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
         >
+          <!-- Name and address save straight from here: Enter, or leaving the
+               field. Receivable stays read-only — it can only be set when the
+               customer is created. -->
           <div class="flex items-center gap-2">
             <label class="text-xs whitespace-nowrap w-14">{{ t("v2_customer") }}:</label>
             <input
+              id="customer-name"
+              v-model="customerNameText"
               type="text"
-              :value="customerNameText"
-              disabled
-              :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              :class="[inputClass, 'text-right']"
+              @keydown.enter.prevent="commitCustomer"
+              @blur="commitCustomer"
             />
           </div>
           <div class="flex items-center gap-2">
             <label class="text-xs whitespace-nowrap w-14">{{ t("v2_address") }}:</label>
             <input
+              id="customer-address"
+              v-model="customerAddressText"
               type="text"
-              :value="customerAddressText"
-              disabled
-              :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              :class="[inputClass, 'text-right']"
+              @keydown.enter.prevent="commitCustomer"
+              @blur="commitCustomer"
             />
           </div>
           <div class="flex items-center gap-2">
             <label class="text-xs whitespace-nowrap w-14">{{ t("v2_receivable") }}:</label>
             <input
               type="text"
-              :value="customerReceivableText"
-              disabled
-              :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              :value="ld(customerReceivableText)"
+              readonly
+              :class="[inputClass, 'text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
             />
           </div>
+          <p
+            v-if="customerError"
+            class="text-xs text-red-600 dark:text-red-400"
+          >
+            {{ customerError }}
+          </p>
         </div>
 
         <!-- The customer card above stays put; only the button cards scroll -->
@@ -200,20 +296,21 @@
             <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_grand_total") }}:</label>
             <input
               type="text"
-              :value="grandTotalText"
-              disabled
-              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              :value="ld(grandTotalText)"
+              readonly
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
             />
           </div>
           <div class="flex items-center gap-2">
             <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_discount") }}:</label>
             <input
               ref="discountInput"
-              v-model="discountText"
+              :value="ld(discountText)"
               type="text"
               inputmode="decimal"
-              :disabled="posted"
-              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              @input="discountText = toLatinDigits(($event.target as HTMLInputElement).value)"
+              :readonly="posted"
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
               @keydown.enter.prevent="onDiscountEnter"
               @blur="onDiscountBlur"
             />
@@ -222,18 +319,18 @@
             <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_bill") }}:</label>
             <input
               type="text"
-              :value="billText"
-              disabled
-              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              :value="ld(billText)"
+              readonly
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
             />
           </div>
           <div class="flex items-center gap-2">
             <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_deposit") }}:</label>
             <input
               type="text"
-              :value="paidTotalText"
-              disabled
-              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed']"
+              :value="ld(paidTotalText)"
+              readonly
+              :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
             />
           </div>
         </div>
@@ -290,6 +387,14 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
 import { t } from "../i18n";
 import type { Invoice } from "../main/data";
+import SlotDropdown from "../components/dashboard/SlotDropdown.vue";
+import { toSlots, filterSlots, type SlotOption } from "../components/dashboard/slotOptions";
+import { matchByName } from "../utils/fuzzy";
+import {
+  localizeDigits as ld,
+  parseNumber,
+  toLatinDigits,
+} from "../utils/numerals";
 import ProductEntryTable, {
   type EntryRow,
 } from "../components/dashboard/ProductEntryTable.vue";
@@ -323,6 +428,14 @@ const customerAddressText = ref("");
 const customerPhoneText = ref("");
 const customerReceivableText = ref("");
 
+// What the file holds for the two editable fields, so a commit can tell a real
+// edit from a plain re-focus and can restore them if a save is refused
+const savedCustomerName = ref("");
+const savedCustomerAddress = ref("");
+const customerExists = ref(false);
+const customerError = ref("");
+let savingCustomer = false;
+
 function setCustomerInfo(
   customer: {
     nameBn: string;
@@ -337,6 +450,285 @@ function setCustomerInfo(
   customerReceivableText.value = customer
     ? customer.outstanding.toFixed(2)
     : "";
+  savedCustomerName.value = customerNameText.value;
+  savedCustomerAddress.value = customerAddressText.value;
+  customerExists.value = customer !== null;
+  customerError.value = "";
+}
+
+/**
+ * Save the customer's name and address, on Enter or on leaving the field.
+ * Typing into an id with no record behind it creates the customer there — the
+ * same slot a sale would have created, just named up front.
+ */
+async function commitCustomer() {
+  if (savingCustomer) return;
+  const id = parseCustomerId();
+  if (id === undefined) return;
+  const nameBn = customerNameText.value.trim();
+  const address = customerAddressText.value.trim();
+  // Unchanged: a re-focus, or the blur that Enter itself caused
+  if (
+    nameBn === savedCustomerName.value &&
+    address === savedCustomerAddress.value
+  ) {
+    return;
+  }
+  // Nothing typed and nothing on file: do not create an empty customer
+  if (!customerExists.value && !nameBn && !address) return;
+
+  savingCustomer = true;
+  customerError.value = "";
+  try {
+    if (customerExists.value) {
+      await window.ahb.updateCustomer(id, {
+        nameBn,
+        address: address || undefined,
+      });
+    } else {
+      await window.ahb.addCustomer({
+        id,
+        nameBn,
+        address: address || undefined,
+      });
+      customerExists.value = true;
+    }
+    savedCustomerName.value = nameBn;
+    savedCustomerAddress.value = address;
+    customerNameText.value = nameBn;
+    customerAddressText.value = address;
+  } catch (e) {
+    customerError.value = e instanceof Error ? e.message : String(e);
+    customerNameText.value = savedCustomerName.value;
+    customerAddressText.value = savedCustomerAddress.value;
+  } finally {
+    savingCustomer = false;
+  }
+}
+
+// Customer ID dropdown: every slot 1..MAX_CUSTOMER_ID, saved records merged in
+const customerSlots = ref<SlotOption[]>([]);
+const customerSlotsOpen = ref(false);
+const customerHighlight = ref(-1);
+let customerSlotsLoaded = false;
+
+const customerSlotOptions = computed(() =>
+  filterSlots(customerSlots.value, customerId.value)
+);
+
+async function loadCustomerSlots() {
+  // A dropdown that cannot be filled is not worth breaking the field over
+  let customers: Awaited<ReturnType<typeof window.ahb.listCustomers>> = [];
+  try {
+    customers = await window.ahb.listCustomers();
+  } catch {
+    return;
+  }
+  customerSlots.value = toSlots(
+    customers.map((c) => ({
+      id: c.id,
+      primary: c.nameBn,
+      secondary: c.address,
+    })),
+    MAX_CUSTOMER_ID
+  );
+  customerSlotsLoaded = true;
+}
+
+async function openCustomerSlots() {
+  customerHighlight.value = -1;
+  customerSlotsOpen.value = true;
+  if (!customerSlotsLoaded) await loadCustomerSlots();
+}
+
+// Whatever is in there is about to be replaced by the next id typed
+function onCustomerIdFocus() {
+  customerIdInput.value?.select();
+}
+
+function toggleCustomerSlots() {
+  if (customerSlotsOpen.value) {
+    closeCustomerSlots();
+    return;
+  }
+  customerIdInput.value?.focus();
+  void openCustomerSlots();
+}
+
+function closeCustomerSlots() {
+  customerSlotsOpen.value = false;
+  customerHighlight.value = -1;
+}
+
+// Typing re-filters an open list; it never opens one — that is the caret's
+// job. The old highlight no longer points at the same row afterwards.
+// The box shows the app's numerals; the model behind it is always Latin
+function onCustomerIdInput(e: Event) {
+  customerId.value = toLatinDigits((e.target as HTMLInputElement).value);
+  customerHighlight.value = -1;
+}
+
+function moveCustomerHighlight(step: number) {
+  if (!customerSlotsOpen.value) {
+    void openCustomerSlots();
+    return;
+  }
+  const count = customerSlotOptions.value.length;
+  if (!count) return;
+  const next = customerHighlight.value + step;
+  customerHighlight.value = next < 0 ? count - 1 : next >= count ? 0 : next;
+}
+
+function selectCustomerSlot(option: SlotOption) {
+  customerId.value = String(option.id);
+  closeCustomerSlots();
+  void loadLastBill();
+}
+
+// Enter picks the highlighted slot; with nothing highlighted it loads whatever
+// was typed, exactly as before the dropdown existed
+function onCustomerIdEnter() {
+  const option = customerSlotOptions.value[customerHighlight.value];
+  if (customerSlotsOpen.value && option) {
+    selectCustomerSlot(option);
+    return;
+  }
+  closeCustomerSlots();
+  void loadLastBill();
+}
+
+// Name search boxes: suggestions from the saved records, and a picked id that
+// the Search button opens a details window for. Editing the text after picking
+// clears the id, so Search never opens a record the box no longer names.
+type NameRecord = {
+  id: number;
+  nameBn: string;
+  secondary?: string;
+  active: boolean;
+};
+
+const customerNameInput = ref<HTMLInputElement | null>(null);
+const productNameInput = ref<HTMLInputElement | null>(null);
+const customerNameQuery = ref("");
+const productNameQuery = ref("");
+const customerNameOpen = ref(false);
+const productNameOpen = ref(false);
+const customerNameHighlight = ref(-1);
+const productNameHighlight = ref(-1);
+const pickedCustomerId = ref<number | null>(null);
+const pickedProductId = ref<number | null>(null);
+const customerRecords = ref<NameRecord[]>([]);
+const productRecords = ref<NameRecord[]>([]);
+let customerRecordsLoaded = false;
+let productRecordsLoaded = false;
+
+// Inactive records are searchable too — the details window says so
+async function loadCustomerRecords() {
+  try {
+    const customers = await window.ahb.listCustomers({ activeOnly: false });
+    customerRecords.value = customers.map((c) => ({
+      id: c.id,
+      nameBn: c.nameBn,
+      secondary: c.address,
+      active: c.active,
+    }));
+    customerRecordsLoaded = true;
+  } catch {
+    /* a search box that cannot load is simply empty */
+  }
+}
+
+async function loadProductRecords() {
+  try {
+    const products = await window.ahb.listProducts({ activeOnly: false });
+    productRecords.value = products.map((p) => ({
+      id: p.id,
+      nameBn: p.nameBn,
+      secondary: p.description,
+      active: p.active,
+    }));
+    productRecordsLoaded = true;
+  } catch {
+    /* as above */
+  }
+}
+
+// The panel shows names and nothing else; a close spelling is offered the same
+// way an exact one is
+function toNameOptions(records: NameRecord[], query: string): SlotOption[] {
+  return matchByName(records, query, (r) => r.nameBn).map(({ item }) => ({
+    id: item.id,
+    primary: item.nameBn,
+  }));
+}
+
+const customerNameOptions = computed(() =>
+  toNameOptions(customerRecords.value, customerNameQuery.value)
+);
+const productNameOptions = computed(() =>
+  toNameOptions(productRecords.value, productNameQuery.value)
+);
+
+function onCustomerNameInput() {
+  pickedCustomerId.value = null;
+  customerNameHighlight.value = -1;
+  customerNameOpen.value = true;
+  if (!customerRecordsLoaded) void loadCustomerRecords();
+}
+
+function onProductNameInput() {
+  pickedProductId.value = null;
+  productNameHighlight.value = -1;
+  productNameOpen.value = true;
+  if (!productRecordsLoaded) void loadProductRecords();
+}
+
+function moveNameHighlight(kind: "customer" | "product", step: number) {
+  const open = kind === "customer" ? customerNameOpen : productNameOpen;
+  const highlight =
+    kind === "customer" ? customerNameHighlight : productNameHighlight;
+  const count = (
+    kind === "customer" ? customerNameOptions : productNameOptions
+  ).value.length;
+  if (!open.value || !count) return;
+  const next = highlight.value + step;
+  highlight.value = next < 0 ? count - 1 : next >= count ? 0 : next;
+}
+
+function pickCustomerName(option: SlotOption) {
+  const record = customerRecords.value.find((r) => r.id === option.id);
+  customerNameQuery.value = record?.nameBn ?? "";
+  pickedCustomerId.value = option.id;
+  customerNameOpen.value = false;
+  customerNameHighlight.value = -1;
+}
+
+function pickProductName(option: SlotOption) {
+  const record = productRecords.value.find((r) => r.id === option.id);
+  productNameQuery.value = record?.nameBn ?? "";
+  pickedProductId.value = option.id;
+  productNameOpen.value = false;
+  productNameHighlight.value = -1;
+}
+
+function onCustomerNameEnter() {
+  const option = customerNameOptions.value[customerNameHighlight.value];
+  if (customerNameOpen.value && option) pickCustomerName(option);
+}
+
+function onProductNameEnter() {
+  const option = productNameOptions.value[productNameHighlight.value];
+  if (productNameOpen.value && option) pickProductName(option);
+}
+
+function openCustomerDetails() {
+  if (pickedCustomerId.value === null) return;
+  void window.ahb.openRecordDetailsWindow("customer", pickedCustomerId.value);
+}
+
+function openProductDetails() {
+  if (pickedProductId.value === null) return;
+  void window.ahb.openRecordDetailsWindow("product", pickedProductId.value);
 }
 
 const entryTable = ref<InstanceType<typeof ProductEntryTable> | null>(null);
@@ -353,8 +745,8 @@ const ceil2 = (n: number) => Math.ceil(n * 100) / 100;
 const grandTotal = computed(() =>
   entryRows.value.reduce((sum, row) => {
     if (!row.product) return sum;
-    const amount = Number.parseFloat(row.amountText);
-    if (!Number.isFinite(amount) || amount <= 0) return sum;
+    const amount = parseNumber(row.amountText);
+    if (!Number.isFinite(amount) || amount < 0) return sum;
     if (row.price === null) return sum;
     return sum + ceil2(amount * row.price);
   }, 0)
@@ -370,7 +762,7 @@ const discountText = ref("");
 const discount = ref(0);
 
 function onDiscountEnter() {
-  const d = Number.parseFloat(discountText.value);
+  const d = parseNumber(discountText.value);
   if (!Number.isFinite(d) || d < 0 || d > grandTotal.value) {
     discountText.value = discount.value > 0 ? discount.value.toFixed(2) : "";
   } else {
@@ -439,9 +831,17 @@ async function onDataChanged(payload: {
   action: string;
   id: number;
 }) {
-  if (payload.kind === "product" && payload.action === "stock-updated") {
+  if (payload.kind === "product") {
+    void entryTable.value?.reloadSlots();
+    if (productRecordsLoaded) void loadProductRecords();
+    if (payload.action !== "stock-updated") return;
     const product = await window.ahb.getProductById(payload.id);
     if (product) entryTable.value?.refreshProductStock(payload.id, product.stock);
+    return;
+  }
+  if (payload.kind === "customer") {
+    if (customerSlotsLoaded) await loadCustomerSlots();
+    if (customerRecordsLoaded) await loadCustomerRecords();
     return;
   }
   if (payload.kind !== "invoice" || payload.action !== "payment") return;
@@ -460,8 +860,9 @@ async function onPostData() {
   if (custId === undefined) return;
   const lines = entryRows.value.flatMap((row) => {
     if (!row.product || row.price === null) return [];
-    const quantity = Number.parseFloat(row.amountText);
-    if (!Number.isFinite(quantity) || quantity <= 0) return [];
+    const quantity = parseNumber(row.amountText);
+    // A quantity of 0 is a real line: the item is named, nothing is charged
+    if (!Number.isFinite(quantity) || quantity < 0) return [];
     return [{ productId: row.product.id, quantity, rate: row.price }];
   });
   if (!lines.length) return;
@@ -489,8 +890,8 @@ async function onPostData() {
     // Hide incomplete rows (e.g. the auto-appended trailing empty row)
     entryRows.value = entryRows.value.filter((row) => {
       if (!row.product) return false;
-      const quantity = Number.parseFloat(row.amountText);
-      if (!Number.isFinite(quantity) || quantity <= 0) return false;
+      const quantity = parseNumber(row.amountText);
+      if (!Number.isFinite(quantity) || quantity < 0) return false;
       // The sale has left the shelf now: carry the row's cached stock forward
       // by whatever this post moved, and mark the quantity as accounted for so
       // the header stops projecting it.
@@ -566,6 +967,9 @@ async function loadLastBill() {
     // An invoice from today loads into the locked posted state, exactly
     // as right after Post Data: Edit unlocks it, Payment applies to it.
     await loadPostedInvoice(todayInvoice);
+    // Entry mode lands on the first ID cell; a loaded invoice does the same,
+    // so the header opens on the first line's product and stock
+    entryTable.value?.focusFirstRow();
   } else {
     // Start product entry: focus moves into the first row's ID cell
     entryTable.value?.startEntry();
@@ -633,7 +1037,10 @@ const printButtons: Array<{
 }> = [
   { key: "v2_single_print", handler: () => void onSinglePrint(), enabled: posted },
   { key: "v2_direct_print" },
-  { key: "v2_select_print" },
+  {
+    key: "v2_select_print",
+    handler: () => void window.ahb.openSelectPrintWindow(),
+  },
 ];
 
 /** Send the posted invoice's receipt to the print preview window. */
@@ -680,7 +1087,7 @@ async function onSinglePrint() {
 }
 
 function parseCustomerId(): number | undefined {
-  const id = Number.parseInt(customerId.value, 10);
+  const id = Number.parseInt(toLatinDigits(customerId.value), 10);
   if (Number.isNaN(id) || id < MIN_CUSTOMER_ID || id > MAX_CUSTOMER_ID) {
     return undefined;
   }

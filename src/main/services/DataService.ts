@@ -14,6 +14,7 @@ import {
   listProductSales,
   listProductPurchases,
   postPurchase,
+  updatePurchase,
   reportMoneyTransactionsCustomerRange,
   reportMoneyTransactionsDayWise,
   reportDailyPayments,
@@ -27,10 +28,7 @@ import { DataIndex } from "../utils/dataIndex";
 export class DataService {
   private index = new DataIndex();
 
-  constructor(
-    private fileService: FileService,
-    private menuService?: { buildMenu: () => void }
-  ) {
+  constructor(private fileService: FileService) {
     // Build initial index
     this.rebuildIndex();
   }
@@ -60,13 +58,11 @@ export class DataService {
     return this.fileService.getCurrentDoc().data as AhbDataV1;
   }
 
+  // Marking dirty is also what schedules the file's automatic save. Nothing in
+  // the menu depends on the dirty flag any more, so it is not rebuilt here.
   private markDirty(): void {
     this.fileService.setDirty(true);
     this.fileService.broadcastFileInfo();
-    // Rebuild menu to update Save button state
-    if (this.menuService) {
-      this.menuService.buildMenu();
-    }
   }
 
   // Products
@@ -297,6 +293,30 @@ export class DataService {
       id: purchase.productId,
     });
     // Notify product stock update
+    this.fileService.notifyDataChanged({
+      kind: "product",
+      action: "stock-updated",
+      id: purchase.productId,
+    });
+    this.markDirty();
+    return purchase;
+  }
+
+  updatePurchase(id: string, payload: Parameters<typeof updatePurchase>[2]) {
+    const purchase = updatePurchase(this.getData(), id, payload);
+
+    // Same as postPurchase: the stock bump replaced the product object, so the
+    // index has to be fed the one now in `data`
+    const prod = this.getData().products.find(
+      (p) => p.id === purchase.productId
+    );
+    if (prod) this.index.updateProduct(prod);
+
+    this.fileService.notifyDataChanged({
+      kind: "purchase",
+      action: "update",
+      id: purchase.productId,
+    });
     this.fileService.notifyDataChanged({
       kind: "product",
       action: "stock-updated",

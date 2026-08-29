@@ -23,7 +23,7 @@
             <div
               class="w-14 shrink-0 px-3 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-700 dark:text-gray-100"
             >
-              {{ id }}
+              {{ ld(id) }}
             </div>
             <div
               class="px-3 py-2 text-sm truncate text-gray-700 dark:text-gray-200"
@@ -43,10 +43,10 @@
         }}</label>
         <input
           id="customer-id"
-          :value="String(selectedId)"
+          :value="ld(selectedId)"
           :class="fieldClass"
           type="text"
-          disabled
+          readonly
         />
       </div>
 
@@ -60,7 +60,7 @@
           v-model="form.nameBn"
           :class="fieldClass"
           type="text"
-          :disabled="!editing"
+          :readonly="!editing"
         />
       </div>
 
@@ -73,7 +73,7 @@
           v-model="form.address"
           :class="fieldClass"
           type="text"
-          :disabled="!editing"
+          :readonly="!editing"
         />
       </div>
 
@@ -85,7 +85,7 @@
           :class="fieldClass"
           type="text"
           maxlength="50"
-          :disabled="!editing"
+          :readonly="!editing"
         />
       </div>
 
@@ -98,7 +98,7 @@
           :value="outstandingText"
           :class="[fieldClass, 'text-right font-medium', outstandingClass]"
           type="text"
-          disabled
+          readonly
         />
       </div>
 
@@ -162,6 +162,7 @@
 defineOptions({ name: "AhbCustomers" });
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from "vue";
 import { t } from "../i18n";
+import { localizeDigits as ld } from "../utils/numerals";
 import { MAX_CUSTOMER_ID } from "../constants/business";
 
 interface CustomerRow {
@@ -210,7 +211,8 @@ const statusRadio = computed({
 // The colour carries the direction, so the amount is always shown unsigned.
 const outstanding = computed(() => selected.value?.outstanding ?? 0);
 const outstandingText = computed(
-  () => `${t("currency_taka")} ${Math.abs(outstanding.value).toFixed(2)}`
+  () =>
+    `${t("currency_taka")} ${ld(Math.abs(outstanding.value).toFixed(2))}`
 );
 const outstandingClass = computed(() => {
   if (outstanding.value > 0) return "text-red-600 dark:text-red-400";
@@ -328,7 +330,7 @@ const labelClass =
   "block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1";
 
 const fieldClass =
-  "block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";
+  "block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default";
 
 const buttonClass =
   "min-w-[7rem] bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-2 px-4 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";

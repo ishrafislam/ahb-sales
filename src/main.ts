@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeTheme } from "electron";
+import { app, BrowserWindow, clipboard, ipcMain, nativeTheme } from "electron";
 // Load environment variables from .env (dev convenience)
 import * as dotenv from "dotenv";
 try {
@@ -79,7 +79,7 @@ async function createWindow(filePath?: string): Promise<void> {
   });
 
   const fileService = new FileService(win);
-  const dataService = new DataService(fileService, menuService);
+  const dataService = new DataService(fileService);
 
   fileService.onDataChanged(() => {
     dataService.rebuildIndex();
@@ -92,15 +92,10 @@ async function createWindow(filePath?: string): Promise<void> {
   const ctx: WindowContext = { win, fileService, dataService };
   contexts.set(webContentsId, ctx);
 
-  // Intercept window close: prompt to save if dirty
-  win.on("close", (e) => {
-    if (!fileService.getIsDirty()) return;
-    e.preventDefault();
-    void fileService.askToSaveChanges().then(async (decision) => {
-      if (decision === "cancel") return;
-      if (decision === "save") await fileService.saveCurrentPossiblyAs();
-      win.destroy(); // bypasses the 'close' event
-    });
+  // Nothing is ever unsaved, so closing asks nothing — it only forces out a
+  // write still sitting on the autosave timer.
+  win.on("close", () => {
+    fileService.flushPendingSave();
   });
 
   win.on("closed", () => {
@@ -215,6 +210,8 @@ const salesHistoryWindows = new Map<number, BrowserWindow>();
 const totalSellWindows = new Map<number, BrowserWindow>();
 const dailyReportWindows = new Map<number, BrowserWindow>();
 const clientSelectWindows = new Map<number, BrowserWindow>();
+const recordDetailsWindows = new Map<number, BrowserWindow>();
+const selectPrintWindows = new Map<number, BrowserWindow>();
 const clientReportWindows = new Map<number, BrowserWindow>();
 const paymentReportWindows = new Map<number, BrowserWindow>();
 // Print windows are keyed by job id, not by opener: printing twice from the
@@ -505,6 +502,35 @@ async function openPaymentReportWindow(
   });
 }
 
+async function openRecordDetailsWindow(
+  sender: Electron.WebContents,
+  kind: "customer" | "product",
+  id: number
+): Promise<void> {
+  // openChildWindow reuses the window it already has for this parent, which
+  // would leave the previous record on screen. The window carries one record,
+  // so a request for another one replaces it.
+  const existing = recordDetailsWindows.get(sender.id);
+  if (existing && !existing.isDestroyed()) existing.destroy();
+  recordDetailsWindows.delete(sender.id);
+  await openChildWindow(
+    sender,
+    recordDetailsWindows,
+    `record-details/${kind}/${id}`,
+    { width: 460, height: 420, resizable: false }
+  );
+}
+
+async function openSelectPrintWindow(
+  sender: Electron.WebContents
+): Promise<void> {
+  await openChildWindow(sender, selectPrintWindows, "select-print", {
+    width: 820,
+    height: 700,
+    resizable: true,
+  });
+}
+
 async function openClientSelectWindow(
   sender: Electron.WebContents
 ): Promise<void> {
@@ -627,10 +653,6 @@ app.on("activate", () => {
 // File operations — routed to the sender's window context
 ipcMain.handle("app:new-file", async (e) => getCtx(e.sender).fileService.newFileFlow());
 ipcMain.handle("app:open-file", async (e) => getCtx(e.sender).fileService.openFileFlow());
-ipcMain.handle("app:save-file", async (e) => {
-  await getCtx(e.sender).fileService.handleSaveFile();
-  menuService.buildMenu();
-});
 ipcMain.handle("app:save-file-as", async (e) => {
   await getCtx(e.sender).fileService.handleSaveFileAs();
   menuService.buildMenu();
@@ -735,6 +757,10 @@ ipcMain.handle("data:post-purchase", async (e, payload) => {
   return getCtx(e.sender).dataService.postPurchase(payload);
 });
 
+ipcMain.handle("data:update-purchase", async (e, id: string, payload) => {
+  return getCtx(e.sender).dataService.updatePurchase(id, payload);
+});
+
 // Reports — routed to the sender's window context
 ipcMain.handle(
   "report:money-customer-range",
@@ -815,6 +841,23 @@ ipcMain.handle("window:open-daily-report", async (e) => {
 ipcMain.handle("window:open-payment-report", async (e) => {
   await openPaymentReportWindow(e.sender);
 });
+
+ipcMain.handle(
+  "window:open-record-details",
+  async (e, kind: "customer" | "product", id: number) => {
+    await openRecordDetailsWindow(e.sender, kind, id);
+  }
+);
+ipcMain.handle("window:open-select-print", async (e) => {
+  await openSelectPrintWindow(e.sender);
+});
+
+// The renderer cannot reach the system clipboard on its own
+ipcMain.handle("clipboard:write", async (_e, text: string) => {
+  clipboard.writeText(String(text ?? ""));
+});
+
+ipcMain.handle("clipboard:read", async () => clipboard.readText());
 
 ipcMain.handle("window:open-client-select", async (e) => {
   await openClientSelectWindow(e.sender);
