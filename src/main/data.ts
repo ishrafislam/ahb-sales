@@ -350,12 +350,16 @@ function applyInvoicePayment(
   data: AhbDataV1,
   invoiceId: string,
   input: AddInvoicePaymentInput,
+  // Returning null drops the payment record: the invoice goes back to
+  // carrying no payment at all.
   buildPayment: (
     existing: InvoicePayment | undefined,
     amount: number,
     notes: string | undefined,
     now: string
-  ) => InvoicePayment
+  ) => InvoicePayment | null,
+  // Editing accepts 0 (that is how a payment is removed); adding does not.
+  allowZero = false
 ): Invoice {
   ensurePhase2(data);
   const idx = data.invoices.findIndex((i) => i.id === invoiceId);
@@ -368,7 +372,7 @@ function applyInvoicePayment(
     throw new Error("Only the latest invoice can receive payments");
 
   const amount = Number(input.amount);
-  if (!Number.isFinite(amount) || amount <= 0)
+  if (!Number.isFinite(amount) || (allowZero ? amount < 0 : amount <= 0))
     throw new Error("Payment amount must be positive");
 
   const now = nowIso();
@@ -378,14 +382,14 @@ function applyInvoicePayment(
     input.notes?.trim() || undefined,
     now
   );
-  const paid = payment.amount;
+  const paid = payment?.amount ?? 0;
   const hasCustomer = old.customerId !== null;
   const currentDue = hasCustomer
     ? ceil2(old.previousDue + old.totals.net - paid)
     : 0;
   const updated: Invoice = {
     ...old,
-    payments: [payment],
+    payments: payment ? [payment] : [],
     paid,
     currentDue,
     updatedAt: now,
@@ -430,6 +434,9 @@ export function addInvoicePayment(
  * Correct the invoice's single payment record: the amount replaces the
  * previous one (not added), notes are replaced. The record's original
  * date/createdAt are kept.
+ *
+ * An amount of 0 removes the payment — the only way to undo a deposit
+ * entered by mistake. The invoice is left as if it had never been paid.
  */
 export function updateInvoicePayment(
   data: AhbDataV1,
@@ -442,8 +449,10 @@ export function updateInvoicePayment(
     input,
     (existing, amount, notes) => {
       if (!existing) throw new Error("Invoice has no payment to edit");
+      if (amount === 0) return null;
       return { ...existing, amount, notes };
-    }
+    },
+    true
   );
 }
 

@@ -195,6 +195,7 @@
   "okay": "ঠিক আছে",
   "v2_edit_previous_payment": "পূর্বের জমা সম্পাদনা",
   "payment_amount_invalid": "পরিমাণ শূন্যের চেয়ে বড় হতে হবে",
+  "payment_amount_negative": "পরিমাণ শূন্য বা তার বেশি হতে হবে",
   "no_payment_to_edit": "সম্পাদনার মতো কোনো জমা নেই",
   "close": "বন্ধ",
   "edit": "এডিট",

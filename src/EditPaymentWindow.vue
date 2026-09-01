@@ -123,8 +123,9 @@ watchEffect(() => {
 async function onOkay() {
   if (!hasPayment.value || saving) return;
   const amount = parseNumber(amountText.value);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    error.value = t("payment_amount_invalid");
+  // 0 is allowed here and only here: it removes the payment.
+  if (!Number.isFinite(amount) || amount < 0) {
+    error.value = t("payment_amount_negative");
     return;
   }
   saving = true;
