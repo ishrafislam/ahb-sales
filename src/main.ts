@@ -740,6 +740,18 @@ ipcMain.handle(
   }
 );
 
+ipcMain.handle("data:save-invoice-draft", async (e, payload) => {
+  return getCtx(e.sender).dataService.saveInvoiceDraft(payload);
+});
+
+ipcMain.handle("data:get-invoice-draft", async (e, customerId: number) => {
+  return getCtx(e.sender).dataService.getInvoiceDraft(customerId);
+});
+
+ipcMain.handle("data:delete-invoice-draft", async (e, customerId: number) => {
+  return getCtx(e.sender).dataService.deleteInvoiceDraft(customerId);
+});
+
 ipcMain.handle(
   "data:list-invoices-by-customer",
   async (e, customerId: number) => {

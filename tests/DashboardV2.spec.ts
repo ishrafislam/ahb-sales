@@ -1594,3 +1594,219 @@ describe("Dashboard v2 — action button navigation", () => {
     wrapper.unmount();
   });
 });
+
+describe("Dashboard v2 — invoice drafts", () => {
+  let saveInvoiceDraft: ReturnType<typeof vi.fn>;
+  let getInvoiceDraft: ReturnType<typeof vi.fn>;
+  let deleteInvoiceDraft: ReturnType<typeof vi.fn>;
+  let getInvoiceById: ReturnType<typeof vi.fn>;
+  let postInvoice: ReturnType<typeof vi.fn>;
+  let api: Record<string, unknown>;
+
+  beforeEach(() => {
+    currentLang.value = "en";
+    vi.useRealTimers();
+    saveInvoiceDraft = vi.fn(async () => null);
+    getInvoiceDraft = vi.fn(async () => null);
+    deleteInvoiceDraft = vi.fn(async () => true);
+    getInvoiceById = vi.fn(async () => null);
+    postInvoice = vi.fn(async () => ({
+      id: "inv-9",
+      totals: { subtotal: 21, net: 21 },
+      discount: 0,
+      paid: 0,
+      previousDue: 0,
+      currentDue: 21,
+    }));
+    api = {
+      listInvoicesByCustomer: vi.fn(async () => []),
+      getCustomerById: vi.fn(async () => null),
+      getProductById: vi.fn(async () => ({
+        id: 5,
+        nameBn: "চাল",
+        unit: "kg",
+        price: 10.5,
+        stock: 40,
+      })),
+      postInvoice,
+      updateInvoice: vi.fn(),
+      saveInvoiceDraft,
+      getInvoiceDraft,
+      deleteInvoiceDraft,
+      getInvoiceById,
+    };
+    (window as unknown as { ahb: unknown }).ahb = api;
+  });
+
+  function mountDashboard() {
+    return mount(Dashboard, {
+      attachTo: document.body,
+      global: { plugins: [createPinia()] },
+    });
+  }
+
+  function customerIdInput(wrapper: ReturnType<typeof mountDashboard>) {
+    const rows = wrapper
+      .findAll("div")
+      .filter(
+        (d) => d.text().includes("Customer ID") && d.find("input").exists()
+      );
+    return rows[rows.length - 1]!.find("input");
+  }
+
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  // Longer than the dashboard's own draft debounce
+  const afterDebounce = () => new Promise((r) => setTimeout(r, 500));
+
+  async function selectCustomer(
+    wrapper: ReturnType<typeof mountDashboard>,
+    id: string
+  ) {
+    const input = customerIdInput(wrapper);
+    await input.setValue(id);
+    await input.trigger("keydown.enter");
+    await settle();
+    await settle();
+  }
+
+  async function enterProduct(wrapper: ReturnType<typeof mountDashboard>) {
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    await rowInputs[0]!.setValue("5");
+    await rowInputs[0]!.trigger("keydown.enter");
+    await settle();
+    await rowInputs[1]!.setValue("2");
+    await settle();
+  }
+
+  it("saves what has been entered before Post Data", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    await enterProduct(wrapper);
+    await afterDebounce();
+
+    expect(saveInvoiceDraft).toHaveBeenCalled();
+    const draft = saveInvoiceDraft.mock.calls.at(-1)![0];
+    expect(draft.customerId).toBe(12);
+    expect(draft.invoiceId).toBeUndefined();
+    expect(draft.lines).toEqual([{ productId: 5, quantity: 2, rate: 10.5 }]);
+    // Nothing was posted: the money side has not run
+    expect(postInvoice).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("flushes the draft for the customer being left, not the new one", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    await enterProduct(wrapper);
+    await selectCustomer(wrapper, "13");
+
+    expect(saveInvoiceDraft).toHaveBeenCalled();
+    expect(saveInvoiceDraft.mock.calls[0]![0].customerId).toBe(12);
+    wrapper.unmount();
+  });
+
+  it("restores a plain draft in entry mode", async () => {
+    getInvoiceDraft.mockResolvedValue({
+      customerId: 12,
+      lines: [{ productId: 5, quantity: 4, rate: 9 }],
+      discount: 2,
+      notes: "left half done",
+      updatedAt: "2026-09-01T10:00:00.000Z",
+    });
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((rowInputs[0]!.element as HTMLInputElement).value).toBe("5");
+    expect((rowInputs[1]!.element as HTMLInputElement).value).toBe("4");
+    expect(
+      rowInputs
+        .map((i) => (i.element as HTMLInputElement).value)
+        .includes("9.00")
+    ).toBe(true);
+    expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe(
+      "left half done"
+    );
+    // Entry mode, not the locked posted one
+    expect(
+      wrapper.findAll("button").find((b) => b.text() === "Post Data")!.attributes(
+        "disabled"
+      )
+    ).toBeUndefined();
+    // A trailing empty row is waiting for the next product
+    expect(wrapper.findAll("tbody tr").length).toBe(2);
+    wrapper.unmount();
+  });
+
+  it("restores a draft that edits an invoice in editing mode", async () => {
+    getInvoiceDraft.mockResolvedValue({
+      customerId: 12,
+      invoiceId: "inv-3",
+      lines: [{ productId: 5, quantity: 6, rate: 10.5 }],
+      discount: 0,
+      updatedAt: "2026-09-01T10:00:00.000Z",
+    });
+    getInvoiceById.mockResolvedValue({
+      id: "inv-3",
+      no: 3,
+      lines: [{ productId: 5, quantity: 4, rate: 10.5 }],
+      discount: 0,
+      totals: { subtotal: 42, net: 42 },
+      paid: 10,
+      previousDue: 0,
+      currentDue: 32,
+    });
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+
+    expect(getInvoiceById).toHaveBeenCalledWith("inv-3");
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((rowInputs[1]!.element as HTMLInputElement).value).toBe("6");
+    // The invoice's deposit came back with it
+    expect(
+      wrapper
+        .findAll("input[readonly]")
+        .map((i) => (i.element as HTMLInputElement).value)
+    ).toContain("10.00");
+    wrapper.unmount();
+  });
+
+  it("falls back to a plain draft when the edited invoice is gone", async () => {
+    getInvoiceDraft.mockResolvedValue({
+      customerId: 12,
+      invoiceId: "inv-gone",
+      lines: [{ productId: 5, quantity: 6, rate: 10.5 }],
+      discount: 0,
+      updatedAt: "2026-09-01T10:00:00.000Z",
+    });
+    getInvoiceById.mockResolvedValue(null);
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((rowInputs[1]!.element as HTMLInputElement).value).toBe("6");
+    expect(rowInputs[1]!.attributes("readonly")).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it("deletes the draft once the invoice is posted", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    await enterProduct(wrapper);
+    await wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Post Data")!
+      .trigger("click");
+    await settle();
+    await afterDebounce();
+
+    expect(postInvoice).toHaveBeenCalledTimes(1);
+    expect(deleteInvoiceDraft).toHaveBeenCalledWith(12);
+    // The posted invoice is the record now: no draft is written after it
+    const savesAfterPost = saveInvoiceDraft.mock.calls.filter(
+      (c) => c[0].customerId === 12 && c[0].lines.length > 0
+    ).length;
+    expect(savesAfterPost).toBeLessThanOrEqual(1);
+    wrapper.unmount();
+  });
+});

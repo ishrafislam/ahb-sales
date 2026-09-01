@@ -384,9 +384,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { t } from "../i18n";
-import type { Invoice } from "../main/data";
+import type { Invoice, InvoiceDraft, InvoiceDraftLine } from "../main/data";
 import SlotDropdown from "../components/dashboard/SlotDropdown.vue";
 import { toSlots, filterSlots, type SlotOption } from "../components/dashboard/slotOptions";
 import { matchByName } from "../utils/fuzzy";
@@ -853,6 +853,122 @@ async function onDataChanged(payload: {
   customerReceivableText.value = inv.currentDue.toFixed(2);
 }
 
+// ---------------------------------------------------------------------------
+// Drafts: what has been entered for a customer before Post Data. Products,
+// quantities and rates are stored as typed; no invoice number, no stock
+// movement and no dues — all of that still happens once, at Post Data. This
+// is what lets a clerk leave one customer half-billed, serve another, and
+// come back.
+// ---------------------------------------------------------------------------
+const DRAFT_SAVE_DELAY_MS = 400;
+let draftTimer: ReturnType<typeof setTimeout> | null = null;
+// The customer the rows on screen belong to. Not parseCustomerId(): by the
+// time a switch reaches loadLastBill the id box already holds the new one,
+// and the pending draft belongs to the old customer.
+let draftCustomerId: number | null = null;
+// Loading rows programmatically (and posting) must not write a draft back
+let suppressDraftSave = false;
+
+function draftLines(): InvoiceDraftLine[] {
+  return entryRows.value.flatMap((row) => {
+    // The trailing empty row has no product, so it is never stored
+    if (!row.product) return [];
+    const quantity = parseNumber(row.amountText);
+    return [
+      {
+        productId: row.product.id,
+        quantity: Number.isFinite(quantity) && quantity >= 0 ? quantity : null,
+        rate: row.price,
+      },
+    ];
+  });
+}
+
+/** Write the current rows out as the draft, cancelling any pending save. */
+async function saveDraftNow() {
+  if (draftTimer !== null) {
+    clearTimeout(draftTimer);
+    draftTimer = null;
+  }
+  // A posted invoice is the record itself; there is nothing to draft
+  if (mode.value === "posted") return;
+  const id = draftCustomerId;
+  if (id === null) return;
+  try {
+    await window.ahb.saveInvoiceDraft({
+      customerId: id,
+      // An unposted edit stays attached to the invoice it is editing
+      invoiceId:
+        mode.value === "editing" && postedInvoiceId.value !== null
+          ? postedInvoiceId.value
+          : undefined,
+      lines: draftLines(),
+      discount: discount.value,
+      notes: comment.value.trim() || undefined,
+    });
+  } catch {
+    /* a draft that cannot be saved must not interrupt entry */
+  }
+}
+
+function scheduleDraftSave() {
+  if (suppressDraftSave) return;
+  if (draftTimer !== null) clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => {
+    draftTimer = null;
+    void saveDraftNow();
+  }, DRAFT_SAVE_DELAY_MS);
+}
+
+watch([entryRows, discount, comment], scheduleDraftSave, { deep: true });
+
+function cancelDraftSave() {
+  if (draftTimer !== null) {
+    clearTimeout(draftTimer);
+    draftTimer = null;
+  }
+}
+
+/** Restore a customer's unposted entry, in editing mode if it edits an invoice. */
+async function loadDraft(draft: InvoiceDraft) {
+  let invoice: Invoice | null = null;
+  if (draft.invoiceId) {
+    try {
+      invoice = await window.ahb.getInvoiceById(draft.invoiceId);
+    } catch {
+      invoice = null;
+    }
+  }
+  const rows = await Promise.all(
+    draft.lines.map((line) =>
+      buildEntryRow({
+        productId: line.productId,
+        quantity: line.quantity,
+        rate: line.rate,
+        // The stored stock already accounts for whatever the invoice posted
+        appliedQty: invoice?.lines.find(
+          (l) => l.productId === line.productId
+        )?.quantity,
+      })
+    )
+  );
+  entryRows.value = rows;
+  discount.value = draft.discount;
+  discountText.value = draft.discount > 0 ? draft.discount.toFixed(2) : "";
+  comment.value = draft.notes ?? "";
+  if (invoice) {
+    postedInvoiceId.value = invoice.id;
+    applyInvoiceToStatus(invoice);
+    mode.value = "editing";
+  } else {
+    mode.value = "entry";
+  }
+  // The table has to see the restored rows before it appends to them
+  await nextTick();
+  // Appends the trailing empty row and puts the caret in it
+  entryTable.value?.resumeEntry();
+}
+
 async function onPostData() {
   if (posted.value || posting) return;
   postError.value = "";
@@ -901,6 +1017,13 @@ async function onPostData() {
       return true;
     });
     mode.value = "posted";
+    // The money lives on the invoice now; the draft has done its job
+    cancelDraftSave();
+    try {
+      await window.ahb.deleteInvoiceDraft(custId);
+    } catch {
+      /* a draft that cannot be deleted is harmless: posting is what counts */
+    }
   } catch (e) {
     postError.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -921,14 +1044,19 @@ onMounted(async () => {
 
 onUnmounted(() => {
   unsubscribeDataChanged?.();
+  // Leaving the dashboard must not lose the last keystroke
+  void saveDraftNow();
 });
 
 async function loadLastBill() {
+  // Flush what is on screen before the id box's new value takes over
+  await saveDraftNow();
   const id = parseCustomerId();
   if (id === undefined) {
     lastBillDateText.value = "—";
     lastBillText.value = "—";
     setCustomerInfo(null);
+    draftCustomerId = null;
     customerIdInput.value?.select();
     return;
   }
@@ -953,6 +1081,14 @@ async function loadLastBill() {
     lastBillText.value = "—";
     setCustomerInfo(null);
   }
+  // An entry left unposted for this customer outranks the posted invoice:
+  // it is the newer intent, and it may itself be an edit of that invoice.
+  let draft: InvoiceDraft | null = null;
+  try {
+    draft = await window.ahb.getInvoiceDraft(id);
+  } catch {
+    draft = null;
+  }
   selectedProductIdText.value = "";
   selectedProductStockText.value = "";
   discount.value = 0;
@@ -963,16 +1099,26 @@ async function loadLastBill() {
   postedStatus.value = null;
   postError.value = "";
   comment.value = "";
-  if (todayInvoice) {
-    // An invoice from today loads into the locked posted state, exactly
-    // as right after Post Data: Edit unlocks it, Payment applies to it.
-    await loadPostedInvoice(todayInvoice);
-    // Entry mode lands on the first ID cell; a loaded invoice does the same,
-    // so the header opens on the first line's product and stock
-    entryTable.value?.focusFirstRow();
-  } else {
-    // Start product entry: focus moves into the first row's ID cell
-    entryTable.value?.startEntry();
+  draftCustomerId = id;
+  suppressDraftSave = true;
+  try {
+    if (draft) {
+      await loadDraft(draft);
+    } else if (todayInvoice) {
+      // An invoice from today loads into the locked posted state, exactly
+      // as right after Post Data: Edit unlocks it, Payment applies to it.
+      await loadPostedInvoice(todayInvoice);
+      // Entry mode lands on the first ID cell; a loaded invoice does the same,
+      // so the header opens on the first line's product and stock
+      entryTable.value?.focusFirstRow();
+    } else {
+      // Start product entry: focus moves into the first row's ID cell
+      entryTable.value?.startEntry();
+    }
+  } finally {
+    // Let the row watcher run on the loaded rows before it counts as an edit
+    await nextTick();
+    suppressDraftSave = false;
   }
 }
 
@@ -987,32 +1133,63 @@ function isToday(iso: string): boolean {
 }
 
 let loadedRowKey = -1;
+
+/**
+ * One entry row rebuilt from a stored line — a posted invoice's or a draft's.
+ * A draft line may still be half-typed, so quantity and rate come in nullable:
+ * a missing quantity leaves the cell empty and a missing rate falls back to
+ * the product's catalogue price, exactly as typing the id would have.
+ */
+async function buildEntryRow(line: {
+  productId: number;
+  quantity: number | null;
+  rate: number | null;
+  unit?: string;
+  description?: string;
+  appliedQty?: number;
+}): Promise<EntryRow> {
+  let product: {
+    nameBn: string;
+    stock: number;
+    unit: string;
+    price: number;
+  } | null = null;
+  try {
+    product = await window.ahb.getProductById(line.productId);
+  } catch {
+    product = null;
+  }
+  const rate = line.rate ?? product?.price ?? 0;
+  return {
+    key: loadedRowKey--,
+    idText: String(line.productId),
+    product: {
+      id: line.productId,
+      nameBn: product?.nameBn ?? line.description ?? "",
+      unit: line.unit ?? product?.unit ?? "",
+      price: rate,
+      stock: product?.stock ?? 0,
+    },
+    amountText: line.quantity === null ? "" : String(line.quantity),
+    appliedQty: line.appliedQty,
+    priceText: rate.toFixed(2),
+    price: rate,
+  };
+}
+
 async function loadPostedInvoice(inv: Invoice) {
   const rows = await Promise.all(
-    inv.lines.map(async (line): Promise<EntryRow> => {
-      let product: { nameBn: string; stock: number } | null = null;
-      try {
-        product = await window.ahb.getProductById(line.productId);
-      } catch {
-        product = null;
-      }
-      return {
-        key: loadedRowKey--,
-        idText: String(line.productId),
-        product: {
-          id: line.productId,
-          nameBn: product?.nameBn ?? line.description ?? "",
-          unit: line.unit,
-          price: line.rate,
-          stock: product?.stock ?? 0,
-        },
-        amountText: String(line.quantity),
+    inv.lines.map((line) =>
+      buildEntryRow({
+        productId: line.productId,
+        quantity: line.quantity,
+        rate: line.rate,
+        unit: line.unit,
+        description: line.description,
         // Already posted, so the stored stock has this quantity in it
         appliedQty: line.quantity,
-        priceText: line.rate.toFixed(2),
-        price: line.rate,
-      };
-    })
+      })
+    )
   );
   entryRows.value = rows;
   discount.value = inv.discount;
