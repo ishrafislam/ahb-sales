@@ -18,7 +18,7 @@
             class="flex items-center border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
             :class="{ 'bg-blue-100 dark:bg-blue-950': id === selectedId }"
             :data-id="id"
-            @click="select(id)"
+            @click="void select(id)"
           >
             <div
               class="w-14 shrink-0 px-3 py-2 text-sm text-center border-r border-gray-200 dark:border-gray-700 dark:text-gray-100"
@@ -185,7 +185,7 @@
           type="button"
           :class="buttonClass"
           :disabled="!canSave"
-          @click="save"
+          @click="void save()"
         >
           {{ t("add") }}
         </button>
@@ -202,11 +202,11 @@
           type="button"
           :class="buttonClass"
           :disabled="!canSave"
-          @click="save"
+          @click="void save()"
         >
           {{ t("save") }}
         </button>
-        <button type="button" :class="buttonClass" @click="close">
+        <button type="button" :class="buttonClass" @click="void close()">
           {{ t("close") }}
         </button>
       </div>
@@ -284,10 +284,13 @@ function syncFromSelected() {
   form.value.active = p ? !!p.active : true;
 }
 
-function select(id: number) {
+async function select(id: number) {
   if (id === selectedId.value) return;
+  // Leaving a slot saves what is in the form, exactly as Save would have —
+  // including an item typed straight into an empty slot, which has no Edit
+  // button of its own. A refused save keeps the slot and the edit.
+  if (!(await flushPendingEdit())) return;
   selectedId.value = id;
-  // Switching rows discards an in-progress edit
   editing.value = false;
   error.value = "";
   syncFromSelected();
@@ -300,7 +303,7 @@ function select(id: number) {
 function move(delta: number) {
   const next = selectedId.value + delta;
   if (next < 1 || next > MAX_PRODUCT_ID) return;
-  select(next);
+  void select(next);
 }
 
 async function load() {
@@ -342,16 +345,46 @@ async function startEdit() {
   nameInput.value?.select();
 }
 
-async function save() {
-  if (!canSave.value) return;
-  error.value = "";
-  const patch = {
+function buildPatch() {
+  return {
     nameBn: form.value.nameBn.trim(),
     description: form.value.description.trim(),
     unit: form.value.unit.trim() || "unit",
     price: Number(form.value.price || 0),
     active: form.value.active,
   };
+}
+
+/**
+ * Is there an edit worth writing? An item with no name is not an item, and an
+ * Edit that changed nothing must not rewrite the record and bump its
+ * updatedAt. Stock is not compared: it is never edited here.
+ */
+function isDirty(): boolean {
+  if (!unlocked.value || !canSave.value) return false;
+  const stored = selected.value;
+  if (!stored) return true; // a new item typed into an empty slot
+  const p = buildPatch();
+  return (
+    p.nameBn !== (stored.nameBn ?? "") ||
+    p.description !== (stored.description ?? "") ||
+    p.unit !== (stored.unit ?? "") ||
+    p.price !== Number(stored.price ?? 0) ||
+    p.active !== stored.active
+  );
+}
+
+/** Write a pending edit out; false means it was refused and nothing moved. */
+async function flushPendingEdit(): Promise<boolean> {
+  if (!isDirty()) return true;
+  return save();
+}
+
+/** True when the item was written, or there was nothing to write. */
+async function save(): Promise<boolean> {
+  if (!canSave.value) return true;
+  error.value = "";
+  const patch = buildPatch();
   try {
     if (exists.value) {
       await window.ahb.updateProduct(selectedId.value, patch);
@@ -361,8 +394,10 @@ async function save() {
     }
     editing.value = false;
     await load();
+    return true;
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
+    return false;
   }
 }
 
@@ -371,8 +406,17 @@ function openPurchaseEntry() {
   void window.ahb.openPurchaseEntryWindow(selectedId.value);
 }
 
-function close() {
+async function close() {
+  // Closing loses an edit the same way switching slots did; flush first
+  if (!(await flushPendingEdit())) return;
   window.close();
+}
+
+// The window's own close button never reaches close(). The save cannot be
+// awaited here, but the IPC call is dispatched before the window goes and the
+// main process holds the data.
+function onBeforeUnload() {
+  if (isDirty()) void save();
 }
 
 let off: null | (() => void) = null;
@@ -388,9 +432,11 @@ onMounted(async () => {
       void loadLastPurchase(selectedId.value);
     }
   });
+  window.addEventListener("beforeunload", onBeforeUnload);
 });
 onUnmounted(() => {
   if (off) off();
+  window.removeEventListener("beforeunload", onBeforeUnload);
 });
 
 const leftListRef = ref<HTMLElement | null>(null);

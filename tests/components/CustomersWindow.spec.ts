@@ -205,25 +205,113 @@ describe("Customers window", () => {
     wrapper.unmount();
   });
 
-  it("arrow traversal discards an in-progress edit", async () => {
+  it("arrow traversal saves an in-progress edit", async () => {
     const wrapper = await mountView();
     await button(wrapper, "Edit")!.trigger("click");
-    await wrapper.find("#customer-name").setValue("Discarded");
+    await wrapper.find("#customer-name").setValue("Renamed");
     await wrapper.find("div[tabindex='0']").trigger("keydown.down");
+    await new Promise((r) => setTimeout(r, 0));
 
+    expect(updateCustomer).toHaveBeenCalledWith(1, {
+      nameBn: "Renamed",
+      address: "Dhaka",
+      phone: "0170000",
+      active: true,
+    });
     expect(button(wrapper, "Save")).toBeUndefined();
-    expect(field(wrapper, "customer-name").value).toBe("");
     wrapper.unmount();
   });
 
-  it("switching rows discards an in-progress edit", async () => {
+  it("switching rows saves an in-progress edit, then shows the new row", async () => {
     const wrapper = await mountView();
     await button(wrapper, "Edit")!.trigger("click");
-    await wrapper.find("#customer-name").setValue("Discarded");
+    await wrapper.find("#customer-name").setValue("Renamed");
     await selectRow(wrapper, 3);
+    await new Promise((r) => setTimeout(r, 0));
 
+    expect(updateCustomer).toHaveBeenCalledWith(1, {
+      nameBn: "Renamed",
+      address: "Dhaka",
+      phone: "0170000",
+      active: true,
+    });
     expect(button(wrapper, "Save")).toBeUndefined();
     expect(field(wrapper, "customer-name").value).toBe("Customer 3");
+    wrapper.unmount();
+  });
+
+  it("an edit that changed nothing writes nothing", async () => {
+    const wrapper = await mountView();
+    await button(wrapper, "Edit")!.trigger("click");
+    await selectRow(wrapper, 3);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(updateCustomer).not.toHaveBeenCalled();
+    expect(addCustomer).not.toHaveBeenCalled();
+    expect(field(wrapper, "customer-name").value).toBe("Customer 3");
+    wrapper.unmount();
+  });
+
+  it("a name typed into an empty slot is added on the way out", async () => {
+    const wrapper = await mountView();
+    await selectRow(wrapper, 2);
+    await wrapper.find("#customer-name").setValue("New Customer");
+    await wrapper.find("#customer-address").setValue("Khulna");
+    await selectRow(wrapper, 3);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(addCustomer).toHaveBeenCalledWith({
+      id: 2,
+      nameBn: "New Customer",
+      address: "Khulna",
+      phone: "",
+      active: true,
+    });
+    wrapper.unmount();
+  });
+
+  it("an empty slot with no name typed saves nothing", async () => {
+    const wrapper = await mountView();
+    await selectRow(wrapper, 2);
+    await wrapper.find("#customer-address").setValue("Khulna");
+    await selectRow(wrapper, 3);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(addCustomer).not.toHaveBeenCalled();
+    expect(field(wrapper, "customer-name").value).toBe("Customer 3");
+    wrapper.unmount();
+  });
+
+  it("a refused autosave keeps the row, the edit and the error", async () => {
+    updateCustomer.mockRejectedValueOnce(new Error("Customer not found"));
+    const wrapper = await mountView();
+    await button(wrapper, "Edit")!.trigger("click");
+    await wrapper.find("#customer-name").setValue("Renamed");
+    await selectRow(wrapper, 3);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(wrapper.text()).toContain("Customer not found");
+    expect(field(wrapper, "customer-id").value).toBe("1");
+    expect(field(wrapper, "customer-name").value).toBe("Renamed");
+    expect(button(wrapper, "Save")).toBeTruthy();
+    wrapper.unmount();
+  });
+
+  it("Close saves a pending edit first, and stays open if it is refused", async () => {
+    updateCustomer.mockRejectedValueOnce(new Error("Customer not found"));
+    const wrapper = await mountView();
+    await button(wrapper, "Edit")!.trigger("click");
+    await wrapper.find("#customer-name").setValue("Renamed");
+    await button(wrapper, "Close")!.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(updateCustomer).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
+
+    await button(wrapper, "Close")!.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(updateCustomer).toHaveBeenCalledTimes(2);
+    expect(close).toHaveBeenCalled();
     wrapper.unmount();
   });
 
