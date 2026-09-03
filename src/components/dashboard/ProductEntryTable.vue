@@ -174,6 +174,9 @@ const emit = defineEmits<{
     e: "product-selected",
     payload: { id: number; stock: number } | null
   ): void;
+  // ArrowLeft off the ID column: the grid's left edge, so the caret goes back
+  // to whatever the parent keeps there — the Customer ID box.
+  (e: "leave-left"): void;
 }>();
 
 // Stock shown in the header is the projection after this sale: stored stock
@@ -559,6 +562,11 @@ function onCellKeydown(e: KeyboardEvent, idx: number, col: Col) {
   } else if (e.key === "ArrowLeft" && col === "amount") {
     e.preventDefault();
     void focusCell(idx, "id");
+  } else if (e.key === "ArrowLeft" && col === "id") {
+    // Nothing to the left inside the grid: hand the caret back
+    e.preventDefault();
+    if (slotsOpen.value) closeSlots();
+    emit("leave-left");
   } else if (e.key === "ArrowRight" && col === "id") {
     e.preventDefault();
     void focusCell(idx, "amount");

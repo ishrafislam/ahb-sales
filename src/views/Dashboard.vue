@@ -54,6 +54,7 @@
               @keydown.down.prevent="moveCustomerHighlight(1)"
               @keydown.up.prevent="moveCustomerHighlight(-1)"
               @keydown.esc.prevent="closeCustomerSlots"
+              @keydown.right.prevent="focusFirstProduct"
               @keydown.enter="onCustomerIdEnter"
             />
             <button
@@ -288,6 +289,7 @@
             v-model:rows="entryRows"
             :locked="posted"
             @product-selected="onProductSelected"
+            @leave-left="focusCustomerId"
           />
         </div>
 
@@ -544,6 +546,20 @@ async function openCustomerSlots() {
 // Whatever is in there is about to be replaced by the next id typed
 function onCustomerIdFocus() {
   customerIdInput.value?.select();
+}
+
+// ArrowLeft off the entry grid's ID column: the caret comes back here, ready
+// for the next customer, the same way it arrives on mount
+function focusCustomerId() {
+  customerIdInput.value?.focus();
+  customerIdInput.value?.select();
+}
+
+// The other half of that walk: ArrowRight goes into the grid's first ID cell.
+// The dropdown is dismissed first — the caret is leaving the box it belongs to.
+function focusFirstProduct() {
+  closeCustomerSlots();
+  entryTable.value?.focusFirstRow();
 }
 
 function toggleCustomerSlots() {

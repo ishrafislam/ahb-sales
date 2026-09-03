@@ -1678,6 +1678,39 @@ describe("Dashboard v2 — invoice drafts", () => {
     await settle();
   }
 
+  it("ArrowLeft on a product ID cell returns to the Customer ID box", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+
+    const idCell = wrapper.findAll("tbody tr")[0]!.findAll("input")[0]!;
+    expect(document.activeElement).toBe(idCell.element);
+
+    await idCell.trigger("keydown", { key: "ArrowLeft" });
+    await settle();
+
+    const customerBox = customerIdInput(wrapper).element as HTMLInputElement;
+    expect(document.activeElement).toBe(customerBox);
+    // Selected, so the next id typed replaces this one
+    expect(customerBox.selectionStart).toBe(0);
+    expect(customerBox.selectionEnd).toBe(customerBox.value.length);
+    wrapper.unmount();
+  });
+
+  it("ArrowRight in the Customer ID box goes to the first product ID cell", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    // Start from the customer box, as ArrowLeft would have left it
+    const customerBox = customerIdInput(wrapper);
+    (customerBox.element as HTMLInputElement).focus();
+
+    await customerBox.trigger("keydown", { key: "ArrowRight" });
+    await settle();
+
+    const idCell = wrapper.findAll("tbody tr")[0]!.findAll("input")[0]!;
+    expect(document.activeElement).toBe(idCell.element);
+    wrapper.unmount();
+  });
+
   it("saves what has been entered before Post Data", async () => {
     const wrapper = mountDashboard();
     await selectCustomer(wrapper, "12");

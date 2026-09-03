@@ -50,11 +50,21 @@ describe("ProductEntryTable", () => {
       const table = ref<InstanceType<typeof ProductEntryTable> | null>(null);
       const selected = ref<Array<{ id: number; stock: number } | null>>([]);
       const locked = ref(false);
+      const leftCount = ref(0);
       const onProductSelected = (p: { id: number; stock: number } | null) =>
         selected.value.push(p);
-      return { rows, table, selected, locked, onProductSelected };
+      const onLeaveLeft = () => (leftCount.value += 1);
+      return {
+        rows,
+        table,
+        selected,
+        locked,
+        leftCount,
+        onProductSelected,
+        onLeaveLeft,
+      };
     },
-    template: `<ProductEntryTable ref="table" v-model:rows="rows" :locked="locked" @product-selected="onProductSelected" />`,
+    template: `<ProductEntryTable ref="table" v-model:rows="rows" :locked="locked" @product-selected="onProductSelected" @leave-left="onLeaveLeft" />`,
   });
 
   function mountHost() {
@@ -644,6 +654,44 @@ describe("ProductEntryTable", () => {
     await first.id.trigger("keydown", { key: "ArrowDown" });
     await flush();
     expect(document.activeElement).toBe(second.id.element);
+    wrapper.unmount();
+  });
+
+  it("ArrowLeft on the ID cell hands the caret back to the parent", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const first = cellInputs(wrapper, 0);
+    await first.id.setValue("5");
+    await first.id.trigger("keydown.enter");
+    await flush();
+
+    // Amount → ID stays inside the grid and reports nothing
+    await first.amount.trigger("keydown", { key: "ArrowLeft" });
+    await flush();
+    expect(document.activeElement).toBe(first.id.element);
+    expect(wrapper.vm.leftCount).toBe(0);
+
+    // ID is the left edge: the parent is asked to take the caret
+    await first.id.trigger("keydown", { key: "ArrowLeft" });
+    await flush();
+    expect(wrapper.vm.leftCount).toBe(1);
+    // The grid moved nothing itself
+    expect(document.activeElement).toBe(first.id.element);
+    wrapper.unmount();
+  });
+
+  it("ArrowLeft closes the ID dropdown on its way out", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const first = cellInputs(wrapper, 0);
+    await wrapper.findAll('[data-role="slots-toggle"]')[0]!.trigger("click");
+    await flush();
+    expect(document.querySelector('[data-role="slot-dropdown"]')).toBeTruthy();
+
+    await first.id.trigger("keydown", { key: "ArrowLeft" });
+    await flush();
+    expect(document.querySelector('[data-role="slot-dropdown"]')).toBeNull();
+    expect(wrapper.vm.leftCount).toBe(1);
     wrapper.unmount();
   });
 
