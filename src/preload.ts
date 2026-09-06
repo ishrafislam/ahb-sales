@@ -96,6 +96,8 @@ type AppAPI = {
   onDataChanged: (
     cb: (payload: { kind: string; action: string; id: number }) => void
   ) => () => void;
+  /** The Select Print window this renderer opened has been closed. */
+  onSelectPrintClosed: (cb: () => void) => () => void;
   // App control
   openCustomerHistory: (customerId?: number) => Promise<void>;
   openPaymentWindow: (invoiceId: string) => Promise<void>;
@@ -235,6 +237,11 @@ const api: AppAPI = {
     ) => cb(payload);
     ipcRenderer.on("data:changed", listener);
     return () => ipcRenderer.removeListener("data:changed", listener);
+  },
+  onSelectPrintClosed: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on("select-print:closed", listener);
+    return () => ipcRenderer.removeListener("select-print:closed", listener);
   },
   openCustomerHistory: (customerId) =>
     ipcRenderer.invoke("window:open-customer-history", customerId),

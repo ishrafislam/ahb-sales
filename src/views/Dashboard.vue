@@ -1065,11 +1065,18 @@ async function onPostData() {
 }
 
 let unsubscribeDataChanged: (() => void) | null = null;
+let unsubscribeSelectPrintClosed: (() => void) | null = null;
 
 onMounted(async () => {
   unsubscribeDataChanged =
     window.ahb.onDataChanged?.((payload) => void onDataChanged(payload)) ??
     null;
+  // The picking sheet has been closed: the rows it was built from are no
+  // longer a pending job, so the grid stops showing them as picked.
+  unsubscribeSelectPrintClosed =
+    window.ahb.onSelectPrintClosed?.(() =>
+      entryTable.value?.clearSelection()
+    ) ?? null;
   await nextTick();
   customerIdInput.value?.focus();
   customerIdInput.value?.select();
@@ -1077,6 +1084,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   unsubscribeDataChanged?.();
+  unsubscribeSelectPrintClosed?.();
   // Leaving the dashboard must not lose the last keystroke
   void saveDraftNow();
 });
@@ -1345,8 +1353,8 @@ const actionButtons: {
   handler?: () => void;
 }[] = [
   { key: "v2_history", page: "customer-history" },
-  // TODO(revamp/v2): action undecided
-  { key: "v2_refresh" },
+  // Drops a stale row selection without opening anything
+  { key: "v2_refresh", handler: () => entryTable.value?.clearSelection() },
   { key: "v2_cust_form", page: "customers" },
   { key: "v2_item_form", page: "products" },
   { key: "v2_cust_list", handler: () => void openCustomerList() },

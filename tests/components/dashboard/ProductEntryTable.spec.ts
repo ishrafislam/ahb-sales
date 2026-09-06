@@ -732,6 +732,32 @@ describe("ProductEntryTable", () => {
     wrapper.unmount();
   });
 
+  it("clearSelection drops the picked rows", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    await enterProductRow(wrapper, 0, "5", "3");
+    await enterProductRow(wrapper, 1, "7", "2");
+
+    await gutterButton(wrapper, 0).trigger("click");
+    await gutterButton(wrapper, 1).trigger("click", { ctrlKey: true });
+    await flush();
+    expect(wrapper.text()).toContain("►");
+
+    wrapper.vm.table!.clearSelection();
+    await flush();
+    expect(wrapper.text()).not.toContain("►");
+
+    // Nothing is picked any more, so Delete takes no row with it
+    const before = wrapper.findAll("tbody tr").length;
+    await wrapper
+      .findAll("tbody tr")[0]!
+      .findAll("input")[0]!
+      .trigger("keydown", { key: "Delete" });
+    await flush();
+    expect(wrapper.findAll("tbody tr").length).toBe(before);
+    wrapper.unmount();
+  });
+
   function gutterButton(wrapper: ReturnType<typeof mountHost>, rowIdx: number) {
     return wrapper.findAll("tbody tr")[rowIdx]!.find("button.row-selector");
   }

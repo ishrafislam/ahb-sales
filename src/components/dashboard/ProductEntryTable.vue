@@ -678,7 +678,13 @@ function focusFirstRow() {
   void focusCell(0, "id");
 }
 
+/** Drop the row selection: the job it was picked for is over. */
+function clearSelection() {
+  selectedKeys.value = new Set();
+}
+
 defineExpose({
+  clearSelection,
   startEntry,
   resumeEntry,
   focusFirstRow,

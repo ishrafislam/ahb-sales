@@ -235,12 +235,13 @@ function focusParentOnClose(win: BrowserWindow, parent: BrowserWindow) {
   });
 }
 
+/** Returns the window: the one just opened, or the one refocused. */
 async function openChildWindow(
   sender: Electron.WebContents,
   registry: Map<number, BrowserWindow>,
   hash: string,
   opts: { width: number; height: number; resizable: boolean }
-): Promise<void> {
+): Promise<BrowserWindow> {
   const parentCtx = getCtx(sender);
   const parentId = sender.id;
 
@@ -248,7 +249,7 @@ async function openChildWindow(
   if (existing && !existing.isDestroyed()) {
     existing.restore();
     existing.focus();
-    return;
+    return existing;
   }
 
   // Anchor to the top-level window: when one small window opens another
@@ -287,6 +288,7 @@ async function openChildWindow(
   });
 
   await loadWindowRoute(win, hash);
+  return win;
 }
 
 async function loadWindowRoute(
@@ -524,10 +526,19 @@ async function openRecordDetailsWindow(
 async function openSelectPrintWindow(
   sender: Electron.WebContents
 ): Promise<void> {
-  await openChildWindow(sender, selectPrintWindows, "select-print", {
+  // A repeat call refocuses the window that is already open; only a fresh one
+  // needs the close listener, or the dashboard would be told twice.
+  const reopened = selectPrintWindows.get(sender.id);
+  const win = await openChildWindow(sender, selectPrintWindows, "select-print", {
     width: 820,
     height: 700,
     resizable: true,
+  });
+  if (win === reopened) return;
+  // The picking sheet is done with, printed or not: the dashboard drops the
+  // row selection that opened it.
+  win.once("closed", () => {
+    if (!sender.isDestroyed()) sender.send("select-print:closed");
   });
 }
 

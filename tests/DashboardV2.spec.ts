@@ -1656,10 +1656,14 @@ describe("Dashboard v2 — invoice drafts", () => {
   let getInvoiceById: ReturnType<typeof vi.fn>;
   let postInvoice: ReturnType<typeof vi.fn>;
   let api: Record<string, unknown>;
+  // Captured from onSelectPrintClosed: the main process fires this when the
+  // picking sheet window is closed
+  let selectPrintClosed: (() => void) | null = null;
 
   beforeEach(() => {
     currentLang.value = "en";
     vi.useRealTimers();
+    selectPrintClosed = null;
     saveInvoiceDraft = vi.fn(async () => null);
     getInvoiceDraft = vi.fn(async () => null);
     deleteInvoiceDraft = vi.fn(async () => true);
@@ -1688,6 +1692,11 @@ describe("Dashboard v2 — invoice drafts", () => {
       getInvoiceDraft,
       deleteInvoiceDraft,
       getInvoiceById,
+      openSelectPrintWindow: vi.fn(async () => undefined),
+      onSelectPrintClosed: vi.fn((cb: () => void) => {
+        selectPrintClosed = cb;
+        return () => undefined;
+      }),
     };
     (window as unknown as { ahb: unknown }).ahb = api;
   });
@@ -1762,6 +1771,48 @@ describe("Dashboard v2 — invoice drafts", () => {
 
     const idCell = wrapper.findAll("tbody tr")[0]!.findAll("input")[0]!;
     expect(document.activeElement).toBe(idCell.element);
+    wrapper.unmount();
+  });
+
+  it("clears the row selection when the Select Print window closes", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    await enterProduct(wrapper);
+    await wrapper.find("button.row-selector").trigger("click");
+    await settle();
+    expect(wrapper.text()).toContain("►");
+
+    await wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Select Print")!
+      .trigger("click");
+    await settle();
+    // Still picked while the sheet is open
+    expect(wrapper.text()).toContain("►");
+
+    expect(selectPrintClosed).toBeTruthy();
+    selectPrintClosed!();
+    await settle();
+    expect(wrapper.text()).not.toContain("►");
+    wrapper.unmount();
+  });
+
+  it("Refresh clears the row selection", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    await enterProduct(wrapper);
+    await wrapper.find("button.row-selector").trigger("click");
+    await settle();
+    expect(wrapper.text()).toContain("►");
+
+    await wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Refresh")!
+      .trigger("click");
+    await settle();
+
+    expect(wrapper.text()).not.toContain("►");
+    expect(wrapper.emitted("navigate")).toBeUndefined();
     wrapper.unmount();
   });
 
