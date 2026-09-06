@@ -282,6 +282,60 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       wrapper.unmount();
     });
 
+    it("browses the whole list again once the id is settled", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await input.setValue("3");
+      await input.trigger("input");
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(panelRows().length).toBe(111);
+
+      // Enter settles the id: the box is no longer a search
+      await input.trigger("keydown", { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(panelRows().length).toBe(MAX_CUSTOMER_ID);
+
+      // Typing over it filters again
+      await input.setValue("30");
+      await input.trigger("input");
+      await new Promise((r) => setTimeout(r, 0));
+      // 30, 300-309
+      expect(panelRows().length).toBe(11);
+      wrapper.unmount();
+    });
+
+    it("blurring the box settles it too", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await input.setValue("3");
+      await input.trigger("input");
+      await input.trigger("blur");
+      await new Promise((r) => setTimeout(r, 0));
+
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(panelRows().length).toBe(MAX_CUSTOMER_ID);
+      wrapper.unmount();
+    });
+
+    it("picking a row with the mouse settles it too", async () => {
+      const wrapper = mountDashboard();
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+      (panelRows()[2] as HTMLElement).click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      const input = getCustomerIdInput(wrapper);
+      expect((input.element as HTMLInputElement).value).toBe("3");
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(panelRows().length).toBe(MAX_CUSTOMER_ID);
+      wrapper.unmount();
+    });
+
     it("loads the highlighted customer on Enter", async () => {
       const wrapper = mountDashboard();
       const input = getCustomerIdInput(wrapper);

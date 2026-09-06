@@ -457,6 +457,43 @@ describe("ProductEntryTable", () => {
     const caret = (wrapper: ReturnType<typeof mountHost>, rowIdx: number) =>
       wrapper.findAll('[data-role="slots-toggle"]')[rowIdx]!;
 
+    it("browses every slot again once the row holds its product", async () => {
+      const wrapper = mountHost();
+      await startEntry(wrapper);
+      const first = cellInputs(wrapper, 0);
+
+      // Typing filters: 5, 50-59, 500-599
+      await first.id.setValue("5");
+      await caret(wrapper, 0).trigger("click");
+      await flush();
+      expect(panelRows().length).toBe(111);
+
+      // Enter commits the product, so the cell is settled
+      await first.id.trigger("keydown.enter");
+      await flush();
+      await caret(wrapper, 0).trigger("click");
+      await flush();
+      expect(panelRows().length).toBe(MAX_PRODUCT_ID);
+
+      // Typing over it searches again: 7, 70-79, 700-799
+      await first.id.setValue("7");
+      await flush();
+      expect(panelRows().length).toBe(111);
+      wrapper.unmount();
+    });
+
+    it("keeps filtering a cell whose text names no product", async () => {
+      const wrapper = mountHost();
+      await startEntry(wrapper);
+      await cellInputs(wrapper, 0).id.setValue("9");
+      await caret(wrapper, 0).trigger("click");
+      await flush();
+
+      // 9, 90-99, 900-999
+      expect(panelRows().length).toBe(111);
+      wrapper.unmount();
+    });
+
     it("stays shut until the caret is clicked, then lists every slot", async () => {
       const wrapper = mountHost();
       await startEntry(wrapper);

@@ -70,7 +70,7 @@
                 :aria-label="t('id')"
                 data-role="slots-toggle"
                 @mousedown.prevent
-                @click="toggleSlots(idx)"
+                @click="void toggleSlots(idx)"
               >
                 ▼
               </button>
@@ -599,7 +599,13 @@ const slotAnchor = computed(() =>
 
 const slotOptions = computed(() => {
   const row = slotRow.value === null ? undefined : rows.value[slotRow.value];
-  return filterSlots(slots.value, row?.idText ?? "");
+  if (!row) return slots.value;
+  // A row already holding the product its id names is settled: opening the
+  // list there is a request for a different product, not a search for this
+  // one, so offer them all. Typing puts the text out of step again.
+  const typed = toLatinDigits(row.idText).trim();
+  if (row.product && String(row.product.id) === typed) return slots.value;
+  return filterSlots(slots.value, row.idText);
 });
 
 async function loadSlots() {
@@ -632,13 +638,15 @@ function onIdCellFocus(idx: number) {
   closeSlots();
 }
 
-function toggleSlots(idx: number) {
+async function toggleSlots(idx: number) {
   if (slotsOpen.value && slotRow.value === idx) {
     closeSlots();
     return;
   }
   slotRow.value = idx;
-  void focusCell(idx, "id");
+  // Open only once the cell has focus: focusing it fires onIdCellFocus, which
+  // closes the panel — opening first would shut it again a tick later.
+  await focusCell(idx, "id");
   openSlots();
 }
 

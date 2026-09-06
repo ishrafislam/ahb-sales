@@ -50,7 +50,7 @@
               :class="[inputClass, 'w-full pr-6 text-right']"
               @focus="onCustomerIdFocus"
               @input="onCustomerIdInput"
-              @blur="closeCustomerSlots"
+              @blur="onCustomerIdBlur"
               @keydown.down.prevent="moveCustomerHighlight(1)"
               @keydown.up.prevent="moveCustomerHighlight(-1)"
               @keydown.esc.prevent="closeCustomerSlots"
@@ -514,8 +514,15 @@ const customerSlotsOpen = ref(false);
 const customerHighlight = ref(-1);
 let customerSlotsLoaded = false;
 
+// The id as it stood when it was last committed. While the box still reads
+// that, the dropdown is a browse list rather than a search: the customer is
+// settled, so opening it means looking for a different one.
+const committedCustomerId = ref<string | null>(null);
+
 const customerSlotOptions = computed(() =>
-  filterSlots(customerSlots.value, customerId.value)
+  customerId.value === committedCustomerId.value
+    ? customerSlots.value
+    : filterSlots(customerSlots.value, customerId.value)
 );
 
 async function loadCustomerSlots() {
@@ -582,6 +589,14 @@ function closeCustomerSlots() {
 function onCustomerIdInput(e: Event) {
   customerId.value = toLatinDigits((e.target as HTMLInputElement).value);
   customerHighlight.value = -1;
+  // Typing is searching again
+  committedCustomerId.value = null;
+}
+
+// Leaving the box settles whatever is in it, so the next open browses
+function onCustomerIdBlur() {
+  closeCustomerSlots();
+  committedCustomerId.value = customerId.value;
 }
 
 function moveCustomerHighlight(step: number) {
@@ -597,6 +612,7 @@ function moveCustomerHighlight(step: number) {
 
 function selectCustomerSlot(option: SlotOption) {
   customerId.value = String(option.id);
+  committedCustomerId.value = customerId.value;
   closeCustomerSlots();
   void loadLastBill();
 }
@@ -610,6 +626,7 @@ function onCustomerIdEnter() {
     return;
   }
   closeCustomerSlots();
+  committedCustomerId.value = customerId.value;
   void loadLastBill();
 }
 
@@ -1065,6 +1082,8 @@ onUnmounted(() => {
 });
 
 async function loadLastBill() {
+  // However the id arrived, it counts as settled now
+  committedCustomerId.value = customerId.value;
   // Flush what is on screen before the id box's new value takes over
   await saveDraftNow();
   const id = parseCustomerId();
