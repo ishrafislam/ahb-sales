@@ -1,4 +1,5 @@
-export const BUSINESS_NAME = "ABDUL HAMID AND BROTHERS";
+// The shop name lives in the locale files (business_name): it is printed and
+// shown in whichever language the app is running.
 
 export const BUSINESS_PHONES = [
   "+8801911-351254 ; +8801622-974343",

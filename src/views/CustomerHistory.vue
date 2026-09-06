@@ -152,11 +152,7 @@ import {
   toLatinDigits,
 } from "../utils/numerals";
 import { printInvoice } from "../print/invoice";
-import {
-  BUSINESS_NAME,
-  MIN_CUSTOMER_ID,
-  MAX_CUSTOMER_ID,
-} from "../constants/business";
+import { MIN_CUSTOMER_ID, MAX_CUSTOMER_ID } from "../constants/business";
 import { formatDate } from "../utils/date";
 import type { Customer } from "../main/data";
 
@@ -269,7 +265,6 @@ function onPrint(id: string) {
   // invoices.value is sorted descending by inv.no (most recent first)
   const prevInv = invoices.value.find((i) => i.no < inv.no);
   printInvoice(inv as unknown as import("../main/data").Invoice, {
-    businessName: BUSINESS_NAME,
     customerName: custName,
     customerPhone: customer.value?.phone,
     customerAddress: customer.value?.address,

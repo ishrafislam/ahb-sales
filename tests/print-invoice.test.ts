@@ -49,6 +49,24 @@ describe("buildInvoiceDocument", () => {
     expect(buildInvoiceDocument(invoice, opts).title).toContain("42");
   });
 
+  it("takes the shop name from the locale when none is passed", () => {
+    const noName = { ...opts, businessName: undefined };
+    expect(buildInvoiceDocument(invoice, noName).bodyHtml).toContain(
+      "ABDUL HAMID AND BROTHERS"
+    );
+
+    currentLang.value = "bn";
+    expect(buildInvoiceDocument(invoice, noName).bodyHtml).toContain(
+      "আব্দুল হামিদ এন্ড ব্রাদার্স"
+    );
+  });
+
+  it("rules the totals with solid lines, not dashes", () => {
+    const { styleCss } = buildInvoiceDocument(invoice, opts);
+    expect(styleCss).not.toContain("dashed");
+    expect(styleCss).toContain("border-bottom: 1px solid #000");
+  });
+
   it("renders the header, both lines and the totals", () => {
     const { bodyHtml } = buildInvoiceDocument(invoice, opts);
 

@@ -105,18 +105,18 @@ export function buildInvoiceDocument(
   // the page's height (see `fillPage` below) so the totals can sit at the
   // bottom of the sheet however few items the sale has.
   const styleCss = `
-    .receipt { width: 72mm; font-family: ${fontFamily}; font-size: 10px; }
-    .receipt h1 { font-size: 13px; margin: 0 0 2px; text-align: center; }
-    .receipt .addr { font-size: 9px; text-align: center; margin: 1px 0; }
+    .receipt { width: 72mm; font-family: ${fontFamily}; font-size: 11px; }
+    .receipt h1 { font-size: 14px; margin: 0 0 2px; text-align: center; }
+    .receipt .addr { font-size: 10px; text-align: center; margin: 1px 0; }
     .receipt hr { border: none; border-top: 1px solid #000; margin: 3px 0; }
-    .receipt .cust { display: block; font-size: 9px; }
-    .receipt .time { font-size: 9px; }
-    .receipt .meta-row { display: flex; justify-content: space-between; align-items: flex-start; font-size: 10px; margin: 2px 0; }
-    .receipt table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    .receipt .cust { display: block; font-size: 10px; }
+    .receipt .time { font-size: 10px; }
+    .receipt .meta-row { display: flex; justify-content: space-between; align-items: flex-start; font-size: 11px; margin: 2px 0; }
+    .receipt table { width: 100%; border-collapse: collapse; font-size: 11px; }
     .receipt td { padding: 1px 1px; vertical-align: top; }
-    .receipt .sum td { padding: 1px 0; border-bottom: 1px dashed #000; }
+    .receipt .sum td { padding: 1px 0; border-bottom: 1px solid #000; }
     .receipt .sum .val { text-align: right; font-weight: 600; white-space: nowrap; }
-    .receipt .notes { margin-top: 6px; font-size: 9px; }
+    .receipt .notes { margin-top: 6px; font-size: 10px; }
   `;
 
   const bodyHtml = `

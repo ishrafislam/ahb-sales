@@ -3,7 +3,7 @@
     <!-- Header band: title + product lookup panel -->
     <div class="flex items-center gap-3">
       <h1 class="text-xl lg:text-2xl font-bold tracking-wide">
-        {{ BUSINESS_NAME }}
+        {{ t("business_name") }}
       </h1>
       <div
         class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5 min-w-[20rem]"
@@ -404,7 +404,6 @@ import CustomerStatusPanel, {
   type PostedStatus,
 } from "../components/dashboard/CustomerStatusPanel.vue";
 import {
-  BUSINESS_NAME,
   MIN_CUSTOMER_ID,
   MAX_CUSTOMER_ID,
 } from "../constants/business";
@@ -1296,7 +1295,6 @@ async function onSinglePrint() {
 
   void window.ahb.openPrintPreview(
     buildInvoiceDocument(inv, {
-      businessName: BUSINESS_NAME,
       customerName: customerNameText.value || String(inv.customerId ?? ""),
       customerPhone: customerPhoneText.value || undefined,
       customerAddress: customerAddressText.value || undefined,

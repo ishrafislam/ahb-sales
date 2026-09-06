@@ -1275,6 +1275,8 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect(doc.bodyHtml).toContain("চাল");
     expect(doc.bodyHtml).toContain("2 kg");
     expect(doc.bodyHtml).toContain("রহিম");
+    // The shop name comes from the locale, not from the caller
+    expect(doc.bodyHtml).toContain("ABDUL HAMID AND BROTHERS");
     wrapper.unmount();
   });
 
