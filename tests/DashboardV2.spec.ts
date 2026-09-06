@@ -1950,3 +1950,201 @@ describe("Dashboard v2 — invoice drafts", () => {
     wrapper.unmount();
   });
 });
+
+describe("Dashboard v2 — loading an earlier day's invoice", () => {
+  const isoOn = (daysAgo: number, hour = 10) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hour, 0, 0, 0);
+    return d.toISOString();
+  };
+  const textOf = (iso: string) => {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(
+      d.getFullYear() % 100
+    ).padStart(2, "0")}`;
+  };
+
+  const todayInvoice = {
+    id: "inv-today",
+    no: 9,
+    date: isoOn(0),
+    customerId: 12,
+    lines: [
+      { sn: 1, productId: 5, unit: "kg", quantity: 2, rate: 10.5, lineTotal: 21 },
+    ],
+    discount: 0,
+    totals: { subtotal: 21, net: 21 },
+    paid: 0,
+    previousDue: 0,
+    currentDue: 21,
+  };
+  const oldInvoice = {
+    id: "inv-old",
+    no: 4,
+    date: isoOn(7),
+    customerId: 12,
+    lines: [
+      { sn: 1, productId: 7, unit: "Bag", quantity: 3, rate: 20, lineTotal: 60 },
+    ],
+    discount: 0,
+    totals: { subtotal: 60, net: 60 },
+    paid: 0,
+    previousDue: 0,
+    currentDue: 60,
+  };
+
+  let listInvoicesByCustomer: ReturnType<typeof vi.fn>;
+  let saveInvoiceDraft: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    currentLang.value = "en";
+    listInvoicesByCustomer = vi.fn(async () => [todayInvoice, oldInvoice]);
+    saveInvoiceDraft = vi.fn(async () => null);
+    (window as unknown as { ahb: unknown }).ahb = {
+      listInvoicesByCustomer,
+      getCustomerById: vi.fn(async () => null),
+      getProductById: vi.fn(async (id: number) => ({
+        id,
+        nameBn: id === 7 ? "ডাল" : "চাল",
+        unit: id === 7 ? "Bag" : "kg",
+        price: id === 7 ? 20 : 10.5,
+        stock: 40,
+      })),
+      saveInvoiceDraft,
+      getInvoiceDraft: vi.fn(async () => null),
+      deleteInvoiceDraft: vi.fn(async () => true),
+      postInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
+    };
+  });
+
+  function mountDashboard() {
+    return mount(Dashboard, {
+      attachTo: document.body,
+      global: { plugins: [createPinia()] },
+    });
+  }
+
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+
+  const dateBox = (wrapper: ReturnType<typeof mountDashboard>) =>
+    wrapper.find('[data-role="working-date"]');
+
+  const button = (wrapper: ReturnType<typeof mountDashboard>, label: string) =>
+    wrapper.findAll("button").find((b) => b.text() === label)!;
+
+  const disabled = (wrapper: ReturnType<typeof mountDashboard>, label: string) =>
+    (button(wrapper, label).element as HTMLButtonElement).disabled;
+
+  async function selectCustomer(
+    wrapper: ReturnType<typeof mountDashboard>,
+    id: string
+  ) {
+    const rows = wrapper
+      .findAll("div")
+      .filter(
+        (d) => d.text().includes("Customer ID") && d.find("input").exists()
+      );
+    const input = rows[rows.length - 1]!.find("input");
+    await input.setValue(id);
+    await input.trigger("keydown.enter");
+    await settle();
+    await settle();
+  }
+
+  async function setDate(
+    wrapper: ReturnType<typeof mountDashboard>,
+    text: string
+  ) {
+    await dateBox(wrapper).setValue(text);
+    await dateBox(wrapper).trigger("keydown.enter");
+    await settle();
+    await settle();
+  }
+
+  it("opens the box on today's date", () => {
+    const wrapper = mountDashboard();
+    expect((dateBox(wrapper).element as HTMLInputElement).value).toBe(
+      textOf(isoOn(0))
+    );
+    wrapper.unmount();
+  });
+
+  it("loads an older invoice locked, printable but not amendable", async () => {
+    const wrapper = mountDashboard();
+    await setDate(wrapper, textOf(oldInvoice.date));
+    await selectCustomer(wrapper, "12");
+
+    const cells = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((cells[0]!.element as HTMLInputElement).value).toBe("7");
+    expect((cells[1]!.element as HTMLInputElement).value).toBe("3");
+    // A newer invoice exists for this customer, so the domain refuses edits
+    expect(disabled(wrapper, "Edit")).toBe(true);
+    expect(disabled(wrapper, "Payment")).toBe(true);
+    expect(disabled(wrapper, "Post Data")).toBe(true);
+    // Reprinting is the point of loading it
+    expect(disabled(wrapper, "Single Print")).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("says so when nothing was billed on that day", async () => {
+    const wrapper = mountDashboard();
+    await setDate(wrapper, textOf(isoOn(3)));
+    await selectCustomer(wrapper, "12");
+
+    expect(wrapper.text()).toContain("No invoice for this date");
+    expect(wrapper.findAll("tbody tr").length).toBe(0);
+    expect(disabled(wrapper, "Post Data")).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("an older invoice that is still the latest stays amendable", async () => {
+    listInvoicesByCustomer.mockResolvedValue([oldInvoice]);
+    const wrapper = mountDashboard();
+    await setDate(wrapper, textOf(oldInvoice.date));
+    await selectCustomer(wrapper, "12");
+
+    expect(disabled(wrapper, "Edit")).toBe(false);
+    expect(disabled(wrapper, "Payment")).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("writes no draft while an earlier day is showing", async () => {
+    const wrapper = mountDashboard();
+    await setDate(wrapper, textOf(oldInvoice.date));
+    await selectCustomer(wrapper, "12");
+    await new Promise((r) => setTimeout(r, 500));
+
+    expect(saveInvoiceDraft).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("coming back to today restores normal entry", async () => {
+    const wrapper = mountDashboard();
+    await setDate(wrapper, textOf(isoOn(3)));
+    await selectCustomer(wrapper, "12");
+    expect(disabled(wrapper, "Post Data")).toBe(true);
+
+    await setDate(wrapper, textOf(isoOn(0)));
+    // Today's invoice for this customer loads, ready to edit
+    expect(disabled(wrapper, "Edit")).toBe(false);
+    const cells = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((cells[0]!.element as HTMLInputElement).value).toBe("5");
+    wrapper.unmount();
+  });
+
+  it("an unreadable date puts the box back and loads nothing", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    listInvoicesByCustomer.mockClear();
+
+    await setDate(wrapper, "31/02/26");
+    expect((dateBox(wrapper).element as HTMLInputElement).value).toBe(
+      textOf(isoOn(0))
+    );
+    expect(listInvoicesByCustomer).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+});

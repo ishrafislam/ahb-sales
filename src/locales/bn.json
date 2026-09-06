@@ -186,6 +186,8 @@
   "v2_daily_report": "দৈনিক রিপোর্ট",
   "v2_client_report": "গ্রাহক রিপোর্ট",
   "v2_daily_payment_report": "দৈনিক জমা রিপোর্ট",
+  "v2_no_invoice_for_date": "এই তারিখে কোনো চালান নেই",
+  "v2_older_invoice_locked": "শুধু গ্রাহকের সর্বশেষ চালান সম্পাদনা করা যায়",
   "v2_post_data": "তথ্য সংরক্ষণ",
   "v2_edit": "এডিট",
   "v2_payment": "জমা",

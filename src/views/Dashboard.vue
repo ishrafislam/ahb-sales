@@ -36,7 +36,37 @@
       >
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_date") }}:</label>
-          <input type="text" :value="todayText" :class="[inputClass, 'max-w-[9rem] text-right']" />
+          <!-- Typed DD/MM/YY, with the calendar button for browsing back -->
+          <div class="relative flex-1 min-w-0 max-w-[9rem]">
+            <input
+              type="text"
+              :value="ld(dateText)"
+              :class="[inputClass, 'w-full pr-6 text-right']"
+              data-role="working-date"
+              @input="dateText = toLatinDigits(($event.target as HTMLInputElement).value)"
+              @keydown.enter.prevent="commitDateText"
+              @blur="commitDateText"
+            />
+            <button
+              type="button"
+              class="absolute inset-y-0 right-0 px-1.5 text-[0.7rem] leading-none text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              :aria-label="t('v2_date')"
+              data-role="date-picker-toggle"
+              @mousedown.prevent
+              @click="openDatePicker"
+            >
+              📅
+            </button>
+            <!-- The native picker itself: driven by the button, never shown -->
+            <input
+              ref="datePicker"
+              type="date"
+              class="sr-only absolute inset-y-0 right-0 w-0"
+              tabindex="-1"
+              aria-hidden="true"
+              @change="onDatePicked"
+            />
+          </div>
         </div>
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_customer_id") }}:</label>
@@ -287,7 +317,7 @@
           <ProductEntryTable
             ref="entryTable"
             v-model:rows="entryRows"
-            :locked="posted"
+            :locked="entryLocked"
             @product-selected="onProductSelected"
             @leave-left="focusCustomerId"
           />
@@ -311,7 +341,7 @@
               type="text"
               inputmode="decimal"
               @input="discountText = toLatinDigits(($event.target as HTMLInputElement).value)"
-              :readonly="posted"
+              :readonly="entryLocked"
               :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
               @keydown.enter.prevent="onDiscountEnter"
               @blur="onDiscountBlur"
@@ -345,9 +375,15 @@
           <CustomerStatusPanel
             v-model:comment="comment"
             :status="postedStatus"
-            :locked="posted"
+            :locked="entryLocked"
           />
         </div>
+        <p
+          v-if="mode === 'archive'"
+          class="text-xs text-gray-500 dark:text-gray-400"
+        >
+          {{ t("v2_no_invoice_for_date") }}
+        </p>
         <p
           v-if="postError"
           class="text-xs text-red-600 dark:text-red-400"
@@ -358,7 +394,7 @@
           <button
             type="button"
             :class="[buttonClass, 'h-9 disabled:opacity-70 disabled:cursor-not-allowed']"
-            :disabled="posted"
+            :disabled="!canPost"
             @click="onPostData"
           >
             {{ t("v2_post_data") }}
@@ -366,7 +402,8 @@
           <button
             type="button"
             :class="[buttonClass, 'h-9 disabled:opacity-70 disabled:cursor-not-allowed']"
-            :disabled="mode !== 'posted'"
+            :disabled="!canAmendInvoice"
+            :title="posted && !canEditInvoice ? t('v2_older_invoice_locked') : undefined"
             @click="onEdit"
           >
             {{ t("v2_edit") }}
@@ -375,7 +412,8 @@
         <button
           type="button"
           :class="[buttonClass, 'h-9 w-full disabled:opacity-70 disabled:cursor-not-allowed']"
-          :disabled="mode !== 'posted'"
+          :disabled="!canAmendInvoice"
+          :title="posted && !canEditInvoice ? t('v2_older_invoice_locked') : undefined"
           @click="onPayment"
         >
           {{ t("v2_payment") }}
@@ -822,8 +860,19 @@ const paidTotalText = computed(() => paidTotal.value.toFixed(2));
 
 // Posting: "entry" → fresh form; "posted" → locked, invoice saved;
 // "editing" → unlocked again, Post Data updates the same invoice.
-const mode = ref<"entry" | "posted" | "editing">("entry");
+// "archive" → an earlier day with nothing billed to this customer: nothing to
+// show and nothing to enter, since a sale is only ever posted onto today.
+const mode = ref<"entry" | "posted" | "editing" | "archive">("entry");
 const posted = computed(() => mode.value === "posted");
+// The grid takes input in the two entry modes only
+const entryLocked = computed(
+  () => mode.value !== "entry" && mode.value !== "editing"
+);
+// The loaded invoice is the customer's latest, so the domain will accept an
+// edit or a payment against it
+const canEditInvoice = ref(true);
+const canPost = computed(() => viewingToday.value && !entryLocked.value);
+const canAmendInvoice = computed(() => posted.value && canEditInvoice.value);
 const postedInvoiceId = ref<string | null>(null);
 const postedStatus = ref<PostedStatus | null>(null);
 const postError = ref("");
@@ -831,7 +880,7 @@ const comment = ref("");
 let posting = false;
 
 function onEdit() {
-  if (mode.value !== "posted") return;
+  if (!canAmendInvoice.value) return;
   mode.value = "editing";
   entryTable.value?.resumeEntry();
 }
@@ -850,7 +899,7 @@ function applyInvoiceToStatus(inv: Invoice) {
 }
 
 function onPayment() {
-  if (mode.value !== "posted" || postedInvoiceId.value === null) return;
+  if (!canAmendInvoice.value || postedInvoiceId.value === null) return;
   void window.ahb.openPaymentWindow(postedInvoiceId.value);
 }
 
@@ -922,8 +971,9 @@ async function saveDraftNow() {
     clearTimeout(draftTimer);
     draftTimer = null;
   }
-  // A posted invoice is the record itself; there is nothing to draft
-  if (mode.value === "posted") return;
+  // A posted invoice is the record itself, and an earlier day is history:
+  // neither is something to draft
+  if (mode.value === "posted" || mode.value === "archive") return;
   const id = draftCustomerId;
   if (id === null) return;
   try {
@@ -1002,7 +1052,8 @@ async function loadDraft(draft: InvoiceDraft) {
 }
 
 async function onPostData() {
-  if (posted.value || posting) return;
+  // A sale is only ever posted onto today: an earlier day is read-only
+  if (!canPost.value || posting) return;
   postError.value = "";
   const custId = parseCustomerId();
   if (custId === undefined) return;
@@ -1049,6 +1100,8 @@ async function onPostData() {
       return true;
     });
     mode.value = "posted";
+    // What was just posted is the customer's latest by definition
+    canEditInvoice.value = true;
     // The money lives on the invoice now; the draft has done its job
     cancelDraftSave();
     try {
@@ -1102,7 +1155,11 @@ async function loadLastBill() {
     customerIdInput.value?.select();
     return;
   }
-  let todayInvoice: Invoice | null = null;
+  // The invoice billed to this customer on the selected day, if any
+  let dayInvoice: Invoice | null = null;
+  // Dues are chained through each invoice's stored previousDue, so the domain
+  // only lets a customer's latest invoice be edited or paid against.
+  let isLatest = false;
   try {
     const [invoices, customer] = await Promise.all([
       window.ahb.listInvoicesByCustomer(id),
@@ -1116,7 +1173,9 @@ async function loadLastBill() {
       const latest = invoices[0]!;
       lastBillDateText.value = new Date(latest.date).toLocaleDateString("en-GB");
       lastBillText.value = latest.totals.net.toFixed(2);
-      if (isToday(latest.date)) todayInvoice = latest;
+      dayInvoice =
+        invoices.find((i) => ymdOfLocal(i.date) === selectedDate.value) ?? null;
+      isLatest = dayInvoice !== null && dayInvoice.no === latest.no;
     }
   } catch {
     lastBillDateText.value = "—";
@@ -1125,11 +1184,14 @@ async function loadLastBill() {
   }
   // An entry left unposted for this customer outranks the posted invoice:
   // it is the newer intent, and it may itself be an edit of that invoice.
+  // Drafts belong to entry in progress, which only happens on today's date.
   let draft: InvoiceDraft | null = null;
-  try {
-    draft = await window.ahb.getInvoiceDraft(id);
-  } catch {
-    draft = null;
+  if (viewingToday.value) {
+    try {
+      draft = await window.ahb.getInvoiceDraft(id);
+    } catch {
+      draft = null;
+    }
   }
   selectedProductIdText.value = "";
   selectedProductStockText.value = "";
@@ -1141,37 +1203,36 @@ async function loadLastBill() {
   postedStatus.value = null;
   postError.value = "";
   comment.value = "";
-  draftCustomerId = id;
+  // Only meaningful once an invoice is loaded; entry always posts a new one
+  canEditInvoice.value = dayInvoice ? isLatest : true;
+  // No draft is written while an earlier day is being browsed
+  draftCustomerId = viewingToday.value ? id : null;
   suppressDraftSave = true;
   try {
     if (draft) {
       await loadDraft(draft);
-    } else if (todayInvoice) {
-      // An invoice from today loads into the locked posted state, exactly
-      // as right after Post Data: Edit unlocks it, Payment applies to it.
-      await loadPostedInvoice(todayInvoice);
+    } else if (dayInvoice) {
+      // The day's invoice loads into the locked posted state, exactly as
+      // right after Post Data: on the latest one Edit unlocks it and Payment
+      // applies to it; an older one is there to be read and reprinted.
+      await loadPostedInvoice(dayInvoice);
       // Entry mode lands on the first ID cell; a loaded invoice does the same,
       // so the header opens on the first line's product and stock
       entryTable.value?.focusFirstRow();
-    } else {
+    } else if (viewingToday.value) {
       // Start product entry: focus moves into the first row's ID cell
       entryTable.value?.startEntry();
+    } else {
+      // An earlier day with nothing billed: there is nothing to enter, since
+      // a sale is only ever posted onto today
+      entryRows.value = [];
+      mode.value = "archive";
     }
   } finally {
     // Let the row watcher run on the loaded rows before it counts as an edit
     await nextTick();
     suppressDraftSave = false;
   }
-}
-
-function isToday(iso: string): boolean {
-  const d = new Date(iso);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
 }
 
 let loadedRowKey = -1;
@@ -1390,11 +1451,91 @@ const reportButtons: {
   },
 ];
 
-const todayText = computed(() => {
+// ---------------------------------------------------------------------------
+// The working date. Today for a new sale; an earlier day loads whatever was
+// billed to the selected customer then — one invoice per customer per day, so
+// a date and an id name exactly one receipt.
+// ---------------------------------------------------------------------------
+function todayYmd(): string {
   const d = new Date();
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear() % 100).padStart(2, "0");
-  return `${dd}/${mm}/${yy}`;
-});
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** An invoice's day as the user sees it: local, not the ISO string's UTC. */
+function ymdOfLocal(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function ymdToText(ymd: string): string {
+  const [y = "", m = "", d = ""] = ymd.split("-");
+  return `${d}/${m}/${y.slice(2)}`;
+}
+
+const selectedDate = ref(todayYmd());
+const dateText = ref(ymdToText(selectedDate.value));
+const datePicker = ref<HTMLInputElement | null>(null);
+const viewingToday = computed(() => selectedDate.value === todayYmd());
+
+/** "DD/MM/YY" back to "YYYY-MM-DD"; null when it is not a real date. */
+function parseDateText(text: string): string | null {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(
+    toLatinDigits(text).trim()
+  );
+  if (!m) return null;
+  const [, dd = "", mm = "", yy = ""] = m;
+  const year = yy.length === 2 ? 2000 + Number(yy) : Number(yy);
+  const month = Number(mm);
+  const day = Number(dd);
+  const d = new Date(year, month - 1, day);
+  // Rejects 31/02 and friends: the Date rolls them over
+  if (
+    d.getFullYear() !== year ||
+    d.getMonth() !== month - 1 ||
+    d.getDate() !== day
+  ) {
+    return null;
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${year}-${pad(month)}-${pad(day)}`;
+}
+
+/** Move to a day and reload whatever the current customer has on it. */
+function setSelectedDate(ymd: string) {
+  if (ymd === selectedDate.value) {
+    dateText.value = ymdToText(selectedDate.value);
+    return;
+  }
+  selectedDate.value = ymd;
+  dateText.value = ymdToText(ymd);
+  void loadLastBill();
+}
+
+// A date that cannot be read is not a date: the box goes back to the day it
+// is actually showing rather than silently loading something else.
+function commitDateText() {
+  const ymd = parseDateText(dateText.value);
+  if (!ymd) {
+    dateText.value = ymdToText(selectedDate.value);
+    return;
+  }
+  setSelectedDate(ymd);
+}
+
+function openDatePicker() {
+  const el = datePicker.value;
+  if (!el) return;
+  el.value = selectedDate.value;
+  // Chromium opens the calendar here; the text box stays the keyboard path
+  if (typeof el.showPicker === "function") el.showPicker();
+  else el.click();
+}
+
+function onDatePicked(e: Event) {
+  const value = (e.target as HTMLInputElement).value;
+  if (value) setSelectedDate(value);
+}
 </script>

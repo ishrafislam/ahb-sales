@@ -186,6 +186,8 @@
   "v2_daily_report": "Daily Report",
   "v2_client_report": "Client Report",
   "v2_daily_payment_report": "Daily Payment Report",
+  "v2_no_invoice_for_date": "No invoice for this date",
+  "v2_older_invoice_locked": "Only the customer's latest invoice can be edited",
   "v2_post_data": "Post Data",
   "v2_edit": "Edit",
   "v2_payment": "Payment",
