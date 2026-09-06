@@ -19,6 +19,7 @@ import { UpdateService } from "./main/services/UpdateService";
 import { DataService } from "./main/services/DataService";
 import { PrintService } from "./main/services/PrintService";
 import type { PrintDocument, PrintMargins } from "./print/document";
+import { shouldRestoreParent } from "./main/windowFocus";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -223,15 +224,27 @@ const printMarginsWindows = new Map<string, BrowserWindow>();
 // routed by sender id operates on the same open document.
 /**
  * Windows hands focus past the owner when a child window is destroyed, which
- * leaves the main window minimised behind everything else. Pull the parent
- * back on `close`, while the child is still alive — by `closed` the focus has
- * already gone.
+ * leaves the main window sunk behind everything else. Pull the parent back —
+ * but only once the child is gone and only when it was the last one, per
+ * `shouldRestoreParent`. Doing it any earlier, or with siblings still open,
+ * is what left the dashboard deactivated or minimised.
  */
 function focusParentOnClose(win: BrowserWindow, parent: BrowserWindow) {
-  win.on("close", () => {
-    if (parent.isDestroyed()) return;
-    if (parent.isMinimized()) parent.restore();
-    parent.focus();
+  win.on("closed", () => {
+    // A turn later, so Windows has finished its own activation first
+    setImmediate(() => {
+      if (parent.isDestroyed()) return;
+      const liveSiblings = BrowserWindow.getAllWindows().filter(
+        (w) => !w.isDestroyed() && w !== win && w.getParentWindow() === parent
+      ).length;
+      const decision = shouldRestoreParent({
+        platform: process.platform,
+        parent: { minimized: parent.isMinimized(), destroyed: false },
+        liveSiblings,
+      });
+      if (decision.restore) parent.restore();
+      if (decision.focus) parent.focus();
+    });
   });
 }
 
