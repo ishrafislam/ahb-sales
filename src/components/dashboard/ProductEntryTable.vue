@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-grow bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto">
+  <div class="flex-grow panel min-h-0 overflow-y-auto">
     <table class="w-full text-sm text-left border-collapse">
       <thead
         class="text-xs uppercase bg-gray-50 dark:bg-gray-900 dark:text-gray-100 sticky top-0"

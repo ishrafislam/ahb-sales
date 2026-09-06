@@ -7,7 +7,7 @@
          frame, each cell its right and bottom gridline. -->
     <table class="w-full text-sm border-separate border-spacing-0">
       <thead
-        class="sticky top-0 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+        class="sticky top-0 bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-50"
       >
         <tr>
           <th

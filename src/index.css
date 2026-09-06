@@ -59,6 +59,40 @@ body {
     @apply text-white;
     background-color: var(--ahb-accent);
   }
+
+  /* Region colours. Each screen area is a card; the tint says which area it
+     is, so the eye finds the date, the totals or the reports without reading.
+     Dark mode gets a muted ground rather than the light pastel. */
+  .panel {
+    @apply shadow-sm border bg-white border-gray-200 dark:bg-gray-900 dark:border-gray-700;
+  }
+  .panel-blue {
+    @apply bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-900;
+  }
+  .panel-green {
+    @apply bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-900;
+  }
+  .panel-amber {
+    @apply bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-900;
+  }
+
+  /* Buttons carry the same three tints: blue confirms, green prints, amber
+     opens a form or a report. */
+  .btn-tinted {
+    @apply border transition-colors text-xs leading-tight disabled:opacity-70 disabled:cursor-not-allowed;
+  }
+  .btn-neutral {
+    @apply bg-gray-50 border-gray-300 hover:bg-gray-100 text-gray-900 dark:bg-gray-800 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-100;
+  }
+  .btn-blue {
+    @apply bg-blue-100 border-blue-300 hover:bg-blue-200 text-blue-900 dark:bg-blue-900/50 dark:border-blue-800 dark:hover:bg-blue-900/80 dark:text-blue-50;
+  }
+  .btn-green {
+    @apply bg-green-100 border-green-300 hover:bg-green-200 text-green-900 dark:bg-green-900/50 dark:border-green-800 dark:hover:bg-green-900/80 dark:text-green-50;
+  }
+  .btn-amber {
+    @apply bg-amber-100 border-amber-300 hover:bg-amber-200 text-amber-900 dark:bg-amber-900/50 dark:border-amber-800 dark:hover:bg-amber-900/80 dark:text-amber-50;
+  }
 }
 
 @layer utilities {

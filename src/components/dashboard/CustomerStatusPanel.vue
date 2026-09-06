@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex-grow bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto p-2 flex flex-col gap-1.5"
+    class="flex-grow panel min-h-0 overflow-y-auto p-2 flex flex-col gap-1.5"
   >
     <div
       v-for="field in fields"

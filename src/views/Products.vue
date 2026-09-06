@@ -36,7 +36,7 @@
     </div>
 
     <!-- Right: detail form -->
-    <div class="flex-1 min-w-0 p-6 flex flex-col gap-4 overflow-y-auto">
+    <div class="flex-1 min-w-0 p-6 flex flex-col gap-4 overflow-y-auto panel panel-green border-0 shadow-none">
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label :class="labelClass" for="item-id">{{ t("item_id") }}</label>
@@ -183,7 +183,7 @@
         <button
           v-if="!exists"
           type="button"
-          :class="buttonClass"
+          :class="primaryButtonClass"
           :disabled="!canSave"
           @click="void save()"
         >
@@ -200,7 +200,7 @@
         <button
           v-else
           type="button"
-          :class="buttonClass"
+          :class="primaryButtonClass"
           :disabled="!canSave"
           @click="void save()"
         >
@@ -463,5 +463,8 @@ const fieldClass =
   "block w-full bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default";
 
 const buttonClass =
-  "min-w-[7rem] bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-2 px-4 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";
+  "min-w-[7rem] btn-tinted btn-neutral rounded-md py-2 px-4 text-sm";
+
+// The confirming action of the window carries the blue tint
+const primaryButtonClass = buttonClass.replace("btn-neutral", "btn-blue");
 </script>

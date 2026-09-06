@@ -6,7 +6,7 @@
         {{ t("business_name") }}
       </h1>
       <div
-        class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5 min-w-[20rem]"
+        class="panel panel-blue p-2 flex flex-col gap-1.5 min-w-[20rem]"
       >
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap w-24">{{ t("v2_product_id") }}:</label>
@@ -32,7 +32,7 @@
     <!-- Info band: date/customer-id, last bill, search -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-3">
       <div
-        class="lg:col-span-3 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
+        class="lg:col-span-3 panel panel-blue p-2 flex flex-col gap-1.5"
       >
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_date") }}:</label>
@@ -109,7 +109,7 @@
       </div>
 
       <div
-        class="lg:col-span-4 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
+        class="lg:col-span-4 panel panel-green p-2 flex flex-col gap-1.5"
       >
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap w-32">{{ t("v2_last_bill_date") }}:</label>
@@ -132,7 +132,7 @@
       </div>
 
       <div
-        class="lg:col-span-5 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
+        class="lg:col-span-5 panel panel-amber p-2 flex flex-col gap-1.5"
       >
         <!-- Name search: type to get suggestions, pick one, then Search opens
              that record's details in its own window -->
@@ -162,7 +162,7 @@
           />
           <button
             type="button"
-            :class="[buttonClass, 'px-4 h-8 text-xs disabled:opacity-70 disabled:cursor-not-allowed']"
+            :class="[buttonClass, 'btn-amber px-4 h-8']"
             :disabled="pickedCustomerId === null"
             data-role="customer-name-search-button"
             @click="openCustomerDetails"
@@ -196,7 +196,7 @@
           />
           <button
             type="button"
-            :class="[buttonClass, 'px-4 h-8 text-xs disabled:opacity-70 disabled:cursor-not-allowed']"
+            :class="[buttonClass, 'btn-amber px-4 h-8']"
             :disabled="pickedProductId === null"
             data-role="product-name-search-button"
             @click="openProductDetails"
@@ -212,7 +212,7 @@
       <!-- Left column -->
       <div class="lg:col-span-3 flex flex-col gap-2 lg:gap-3 min-h-0">
         <div
-          class="shrink-0 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
+          class="shrink-0 panel panel-green p-2 flex flex-col gap-1.5"
         >
           <!-- Name and address save straight from here: Enter, or leaving the
                field. Receivable stays read-only — it can only be set when the
@@ -259,13 +259,13 @@
         <!-- The customer card above stays put; only the button cards scroll -->
         <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 lg:gap-3">
           <div
-            class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 grid grid-cols-3 gap-1.5"
+            class="panel panel-green p-2 grid grid-cols-3 gap-1.5"
           >
             <button
               v-for="btn in printButtons"
               :key="btn.key"
               type="button"
-              :class="[buttonClass, 'min-h-[3rem] px-1 py-1']"
+              :class="[buttonClass, 'btn-green min-h-[3rem] px-1 py-1']"
               :disabled="btn.enabled ? !btn.enabled.value : false"
               @click="btn.handler?.()"
             >
@@ -274,13 +274,13 @@
           </div>
 
           <div
-            class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 grid grid-cols-2 gap-1.5"
+            class="panel panel-amber p-2 grid grid-cols-2 gap-1.5"
           >
             <button
               v-for="btn in actionButtons"
               :key="btn.key"
               type="button"
-              :class="[buttonClass, 'min-h-[2.25rem] px-1 py-1']"
+              :class="[buttonClass, 'btn-amber min-h-[2.25rem] px-1 py-1']"
               @click="onActionClick(btn)"
             >
               {{ t(btn.key) }}
@@ -288,20 +288,20 @@
           </div>
 
           <div
-            class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 grid grid-cols-2 gap-1.5"
+            class="panel panel-amber p-2 grid grid-cols-2 gap-1.5"
           >
             <button
               v-for="btn in reportButtons"
               :key="btn.key"
               type="button"
-              :class="[buttonClass, 'min-h-[2.25rem] px-1 py-1']"
+              :class="[buttonClass, 'btn-amber min-h-[2.25rem] px-1 py-1']"
               @click="onReportClick(btn)"
             >
               {{ t(btn.key) }}
             </button>
             <button
               type="button"
-              :class="[buttonClass, 'min-h-[2.25rem] px-1 py-1 col-span-2']"
+              :class="[buttonClass, 'btn-amber min-h-[2.25rem] px-1 py-1 col-span-2']"
               @click="openPaymentReport"
             >
               {{ t("v2_daily_payment_report") }}
@@ -323,7 +323,7 @@
           />
         </div>
 
-        <div class="flex flex-col gap-1.5">
+        <div class="panel panel-blue p-2 flex flex-col gap-1.5">
           <div class="flex items-center gap-2">
             <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_grand_total") }}:</label>
             <input
@@ -393,7 +393,7 @@
         <div class="grid grid-cols-2 gap-2">
           <button
             type="button"
-            :class="[buttonClass, 'h-9 disabled:opacity-70 disabled:cursor-not-allowed']"
+            :class="[buttonClass, 'btn-blue h-9']"
             :disabled="!canPost"
             @click="onPostData"
           >
@@ -401,7 +401,7 @@
           </button>
           <button
             type="button"
-            :class="[buttonClass, 'h-9 disabled:opacity-70 disabled:cursor-not-allowed']"
+            :class="[buttonClass, 'btn-blue h-9']"
             :disabled="!canAmendInvoice"
             :title="posted && !canEditInvoice ? t('v2_older_invoice_locked') : undefined"
             @click="onEdit"
@@ -411,7 +411,7 @@
         </div>
         <button
           type="button"
-          :class="[buttonClass, 'h-9 w-full disabled:opacity-70 disabled:cursor-not-allowed']"
+          :class="[buttonClass, 'btn-blue h-9 w-full']"
           :disabled="!canAmendInvoice"
           :title="posted && !canEditInvoice ? t('v2_older_invoice_locked') : undefined"
           @click="onPayment"
@@ -1306,8 +1306,8 @@ async function loadPostedInvoice(inv: Invoice) {
 const inputClass =
   "flex-1 min-w-0 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-2 py-1 text-xs dark:text-gray-100";
 
-const buttonClass =
-  "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-xs leading-tight dark:text-gray-100";
+// The shape; the tint comes from the group the button belongs to
+const buttonClass = "btn-tinted";
 
 // Only Single Print is wired so far; the other two carry no handler yet.
 const printButtons: Array<{

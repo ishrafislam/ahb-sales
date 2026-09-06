@@ -86,7 +86,7 @@
     <div class="mt-auto grid grid-cols-2 gap-3 pt-2">
       <button
         type="button"
-        :class="buttonClass"
+        :class="primaryButtonClass"
         :disabled="!!error || running"
         @click="okay"
       >
@@ -215,7 +215,10 @@ const fieldClass =
   "flex-1 min-w-0 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100";
 
 const buttonClass =
-  "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-2 px-4 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";
+  "btn-tinted btn-neutral rounded-md py-2 px-4 text-sm";
+
+// The confirming action of the window carries the blue tint
+const primaryButtonClass = buttonClass.replace("btn-neutral", "btn-blue");
 
 const stepClass =
   "w-11 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-2 text-sm dark:text-gray-100";
