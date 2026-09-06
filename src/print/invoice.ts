@@ -98,7 +98,19 @@ export function buildInvoiceDocument(
     : "";
 
   const grandTotal = inv.totals.net + inv.previousDue;
-  const saleTime = fmtReceiptTime(inv.date, { bengali: isBn });
+
+  // An invoice keeps changing after it is posted — lines edited, a payment
+  // added or corrected — and every one of those stamps updatedAt. The time on
+  // the receipt is that last action, so it never lags the figures beside it.
+  const lastAction = inv.updatedAt || inv.date;
+  const saleTime = fmtReceiptTime(lastAction, { bengali: isBn });
+  // Same day: the time alone reads under the invoice's own date. A later edit
+  // carries its date with it, so the pair cannot be taken for one moment.
+  const sameDay = lastAction.slice(0, 10) === inv.date.slice(0, 10);
+  const timeLabel =
+    sameDay || !saleTime
+      ? saleTime
+      : `${fmtReceiptDate(lastAction, { shortYear: true, bengali: isBn })} ${saleTime}`;
 
   // The receipt keeps its narrow column but sits at the top-left of the
   // content box, so the margins the user sets are what position it. It fills
@@ -133,7 +145,7 @@ export function buildInvoiceDocument(
           ${opts.customerAddress ? `<span class="cust">${opts.customerAddress}</span>` : ""}
           ${opts.customerPhone ? `<span class="cust">${t("phone_label")} : ${isBn ? toBengaliDigits(opts.customerPhone) : opts.customerPhone}</span>` : ""}
         </span>
-        <span style="text-align:right">${fmtReceiptDate(inv.date, { shortYear: true, bengali: isBn })}${saleTime ? `<br /><span class="time">${saleTime}</span>` : ""}</span>
+        <span style="text-align:right">${fmtReceiptDate(inv.date, { shortYear: true, bengali: isBn })}${timeLabel ? `<br /><span class="time">${timeLabel}</span>` : ""}</span>
       </div>
       <hr />
 
