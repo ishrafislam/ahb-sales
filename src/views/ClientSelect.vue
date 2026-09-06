@@ -32,7 +32,7 @@
 
     <button
       type="button"
-      :class="buttonClass"
+      :class="primaryButtonClass"
       :disabled="!customer"
       @click="selected"
     >
@@ -111,5 +111,8 @@ const fieldClass =
   "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md py-2 px-3 text-sm dark:text-gray-100";
 
 const buttonClass =
-  "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-md py-3 px-4 text-sm dark:text-gray-100 disabled:opacity-70 disabled:cursor-not-allowed";
+  "btn-tinted btn-neutral rounded-md py-3 px-4 text-sm";
+
+// The confirming action of the window carries the blue tint
+const primaryButtonClass = buttonClass.replace("btn-neutral", "btn-blue");
 </script>

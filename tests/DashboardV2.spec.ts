@@ -282,6 +282,60 @@ describe("Dashboard v2 — customer ID quick entry", () => {
       wrapper.unmount();
     });
 
+    it("browses the whole list again once the id is settled", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await input.setValue("3");
+      await input.trigger("input");
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(panelRows().length).toBe(111);
+
+      // Enter settles the id: the box is no longer a search
+      await input.trigger("keydown", { key: "Enter" });
+      await new Promise((r) => setTimeout(r, 0));
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(panelRows().length).toBe(MAX_CUSTOMER_ID);
+
+      // Typing over it filters again
+      await input.setValue("30");
+      await input.trigger("input");
+      await new Promise((r) => setTimeout(r, 0));
+      // 30, 300-309
+      expect(panelRows().length).toBe(11);
+      wrapper.unmount();
+    });
+
+    it("blurring the box settles it too", async () => {
+      const wrapper = mountDashboard();
+      const input = getCustomerIdInput(wrapper);
+      await input.setValue("3");
+      await input.trigger("input");
+      await input.trigger("blur");
+      await new Promise((r) => setTimeout(r, 0));
+
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(panelRows().length).toBe(MAX_CUSTOMER_ID);
+      wrapper.unmount();
+    });
+
+    it("picking a row with the mouse settles it too", async () => {
+      const wrapper = mountDashboard();
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+      (panelRows()[2] as HTMLElement).click();
+      await new Promise((r) => setTimeout(r, 0));
+
+      const input = getCustomerIdInput(wrapper);
+      expect((input.element as HTMLInputElement).value).toBe("3");
+      await wrapper.find('[data-role="customer-slots-toggle"]').trigger("click");
+      await new Promise((r) => setTimeout(r, 0));
+      expect(panelRows().length).toBe(MAX_CUSTOMER_ID);
+      wrapper.unmount();
+    });
+
     it("loads the highlighted customer on Enter", async () => {
       const wrapper = mountDashboard();
       const input = getCustomerIdInput(wrapper);
@@ -1221,6 +1275,8 @@ describe("Dashboard v2 — customer ID quick entry", () => {
     expect(doc.bodyHtml).toContain("চাল");
     expect(doc.bodyHtml).toContain("2 kg");
     expect(doc.bodyHtml).toContain("রহিম");
+    // The shop name comes from the locale, not from the caller
+    expect(doc.bodyHtml).toContain("ABDUL HAMID AND BROTHERS");
     wrapper.unmount();
   });
 
@@ -1591,6 +1647,504 @@ describe("Dashboard v2 — action button navigation", () => {
 
     expect(openDailyReportWindow).toHaveBeenCalledTimes(1);
     expect(wrapper.emitted("navigate")).toBeUndefined();
+    wrapper.unmount();
+  });
+});
+
+describe("Dashboard v2 — invoice drafts", () => {
+  let saveInvoiceDraft: ReturnType<typeof vi.fn>;
+  let getInvoiceDraft: ReturnType<typeof vi.fn>;
+  let deleteInvoiceDraft: ReturnType<typeof vi.fn>;
+  let getInvoiceById: ReturnType<typeof vi.fn>;
+  let postInvoice: ReturnType<typeof vi.fn>;
+  let api: Record<string, unknown>;
+  // Captured from onSelectPrintClosed: the main process fires this when the
+  // picking sheet window is closed
+  let selectPrintClosed: (() => void) | null = null;
+
+  beforeEach(() => {
+    currentLang.value = "en";
+    vi.useRealTimers();
+    selectPrintClosed = null;
+    saveInvoiceDraft = vi.fn(async () => null);
+    getInvoiceDraft = vi.fn(async () => null);
+    deleteInvoiceDraft = vi.fn(async () => true);
+    getInvoiceById = vi.fn(async () => null);
+    postInvoice = vi.fn(async () => ({
+      id: "inv-9",
+      totals: { subtotal: 21, net: 21 },
+      discount: 0,
+      paid: 0,
+      previousDue: 0,
+      currentDue: 21,
+    }));
+    api = {
+      listInvoicesByCustomer: vi.fn(async () => []),
+      getCustomerById: vi.fn(async () => null),
+      getProductById: vi.fn(async () => ({
+        id: 5,
+        nameBn: "চাল",
+        unit: "kg",
+        price: 10.5,
+        stock: 40,
+      })),
+      postInvoice,
+      updateInvoice: vi.fn(),
+      saveInvoiceDraft,
+      getInvoiceDraft,
+      deleteInvoiceDraft,
+      getInvoiceById,
+      openSelectPrintWindow: vi.fn(async () => undefined),
+      onSelectPrintClosed: vi.fn((cb: () => void) => {
+        selectPrintClosed = cb;
+        return () => undefined;
+      }),
+    };
+    (window as unknown as { ahb: unknown }).ahb = api;
+  });
+
+  function mountDashboard() {
+    return mount(Dashboard, {
+      attachTo: document.body,
+      global: { plugins: [createPinia()] },
+    });
+  }
+
+  function customerIdInput(wrapper: ReturnType<typeof mountDashboard>) {
+    const rows = wrapper
+      .findAll("div")
+      .filter(
+        (d) => d.text().includes("Customer ID") && d.find("input").exists()
+      );
+    return rows[rows.length - 1]!.find("input");
+  }
+
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+  // Longer than the dashboard's own draft debounce
+  const afterDebounce = () => new Promise((r) => setTimeout(r, 500));
+
+  async function selectCustomer(
+    wrapper: ReturnType<typeof mountDashboard>,
+    id: string
+  ) {
+    const input = customerIdInput(wrapper);
+    await input.setValue(id);
+    await input.trigger("keydown.enter");
+    await settle();
+    await settle();
+  }
+
+  async function enterProduct(wrapper: ReturnType<typeof mountDashboard>) {
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    await rowInputs[0]!.setValue("5");
+    await rowInputs[0]!.trigger("keydown.enter");
+    await settle();
+    await rowInputs[1]!.setValue("2");
+    await settle();
+  }
+
+  it("ArrowLeft on a product ID cell returns to the Customer ID box", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+
+    const idCell = wrapper.findAll("tbody tr")[0]!.findAll("input")[0]!;
+    expect(document.activeElement).toBe(idCell.element);
+
+    await idCell.trigger("keydown", { key: "ArrowLeft" });
+    await settle();
+
+    const customerBox = customerIdInput(wrapper).element as HTMLInputElement;
+    expect(document.activeElement).toBe(customerBox);
+    // Selected, so the next id typed replaces this one
+    expect(customerBox.selectionStart).toBe(0);
+    expect(customerBox.selectionEnd).toBe(customerBox.value.length);
+    wrapper.unmount();
+  });
+
+  it("ArrowRight in the Customer ID box goes to the first product ID cell", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    // Start from the customer box, as ArrowLeft would have left it
+    const customerBox = customerIdInput(wrapper);
+    (customerBox.element as HTMLInputElement).focus();
+
+    await customerBox.trigger("keydown", { key: "ArrowRight" });
+    await settle();
+
+    const idCell = wrapper.findAll("tbody tr")[0]!.findAll("input")[0]!;
+    expect(document.activeElement).toBe(idCell.element);
+    wrapper.unmount();
+  });
+
+  it("clears the row selection when the Select Print window closes", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    await enterProduct(wrapper);
+    await wrapper.find("button.row-selector").trigger("click");
+    await settle();
+    expect(wrapper.text()).toContain("►");
+
+    await wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Select Print")!
+      .trigger("click");
+    await settle();
+    // Still picked while the sheet is open
+    expect(wrapper.text()).toContain("►");
+
+    expect(selectPrintClosed).toBeTruthy();
+    selectPrintClosed!();
+    await settle();
+    expect(wrapper.text()).not.toContain("►");
+    wrapper.unmount();
+  });
+
+  it("Refresh clears the row selection", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    await enterProduct(wrapper);
+    await wrapper.find("button.row-selector").trigger("click");
+    await settle();
+    expect(wrapper.text()).toContain("►");
+
+    await wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Refresh")!
+      .trigger("click");
+    await settle();
+
+    expect(wrapper.text()).not.toContain("►");
+    expect(wrapper.emitted("navigate")).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it("saves what has been entered before Post Data", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    await enterProduct(wrapper);
+    await afterDebounce();
+
+    expect(saveInvoiceDraft).toHaveBeenCalled();
+    const draft = saveInvoiceDraft.mock.calls.at(-1)![0];
+    expect(draft.customerId).toBe(12);
+    expect(draft.invoiceId).toBeUndefined();
+    expect(draft.lines).toEqual([{ productId: 5, quantity: 2, rate: 10.5 }]);
+    // Nothing was posted: the money side has not run
+    expect(postInvoice).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("flushes the draft for the customer being left, not the new one", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    await enterProduct(wrapper);
+    await selectCustomer(wrapper, "13");
+
+    expect(saveInvoiceDraft).toHaveBeenCalled();
+    expect(saveInvoiceDraft.mock.calls[0]![0].customerId).toBe(12);
+    wrapper.unmount();
+  });
+
+  it("restores a plain draft in entry mode", async () => {
+    getInvoiceDraft.mockResolvedValue({
+      customerId: 12,
+      lines: [{ productId: 5, quantity: 4, rate: 9 }],
+      discount: 2,
+      notes: "left half done",
+      updatedAt: "2026-09-01T10:00:00.000Z",
+    });
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((rowInputs[0]!.element as HTMLInputElement).value).toBe("5");
+    expect((rowInputs[1]!.element as HTMLInputElement).value).toBe("4");
+    expect(
+      rowInputs
+        .map((i) => (i.element as HTMLInputElement).value)
+        .includes("9.00")
+    ).toBe(true);
+    expect((wrapper.find("textarea").element as HTMLTextAreaElement).value).toBe(
+      "left half done"
+    );
+    // Entry mode, not the locked posted one
+    expect(
+      wrapper.findAll("button").find((b) => b.text() === "Post Data")!.attributes(
+        "disabled"
+      )
+    ).toBeUndefined();
+    // A trailing empty row is waiting for the next product
+    expect(wrapper.findAll("tbody tr").length).toBe(2);
+    wrapper.unmount();
+  });
+
+  it("restores a draft that edits an invoice in editing mode", async () => {
+    getInvoiceDraft.mockResolvedValue({
+      customerId: 12,
+      invoiceId: "inv-3",
+      lines: [{ productId: 5, quantity: 6, rate: 10.5 }],
+      discount: 0,
+      updatedAt: "2026-09-01T10:00:00.000Z",
+    });
+    getInvoiceById.mockResolvedValue({
+      id: "inv-3",
+      no: 3,
+      lines: [{ productId: 5, quantity: 4, rate: 10.5 }],
+      discount: 0,
+      totals: { subtotal: 42, net: 42 },
+      paid: 10,
+      previousDue: 0,
+      currentDue: 32,
+    });
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+
+    expect(getInvoiceById).toHaveBeenCalledWith("inv-3");
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((rowInputs[1]!.element as HTMLInputElement).value).toBe("6");
+    // The invoice's deposit came back with it
+    expect(
+      wrapper
+        .findAll("input[readonly]")
+        .map((i) => (i.element as HTMLInputElement).value)
+    ).toContain("10.00");
+    wrapper.unmount();
+  });
+
+  it("falls back to a plain draft when the edited invoice is gone", async () => {
+    getInvoiceDraft.mockResolvedValue({
+      customerId: 12,
+      invoiceId: "inv-gone",
+      lines: [{ productId: 5, quantity: 6, rate: 10.5 }],
+      discount: 0,
+      updatedAt: "2026-09-01T10:00:00.000Z",
+    });
+    getInvoiceById.mockResolvedValue(null);
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+
+    const rowInputs = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((rowInputs[1]!.element as HTMLInputElement).value).toBe("6");
+    expect(rowInputs[1]!.attributes("readonly")).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it("deletes the draft once the invoice is posted", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    await enterProduct(wrapper);
+    await wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Post Data")!
+      .trigger("click");
+    await settle();
+    await afterDebounce();
+
+    expect(postInvoice).toHaveBeenCalledTimes(1);
+    expect(deleteInvoiceDraft).toHaveBeenCalledWith(12);
+    // The posted invoice is the record now: no draft is written after it
+    const savesAfterPost = saveInvoiceDraft.mock.calls.filter(
+      (c) => c[0].customerId === 12 && c[0].lines.length > 0
+    ).length;
+    expect(savesAfterPost).toBeLessThanOrEqual(1);
+    wrapper.unmount();
+  });
+});
+
+describe("Dashboard v2 — loading an earlier day's invoice", () => {
+  const isoOn = (daysAgo: number, hour = 10) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hour, 0, 0, 0);
+    return d.toISOString();
+  };
+  const textOf = (iso: string) => {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(
+      d.getFullYear() % 100
+    ).padStart(2, "0")}`;
+  };
+
+  const todayInvoice = {
+    id: "inv-today",
+    no: 9,
+    date: isoOn(0),
+    customerId: 12,
+    lines: [
+      { sn: 1, productId: 5, unit: "kg", quantity: 2, rate: 10.5, lineTotal: 21 },
+    ],
+    discount: 0,
+    totals: { subtotal: 21, net: 21 },
+    paid: 0,
+    previousDue: 0,
+    currentDue: 21,
+  };
+  const oldInvoice = {
+    id: "inv-old",
+    no: 4,
+    date: isoOn(7),
+    customerId: 12,
+    lines: [
+      { sn: 1, productId: 7, unit: "Bag", quantity: 3, rate: 20, lineTotal: 60 },
+    ],
+    discount: 0,
+    totals: { subtotal: 60, net: 60 },
+    paid: 0,
+    previousDue: 0,
+    currentDue: 60,
+  };
+
+  let listInvoicesByCustomer: ReturnType<typeof vi.fn>;
+  let saveInvoiceDraft: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    currentLang.value = "en";
+    listInvoicesByCustomer = vi.fn(async () => [todayInvoice, oldInvoice]);
+    saveInvoiceDraft = vi.fn(async () => null);
+    (window as unknown as { ahb: unknown }).ahb = {
+      listInvoicesByCustomer,
+      getCustomerById: vi.fn(async () => null),
+      getProductById: vi.fn(async (id: number) => ({
+        id,
+        nameBn: id === 7 ? "ডাল" : "চাল",
+        unit: id === 7 ? "Bag" : "kg",
+        price: id === 7 ? 20 : 10.5,
+        stock: 40,
+      })),
+      saveInvoiceDraft,
+      getInvoiceDraft: vi.fn(async () => null),
+      deleteInvoiceDraft: vi.fn(async () => true),
+      postInvoice: vi.fn(),
+      updateInvoice: vi.fn(),
+    };
+  });
+
+  function mountDashboard() {
+    return mount(Dashboard, {
+      attachTo: document.body,
+      global: { plugins: [createPinia()] },
+    });
+  }
+
+  const settle = () => new Promise((r) => setTimeout(r, 0));
+
+  const dateBox = (wrapper: ReturnType<typeof mountDashboard>) =>
+    wrapper.find('[data-role="working-date"]');
+
+  const button = (wrapper: ReturnType<typeof mountDashboard>, label: string) =>
+    wrapper.findAll("button").find((b) => b.text() === label)!;
+
+  const disabled = (wrapper: ReturnType<typeof mountDashboard>, label: string) =>
+    (button(wrapper, label).element as HTMLButtonElement).disabled;
+
+  async function selectCustomer(
+    wrapper: ReturnType<typeof mountDashboard>,
+    id: string
+  ) {
+    const rows = wrapper
+      .findAll("div")
+      .filter(
+        (d) => d.text().includes("Customer ID") && d.find("input").exists()
+      );
+    const input = rows[rows.length - 1]!.find("input");
+    await input.setValue(id);
+    await input.trigger("keydown.enter");
+    await settle();
+    await settle();
+  }
+
+  async function setDate(
+    wrapper: ReturnType<typeof mountDashboard>,
+    text: string
+  ) {
+    await dateBox(wrapper).setValue(text);
+    await dateBox(wrapper).trigger("keydown.enter");
+    await settle();
+    await settle();
+  }
+
+  it("opens the box on today's date", () => {
+    const wrapper = mountDashboard();
+    expect((dateBox(wrapper).element as HTMLInputElement).value).toBe(
+      textOf(isoOn(0))
+    );
+    wrapper.unmount();
+  });
+
+  it("loads an older invoice locked, printable but not amendable", async () => {
+    const wrapper = mountDashboard();
+    await setDate(wrapper, textOf(oldInvoice.date));
+    await selectCustomer(wrapper, "12");
+
+    const cells = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((cells[0]!.element as HTMLInputElement).value).toBe("7");
+    expect((cells[1]!.element as HTMLInputElement).value).toBe("3");
+    // A newer invoice exists for this customer, so the domain refuses edits
+    expect(disabled(wrapper, "Edit")).toBe(true);
+    expect(disabled(wrapper, "Payment")).toBe(true);
+    expect(disabled(wrapper, "Post Data")).toBe(true);
+    // Reprinting is the point of loading it
+    expect(disabled(wrapper, "Single Print")).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("says so when nothing was billed on that day", async () => {
+    const wrapper = mountDashboard();
+    await setDate(wrapper, textOf(isoOn(3)));
+    await selectCustomer(wrapper, "12");
+
+    expect(wrapper.text()).toContain("No invoice for this date");
+    expect(wrapper.findAll("tbody tr").length).toBe(0);
+    expect(disabled(wrapper, "Post Data")).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("an older invoice that is still the latest stays amendable", async () => {
+    listInvoicesByCustomer.mockResolvedValue([oldInvoice]);
+    const wrapper = mountDashboard();
+    await setDate(wrapper, textOf(oldInvoice.date));
+    await selectCustomer(wrapper, "12");
+
+    expect(disabled(wrapper, "Edit")).toBe(false);
+    expect(disabled(wrapper, "Payment")).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("writes no draft while an earlier day is showing", async () => {
+    const wrapper = mountDashboard();
+    await setDate(wrapper, textOf(oldInvoice.date));
+    await selectCustomer(wrapper, "12");
+    await new Promise((r) => setTimeout(r, 500));
+
+    expect(saveInvoiceDraft).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("coming back to today restores normal entry", async () => {
+    const wrapper = mountDashboard();
+    await setDate(wrapper, textOf(isoOn(3)));
+    await selectCustomer(wrapper, "12");
+    expect(disabled(wrapper, "Post Data")).toBe(true);
+
+    await setDate(wrapper, textOf(isoOn(0)));
+    // Today's invoice for this customer loads, ready to edit
+    expect(disabled(wrapper, "Edit")).toBe(false);
+    const cells = wrapper.findAll("tbody tr")[0]!.findAll("input");
+    expect((cells[0]!.element as HTMLInputElement).value).toBe("5");
+    wrapper.unmount();
+  });
+
+  it("an unreadable date puts the box back and loads nothing", async () => {
+    const wrapper = mountDashboard();
+    await selectCustomer(wrapper, "12");
+    listInvoicesByCustomer.mockClear();
+
+    await setDate(wrapper, "31/02/26");
+    expect((dateBox(wrapper).element as HTMLInputElement).value).toBe(
+      textOf(isoOn(0))
+    );
+    expect(listInvoicesByCustomer).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 });

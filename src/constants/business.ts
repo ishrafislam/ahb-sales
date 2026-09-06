@@ -1,4 +1,5 @@
-export const BUSINESS_NAME = "ABDUL HAMID AND BROTHERS";
+// The shop name lives in the locale files (business_name): it is printed and
+// shown in whichever language the app is running.
 
 export const BUSINESS_PHONES = [
   "+8801911-351254 ; +8801622-974343",
@@ -32,7 +33,7 @@ export const MM_PER_INCH = 25.4;
 
 // Page margins (inches)
 export const MIN_MARGIN_IN = 0;
-export const MAX_MARGIN_IN = 4;
+export const MAX_MARGIN_IN = 8;
 export const MARGIN_STEP_IN = 0.1;
 
 // Print preview zoom

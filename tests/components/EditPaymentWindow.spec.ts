@@ -82,15 +82,26 @@ describe("EditPaymentWindow", () => {
     wrapper.unmount();
   });
 
-  it("shows an error for an invalid amount without calling IPC", async () => {
+  it("Okay with 0 removes the payment", async () => {
     const wrapper = await mountWindow();
     await wrapper.findAll("input")[2]!.setValue("0");
     await findButton(wrapper, "Okay").trigger("click");
+    await Promise.resolve();
+    expect(updateInvoicePayment).toHaveBeenCalledWith("inv-1", {
+      amount: 0,
+      notes: "old comment",
+    });
+    expect(close).toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("shows an error for a negative amount without calling IPC", async () => {
+    const wrapper = await mountWindow();
+    await wrapper.findAll("input")[2]!.setValue("-5");
+    await findButton(wrapper, "Okay").trigger("click");
     expect(updateInvoicePayment).not.toHaveBeenCalled();
     expect(close).not.toHaveBeenCalled();
-    expect(wrapper.text()).toContain(
-      "Payment amount must be greater than zero"
-    );
+    expect(wrapper.text()).toContain("Payment amount cannot be negative");
     wrapper.unmount();
   });
 

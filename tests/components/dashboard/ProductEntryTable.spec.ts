@@ -50,11 +50,21 @@ describe("ProductEntryTable", () => {
       const table = ref<InstanceType<typeof ProductEntryTable> | null>(null);
       const selected = ref<Array<{ id: number; stock: number } | null>>([]);
       const locked = ref(false);
+      const leftCount = ref(0);
       const onProductSelected = (p: { id: number; stock: number } | null) =>
         selected.value.push(p);
-      return { rows, table, selected, locked, onProductSelected };
+      const onLeaveLeft = () => (leftCount.value += 1);
+      return {
+        rows,
+        table,
+        selected,
+        locked,
+        leftCount,
+        onProductSelected,
+        onLeaveLeft,
+      };
     },
-    template: `<ProductEntryTable ref="table" v-model:rows="rows" :locked="locked" @product-selected="onProductSelected" />`,
+    template: `<ProductEntryTable ref="table" v-model:rows="rows" :locked="locked" @product-selected="onProductSelected" @leave-left="onLeaveLeft" />`,
   });
 
   function mountHost() {
@@ -447,6 +457,43 @@ describe("ProductEntryTable", () => {
     const caret = (wrapper: ReturnType<typeof mountHost>, rowIdx: number) =>
       wrapper.findAll('[data-role="slots-toggle"]')[rowIdx]!;
 
+    it("browses every slot again once the row holds its product", async () => {
+      const wrapper = mountHost();
+      await startEntry(wrapper);
+      const first = cellInputs(wrapper, 0);
+
+      // Typing filters: 5, 50-59, 500-599
+      await first.id.setValue("5");
+      await caret(wrapper, 0).trigger("click");
+      await flush();
+      expect(panelRows().length).toBe(111);
+
+      // Enter commits the product, so the cell is settled
+      await first.id.trigger("keydown.enter");
+      await flush();
+      await caret(wrapper, 0).trigger("click");
+      await flush();
+      expect(panelRows().length).toBe(MAX_PRODUCT_ID);
+
+      // Typing over it searches again: 7, 70-79, 700-799
+      await first.id.setValue("7");
+      await flush();
+      expect(panelRows().length).toBe(111);
+      wrapper.unmount();
+    });
+
+    it("keeps filtering a cell whose text names no product", async () => {
+      const wrapper = mountHost();
+      await startEntry(wrapper);
+      await cellInputs(wrapper, 0).id.setValue("9");
+      await caret(wrapper, 0).trigger("click");
+      await flush();
+
+      // 9, 90-99, 900-999
+      expect(panelRows().length).toBe(111);
+      wrapper.unmount();
+    });
+
     it("stays shut until the caret is clicked, then lists every slot", async () => {
       const wrapper = mountHost();
       await startEntry(wrapper);
@@ -644,6 +691,70 @@ describe("ProductEntryTable", () => {
     await first.id.trigger("keydown", { key: "ArrowDown" });
     await flush();
     expect(document.activeElement).toBe(second.id.element);
+    wrapper.unmount();
+  });
+
+  it("ArrowLeft on the ID cell hands the caret back to the parent", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const first = cellInputs(wrapper, 0);
+    await first.id.setValue("5");
+    await first.id.trigger("keydown.enter");
+    await flush();
+
+    // Amount → ID stays inside the grid and reports nothing
+    await first.amount.trigger("keydown", { key: "ArrowLeft" });
+    await flush();
+    expect(document.activeElement).toBe(first.id.element);
+    expect(wrapper.vm.leftCount).toBe(0);
+
+    // ID is the left edge: the parent is asked to take the caret
+    await first.id.trigger("keydown", { key: "ArrowLeft" });
+    await flush();
+    expect(wrapper.vm.leftCount).toBe(1);
+    // The grid moved nothing itself
+    expect(document.activeElement).toBe(first.id.element);
+    wrapper.unmount();
+  });
+
+  it("ArrowLeft closes the ID dropdown on its way out", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    const first = cellInputs(wrapper, 0);
+    await wrapper.findAll('[data-role="slots-toggle"]')[0]!.trigger("click");
+    await flush();
+    expect(document.querySelector('[data-role="slot-dropdown"]')).toBeTruthy();
+
+    await first.id.trigger("keydown", { key: "ArrowLeft" });
+    await flush();
+    expect(document.querySelector('[data-role="slot-dropdown"]')).toBeNull();
+    expect(wrapper.vm.leftCount).toBe(1);
+    wrapper.unmount();
+  });
+
+  it("clearSelection drops the picked rows", async () => {
+    const wrapper = mountHost();
+    await startEntry(wrapper);
+    await enterProductRow(wrapper, 0, "5", "3");
+    await enterProductRow(wrapper, 1, "7", "2");
+
+    await gutterButton(wrapper, 0).trigger("click");
+    await gutterButton(wrapper, 1).trigger("click", { ctrlKey: true });
+    await flush();
+    expect(wrapper.text()).toContain("►");
+
+    wrapper.vm.table!.clearSelection();
+    await flush();
+    expect(wrapper.text()).not.toContain("►");
+
+    // Nothing is picked any more, so Delete takes no row with it
+    const before = wrapper.findAll("tbody tr").length;
+    await wrapper
+      .findAll("tbody tr")[0]!
+      .findAll("input")[0]!
+      .trigger("keydown", { key: "Delete" });
+    await flush();
+    expect(wrapper.findAll("tbody tr").length).toBe(before);
     wrapper.unmount();
   });
 

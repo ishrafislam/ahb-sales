@@ -264,15 +264,101 @@ describe("Products window", () => {
     wrapper.unmount();
   });
 
-  it("switching rows discards an in-progress edit", async () => {
+  it("switching rows saves an in-progress edit, then shows the new row", async () => {
     const wrapper = await mountView();
     await button(wrapper, "Edit")!.trigger("click");
-    await wrapper.find("#item-name").setValue("Discarded");
+    await wrapper.find("#item-name").setValue("Renamed");
     await selectRow(wrapper, 3);
+    await new Promise((r) => setTimeout(r, 0));
 
+    expect(updateProduct).toHaveBeenCalledWith(1, {
+      nameBn: "Renamed",
+      description: "Fine grain",
+      unit: "Bag",
+      price: 466,
+      active: true,
+    });
     expect(button(wrapper, "Save")).toBeUndefined();
     expect(field(wrapper, "item-name").value).toBe("Item 3");
     expect(field(wrapper, "item-name").readOnly).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("an edit that changed nothing writes nothing", async () => {
+    const wrapper = await mountView();
+    await button(wrapper, "Edit")!.trigger("click");
+    await selectRow(wrapper, 3);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(updateProduct).not.toHaveBeenCalled();
+    expect(addProduct).not.toHaveBeenCalled();
+    expect(field(wrapper, "item-name").value).toBe("Item 3");
+    wrapper.unmount();
+  });
+
+  it("an item typed into an empty slot is added on the way out", async () => {
+    const wrapper = await mountView();
+    await selectRow(wrapper, 2);
+    await wrapper.find("#item-name").setValue("New Item");
+    await wrapper.find("#item-unit").setValue("Bag");
+    await wrapper.find("#item-price").setValue("75.5");
+    await selectRow(wrapper, 3);
+    await new Promise((r) => setTimeout(r, 0));
+
+    // The empty slot has no Edit button, so this is the only way it is saved
+    expect(addProduct).toHaveBeenCalledWith({
+      id: 2,
+      nameBn: "New Item",
+      description: "",
+      unit: "Bag",
+      price: 75.5,
+      active: true,
+    });
+    wrapper.unmount();
+  });
+
+  it("an empty slot with no name typed saves nothing", async () => {
+    const wrapper = await mountView();
+    await selectRow(wrapper, 2);
+    await wrapper.find("#item-price").setValue("75.5");
+    await selectRow(wrapper, 3);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(addProduct).not.toHaveBeenCalled();
+    expect(field(wrapper, "item-name").value).toBe("Item 3");
+    wrapper.unmount();
+  });
+
+  it("a refused autosave keeps the row, the edit and the error", async () => {
+    updateProduct.mockRejectedValueOnce(new Error("Product not found"));
+    const wrapper = await mountView();
+    await button(wrapper, "Edit")!.trigger("click");
+    await wrapper.find("#item-name").setValue("Renamed");
+    await selectRow(wrapper, 3);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(wrapper.text()).toContain("Product not found");
+    expect(field(wrapper, "item-id").value).toBe("1");
+    expect(field(wrapper, "item-name").value).toBe("Renamed");
+    expect(button(wrapper, "Save")).toBeTruthy();
+    wrapper.unmount();
+  });
+
+  it("Close saves a pending edit first, and stays open if it is refused", async () => {
+    updateProduct.mockRejectedValueOnce(new Error("Product not found"));
+    const wrapper = await mountView();
+    await button(wrapper, "Edit")!.trigger("click");
+    await wrapper.find("#item-name").setValue("Renamed");
+    await button(wrapper, "Close")!.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(updateProduct).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
+
+    await button(wrapper, "Close")!.trigger("click");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(updateProduct).toHaveBeenCalledTimes(2);
+    expect(close).toHaveBeenCalled();
     wrapper.unmount();
   });
 

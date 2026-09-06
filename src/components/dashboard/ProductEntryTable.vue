@@ -1,5 +1,5 @@
 <template>
-  <div class="flex-grow bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 min-h-0 overflow-y-auto">
+  <div class="flex-grow panel min-h-0 overflow-y-auto">
     <table class="w-full text-sm text-left border-collapse">
       <thead
         class="text-xs uppercase bg-gray-50 dark:bg-gray-900 dark:text-gray-100 sticky top-0"
@@ -70,7 +70,7 @@
                 :aria-label="t('id')"
                 data-role="slots-toggle"
                 @mousedown.prevent
-                @click="toggleSlots(idx)"
+                @click="void toggleSlots(idx)"
               >
                 ▼
               </button>
@@ -174,6 +174,9 @@ const emit = defineEmits<{
     e: "product-selected",
     payload: { id: number; stock: number } | null
   ): void;
+  // ArrowLeft off the ID column: the grid's left edge, so the caret goes back
+  // to whatever the parent keeps there — the Customer ID box.
+  (e: "leave-left"): void;
 }>();
 
 // Stock shown in the header is the projection after this sale: stored stock
@@ -559,6 +562,11 @@ function onCellKeydown(e: KeyboardEvent, idx: number, col: Col) {
   } else if (e.key === "ArrowLeft" && col === "amount") {
     e.preventDefault();
     void focusCell(idx, "id");
+  } else if (e.key === "ArrowLeft" && col === "id") {
+    // Nothing to the left inside the grid: hand the caret back
+    e.preventDefault();
+    if (slotsOpen.value) closeSlots();
+    emit("leave-left");
   } else if (e.key === "ArrowRight" && col === "id") {
     e.preventDefault();
     void focusCell(idx, "amount");
@@ -591,7 +599,13 @@ const slotAnchor = computed(() =>
 
 const slotOptions = computed(() => {
   const row = slotRow.value === null ? undefined : rows.value[slotRow.value];
-  return filterSlots(slots.value, row?.idText ?? "");
+  if (!row) return slots.value;
+  // A row already holding the product its id names is settled: opening the
+  // list there is a request for a different product, not a search for this
+  // one, so offer them all. Typing puts the text out of step again.
+  const typed = toLatinDigits(row.idText).trim();
+  if (row.product && String(row.product.id) === typed) return slots.value;
+  return filterSlots(slots.value, row.idText);
 });
 
 async function loadSlots() {
@@ -624,13 +638,15 @@ function onIdCellFocus(idx: number) {
   closeSlots();
 }
 
-function toggleSlots(idx: number) {
+async function toggleSlots(idx: number) {
   if (slotsOpen.value && slotRow.value === idx) {
     closeSlots();
     return;
   }
   slotRow.value = idx;
-  void focusCell(idx, "id");
+  // Open only once the cell has focus: focusing it fires onIdCellFocus, which
+  // closes the panel — opening first would shut it again a tick later.
+  await focusCell(idx, "id");
   openSlots();
 }
 
@@ -662,7 +678,13 @@ function focusFirstRow() {
   void focusCell(0, "id");
 }
 
+/** Drop the row selection: the job it was picked for is over. */
+function clearSelection() {
+  selectedKeys.value = new Set();
+}
+
 defineExpose({
+  clearSelection,
   startEntry,
   resumeEntry,
   focusFirstRow,
