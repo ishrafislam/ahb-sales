@@ -2,7 +2,7 @@
   <div class="flex flex-col flex-1 min-h-0">
     <!-- Top bar: ID lookup + customer info -->
     <div
-      class="flex items-start justify-end gap-6 p-4 border-b border-gray-200 dark:border-gray-700"
+      class="flex items-start justify-end gap-6 p-4 panel panel-amber border-x-0 border-t-0 shadow-none"
     >
       <div class="flex items-center gap-2 mt-1">
         <label
@@ -51,7 +51,7 @@
     <div class="flex-grow overflow-y-auto">
       <table class="w-full text-sm text-left">
         <thead
-          class="text-xs uppercase bg-gray-50 dark:bg-gray-900 dark:text-gray-100 sticky top-0 border-b border-gray-200 dark:border-gray-700"
+          class="text-xs uppercase bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-50 sticky top-0 border-b border-blue-200 dark:border-blue-900"
         >
           <tr>
             <th class="px-3 py-2">
@@ -152,11 +152,7 @@ import {
   toLatinDigits,
 } from "../utils/numerals";
 import { printInvoice } from "../print/invoice";
-import {
-  BUSINESS_NAME,
-  MIN_CUSTOMER_ID,
-  MAX_CUSTOMER_ID,
-} from "../constants/business";
+import { MIN_CUSTOMER_ID, MAX_CUSTOMER_ID } from "../constants/business";
 import { formatDate } from "../utils/date";
 import type { Customer } from "../main/data";
 
@@ -269,7 +265,6 @@ function onPrint(id: string) {
   // invoices.value is sorted descending by inv.no (most recent first)
   const prevInv = invoices.value.find((i) => i.no < inv.no);
   printInvoice(inv as unknown as import("../main/data").Invoice, {
-    businessName: BUSINESS_NAME,
     customerName: custName,
     customerPhone: customer.value?.phone,
     customerAddress: customer.value?.address,

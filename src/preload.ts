@@ -48,6 +48,14 @@ type AppAPI = {
     id: string,
     payload: { amount: number; notes?: string }
   ) => Promise<Invoice>;
+  // Invoice drafts: entry in progress, no money applied yet
+  saveInvoiceDraft: (
+    payload: import("./main/data").SaveInvoiceDraftInput
+  ) => Promise<import("./main/data").InvoiceDraft | null>;
+  getInvoiceDraft: (
+    customerId: number
+  ) => Promise<import("./main/data").InvoiceDraft | null>;
+  deleteInvoiceDraft: (customerId: number) => Promise<boolean>;
   // Phase 3: History/listings
   listInvoicesByCustomer: (customerId: number) => Promise<Invoice[]>;
   listProductSales: (
@@ -88,6 +96,8 @@ type AppAPI = {
   onDataChanged: (
     cb: (payload: { kind: string; action: string; id: number }) => void
   ) => () => void;
+  /** The Select Print window this renderer opened has been closed. */
+  onSelectPrintClosed: (cb: () => void) => () => void;
   // App control
   openCustomerHistory: (customerId?: number) => Promise<void>;
   openPaymentWindow: (invoiceId: string) => Promise<void>;
@@ -193,6 +203,12 @@ const api: AppAPI = {
     ipcRenderer.invoke("data:add-invoice-payment", id, payload),
   updateInvoicePayment: (id, payload) =>
     ipcRenderer.invoke("data:update-invoice-payment", id, payload),
+  saveInvoiceDraft: (payload) =>
+    ipcRenderer.invoke("data:save-invoice-draft", payload),
+  getInvoiceDraft: (customerId) =>
+    ipcRenderer.invoke("data:get-invoice-draft", customerId),
+  deleteInvoiceDraft: (customerId) =>
+    ipcRenderer.invoke("data:delete-invoice-draft", customerId),
   listInvoicesByCustomer: (customerId) =>
     ipcRenderer.invoke("data:list-invoices-by-customer", customerId),
   listProductSales: (productId) =>
@@ -221,6 +237,11 @@ const api: AppAPI = {
     ) => cb(payload);
     ipcRenderer.on("data:changed", listener);
     return () => ipcRenderer.removeListener("data:changed", listener);
+  },
+  onSelectPrintClosed: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on("select-print:closed", listener);
+    return () => ipcRenderer.removeListener("select-print:closed", listener);
   },
   openCustomerHistory: (customerId) =>
     ipcRenderer.invoke("window:open-customer-history", customerId),

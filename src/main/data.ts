@@ -40,6 +40,8 @@ export type AhbDataV1 = {
   invoices?: Invoice[];
   invoiceSeq?: number; // next invoice number to assign
   payments?: Payment[];
+  // Invoices still being entered: no number, no money applied anywhere
+  drafts?: InvoiceDraft[];
 };
 
 export function initData(): AhbDataV1 {
@@ -49,6 +51,7 @@ export function initData(): AhbDataV1 {
     invoices: [],
     invoiceSeq: 1,
     payments: [],
+    drafts: [],
   };
 }
 
@@ -64,7 +67,9 @@ const isoToYmd = (iso: string) => {
 };
 
 // Ensure Phase 2 fields exist on data object for older files
-export type AhbDataV2 = Required<Pick<AhbDataV1, "invoices" | "invoiceSeq">> &
+export type AhbDataV2 = Required<
+  Pick<AhbDataV1, "invoices" | "invoiceSeq" | "drafts">
+> &
   Pick<AhbDataV1, "products" | "customers" | "payments">;
 
 export function ensurePhase2(data: AhbDataV1): asserts data is AhbDataV2 {
@@ -76,6 +81,9 @@ export function ensurePhase2(data: AhbDataV1): asserts data is AhbDataV2 {
   }
   if (!data.payments) {
     (data as AhbDataV1 & { payments: Payment[] }).payments = [];
+  }
+  if (!data.drafts) {
+    (data as AhbDataV1 & { drafts: InvoiceDraft[] }).drafts = [];
   }
 }
 
@@ -126,6 +134,112 @@ export type Payment = {
   amount: number;
   createdAt: string;
 };
+
+// -----------------------
+// Invoice drafts
+// -----------------------
+
+/**
+ * A line of an invoice still being entered. Quantity and rate stay nullable:
+ * a draft is allowed to be half-typed, which is the whole point of it.
+ */
+export type InvoiceDraftLine = {
+  productId: number;
+  quantity: number | null;
+  rate: number | null;
+};
+
+/**
+ * An invoice a clerk has started but not posted. It holds no invoice number,
+ * no totals and no dues, and it moves no stock: all of that is worked out
+ * once, by postInvoice/updateInvoice, when Post Data runs. One draft per
+ * customer, so leaving a customer half-billed and coming back is safe.
+ */
+export type InvoiceDraft = {
+  customerId: number;
+  // Set when the draft is an unposted edit of an invoice that already exists
+  invoiceId?: string;
+  lines: InvoiceDraftLine[];
+  discount: number;
+  notes?: string;
+  updatedAt: string;
+};
+
+export type SaveInvoiceDraftInput = Omit<InvoiceDraft, "updatedAt">;
+
+function assertCustomerSlot(id: number) {
+  if (
+    !Number.isInteger(id) ||
+    id < MIN_CUSTOMER_ID ||
+    id > MAX_CUSTOMER_ID
+  ) {
+    throw new Error("Customer ID out of range");
+  }
+}
+
+/**
+ * Store the customer's draft, replacing any earlier one. A draft with nothing
+ * in it is not worth keeping, so an empty one deletes instead of saving —
+ * that is how clearing the entry table clears the draft.
+ */
+export function saveInvoiceDraft(
+  data: AhbDataV1,
+  input: SaveInvoiceDraftInput
+): InvoiceDraft | null {
+  ensurePhase2(data);
+  assertCustomerSlot(input.customerId);
+
+  const lines: InvoiceDraftLine[] = (input.lines ?? []).map((ln) => {
+    assertProductId(ln.productId);
+    const quantity = Number(ln.quantity);
+    const rate = Number(ln.rate);
+    return {
+      productId: ln.productId,
+      quantity:
+        ln.quantity === null || !Number.isFinite(quantity) ? null : quantity,
+      rate: ln.rate === null || !Number.isFinite(rate) ? null : rate,
+    };
+  });
+
+  const discount = Number(input.discount ?? 0);
+  const notes = input.notes?.trim() || undefined;
+  if (!lines.length && !discount && !notes) {
+    deleteInvoiceDraft(data, input.customerId);
+    return null;
+  }
+
+  const draft: InvoiceDraft = {
+    customerId: input.customerId,
+    invoiceId: input.invoiceId,
+    lines,
+    discount: Number.isFinite(discount) && discount > 0 ? discount : 0,
+    notes,
+    updatedAt: nowIso(),
+  };
+  const idx = data.drafts.findIndex((d) => d.customerId === input.customerId);
+  if (idx === -1) data.drafts.push(draft);
+  else data.drafts[idx] = draft;
+  return draft;
+}
+
+export function getInvoiceDraft(
+  data: AhbDataV1,
+  customerId: number
+): InvoiceDraft | null {
+  ensurePhase2(data);
+  return data.drafts.find((d) => d.customerId === customerId) ?? null;
+}
+
+export function deleteInvoiceDraft(
+  data: AhbDataV1,
+  customerId: number
+): boolean {
+  ensurePhase2(data);
+  const idx = data.drafts.findIndex((d) => d.customerId === customerId);
+  if (idx === -1) return false;
+  data.drafts.splice(idx, 1);
+  return true;
+}
 
 export type PostInvoiceInput = {
   date?: string;
@@ -350,12 +464,16 @@ function applyInvoicePayment(
   data: AhbDataV1,
   invoiceId: string,
   input: AddInvoicePaymentInput,
+  // Returning null drops the payment record: the invoice goes back to
+  // carrying no payment at all.
   buildPayment: (
     existing: InvoicePayment | undefined,
     amount: number,
     notes: string | undefined,
     now: string
-  ) => InvoicePayment
+  ) => InvoicePayment | null,
+  // Editing accepts 0 (that is how a payment is removed); adding does not.
+  allowZero = false
 ): Invoice {
   ensurePhase2(data);
   const idx = data.invoices.findIndex((i) => i.id === invoiceId);
@@ -368,7 +486,7 @@ function applyInvoicePayment(
     throw new Error("Only the latest invoice can receive payments");
 
   const amount = Number(input.amount);
-  if (!Number.isFinite(amount) || amount <= 0)
+  if (!Number.isFinite(amount) || (allowZero ? amount < 0 : amount <= 0))
     throw new Error("Payment amount must be positive");
 
   const now = nowIso();
@@ -378,14 +496,14 @@ function applyInvoicePayment(
     input.notes?.trim() || undefined,
     now
   );
-  const paid = payment.amount;
+  const paid = payment?.amount ?? 0;
   const hasCustomer = old.customerId !== null;
   const currentDue = hasCustomer
     ? ceil2(old.previousDue + old.totals.net - paid)
     : 0;
   const updated: Invoice = {
     ...old,
-    payments: [payment],
+    payments: payment ? [payment] : [],
     paid,
     currentDue,
     updatedAt: now,
@@ -430,6 +548,9 @@ export function addInvoicePayment(
  * Correct the invoice's single payment record: the amount replaces the
  * previous one (not added), notes are replaced. The record's original
  * date/createdAt are kept.
+ *
+ * An amount of 0 removes the payment — the only way to undo a deposit
+ * entered by mistake. The invoice is left as if it had never been paid.
  */
 export function updateInvoicePayment(
   data: AhbDataV1,
@@ -442,8 +563,10 @@ export function updateInvoicePayment(
     input,
     (existing, amount, notes) => {
       if (!existing) throw new Error("Invoice has no payment to edit");
+      if (amount === 0) return null;
       return { ...existing, amount, notes };
-    }
+    },
+    true
   );
 }
 

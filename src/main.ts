@@ -19,6 +19,7 @@ import { UpdateService } from "./main/services/UpdateService";
 import { DataService } from "./main/services/DataService";
 import { PrintService } from "./main/services/PrintService";
 import type { PrintDocument, PrintMargins } from "./print/document";
+import { shouldRestoreParent } from "./main/windowFocus";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -223,24 +224,37 @@ const printMarginsWindows = new Map<string, BrowserWindow>();
 // routed by sender id operates on the same open document.
 /**
  * Windows hands focus past the owner when a child window is destroyed, which
- * leaves the main window minimised behind everything else. Pull the parent
- * back on `close`, while the child is still alive — by `closed` the focus has
- * already gone.
+ * leaves the main window sunk behind everything else. Pull the parent back —
+ * but only once the child is gone and only when it was the last one, per
+ * `shouldRestoreParent`. Doing it any earlier, or with siblings still open,
+ * is what left the dashboard deactivated or minimised.
  */
 function focusParentOnClose(win: BrowserWindow, parent: BrowserWindow) {
-  win.on("close", () => {
-    if (parent.isDestroyed()) return;
-    if (parent.isMinimized()) parent.restore();
-    parent.focus();
+  win.on("closed", () => {
+    // A turn later, so Windows has finished its own activation first
+    setImmediate(() => {
+      if (parent.isDestroyed()) return;
+      const liveSiblings = BrowserWindow.getAllWindows().filter(
+        (w) => !w.isDestroyed() && w !== win && w.getParentWindow() === parent
+      ).length;
+      const decision = shouldRestoreParent({
+        platform: process.platform,
+        parent: { minimized: parent.isMinimized(), destroyed: false },
+        liveSiblings,
+      });
+      if (decision.restore) parent.restore();
+      if (decision.focus) parent.focus();
+    });
   });
 }
 
+/** Returns the window: the one just opened, or the one refocused. */
 async function openChildWindow(
   sender: Electron.WebContents,
   registry: Map<number, BrowserWindow>,
   hash: string,
   opts: { width: number; height: number; resizable: boolean }
-): Promise<void> {
+): Promise<BrowserWindow> {
   const parentCtx = getCtx(sender);
   const parentId = sender.id;
 
@@ -248,7 +262,7 @@ async function openChildWindow(
   if (existing && !existing.isDestroyed()) {
     existing.restore();
     existing.focus();
-    return;
+    return existing;
   }
 
   // Anchor to the top-level window: when one small window opens another
@@ -287,6 +301,7 @@ async function openChildWindow(
   });
 
   await loadWindowRoute(win, hash);
+  return win;
 }
 
 async function loadWindowRoute(
@@ -524,10 +539,19 @@ async function openRecordDetailsWindow(
 async function openSelectPrintWindow(
   sender: Electron.WebContents
 ): Promise<void> {
-  await openChildWindow(sender, selectPrintWindows, "select-print", {
+  // A repeat call refocuses the window that is already open; only a fresh one
+  // needs the close listener, or the dashboard would be told twice.
+  const reopened = selectPrintWindows.get(sender.id);
+  const win = await openChildWindow(sender, selectPrintWindows, "select-print", {
     width: 820,
     height: 700,
     resizable: true,
+  });
+  if (win === reopened) return;
+  // The picking sheet is done with, printed or not: the dashboard drops the
+  // row selection that opened it.
+  win.once("closed", () => {
+    if (!sender.isDestroyed()) sender.send("select-print:closed");
   });
 }
 
@@ -739,6 +763,18 @@ ipcMain.handle(
     return getCtx(e.sender).dataService.updateInvoicePayment(id, payload);
   }
 );
+
+ipcMain.handle("data:save-invoice-draft", async (e, payload) => {
+  return getCtx(e.sender).dataService.saveInvoiceDraft(payload);
+});
+
+ipcMain.handle("data:get-invoice-draft", async (e, customerId: number) => {
+  return getCtx(e.sender).dataService.getInvoiceDraft(customerId);
+});
+
+ipcMain.handle("data:delete-invoice-draft", async (e, customerId: number) => {
+  return getCtx(e.sender).dataService.deleteInvoiceDraft(customerId);
+});
 
 ipcMain.handle(
   "data:list-invoices-by-customer",

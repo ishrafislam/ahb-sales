@@ -138,6 +138,26 @@ describe("addInvoicePayment", () => {
     expect(data.customers.find((c) => c.id === 1)!.outstanding).toBe(220);
   });
 
+  it("updateInvoicePayment with 0 removes the payment", () => {
+    const data = setup();
+    const inv = postInvoice(data, {
+      customerId: 1,
+      lines: [{ productId: 1, quantity: 2 }], // net 200, previousDue 50
+    });
+    addInvoicePayment(data, inv.id, { amount: 80, notes: "mistake" });
+
+    const cleared = updateInvoicePayment(data, inv.id, { amount: 0 });
+    expect(cleared.paid).toBe(0);
+    expect(cleared.payments).toEqual([]);
+    expect(cleared.currentDue).toBe(250); // 50 + 200
+    expect(data.customers.find((c) => c.id === 1)!.outstanding).toBe(250);
+
+    // The record is gone, so there is nothing left to edit
+    expect(() =>
+      updateInvoicePayment(data, inv.id, { amount: 10 })
+    ).toThrow(/Invoice has no payment to edit/);
+  });
+
   it("updateInvoicePayment validates and guards like adding", () => {
     const data = setup();
     const inv = postInvoice(data, {
@@ -152,7 +172,7 @@ describe("addInvoicePayment", () => {
 
     addInvoicePayment(data, inv.id, { amount: 20 });
     expect(() =>
-      updateInvoicePayment(data, inv.id, { amount: 0 })
+      updateInvoicePayment(data, inv.id, { amount: -5 })
     ).toThrow(/Payment amount must be positive/);
     expect(() =>
       updateInvoicePayment(data, "missing", { amount: 10 })

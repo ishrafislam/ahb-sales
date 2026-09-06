@@ -21,6 +21,9 @@ import {
   reportTotalSell,
   reportClientLedger,
   recordPayment,
+  saveInvoiceDraft,
+  getInvoiceDraft,
+  deleteInvoiceDraft,
 } from "../data";
 import type { FileService } from "./FileService";
 import { DataIndex } from "../utils/dataIndex";
@@ -220,6 +223,25 @@ export class DataService {
     }
     this.markDirty();
     return inv;
+  }
+
+  // Drafts carry no money, so they raise no data-changed events: a draft
+  // belongs to the window entering it. Marking dirty is enough to have the
+  // autosave write it out.
+  saveInvoiceDraft(payload: Parameters<typeof saveInvoiceDraft>[1]) {
+    const draft = saveInvoiceDraft(this.getData(), payload);
+    this.markDirty();
+    return draft;
+  }
+
+  getInvoiceDraft(customerId: number) {
+    return getInvoiceDraft(this.getData(), customerId);
+  }
+
+  deleteInvoiceDraft(customerId: number) {
+    const removed = deleteInvoiceDraft(this.getData(), customerId);
+    if (removed) this.markDirty();
+    return removed;
   }
 
   getInvoiceById(invoiceId: string) {

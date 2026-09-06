@@ -98,25 +98,37 @@ export function buildInvoiceDocument(
     : "";
 
   const grandTotal = inv.totals.net + inv.previousDue;
-  const saleTime = fmtReceiptTime(inv.date, { bengali: isBn });
+
+  // An invoice keeps changing after it is posted — lines edited, a payment
+  // added or corrected — and every one of those stamps updatedAt. The time on
+  // the receipt is that last action, so it never lags the figures beside it.
+  const lastAction = inv.updatedAt || inv.date;
+  const saleTime = fmtReceiptTime(lastAction, { bengali: isBn });
+  // Same day: the time alone reads under the invoice's own date. A later edit
+  // carries its date with it, so the pair cannot be taken for one moment.
+  const sameDay = lastAction.slice(0, 10) === inv.date.slice(0, 10);
+  const timeLabel =
+    sameDay || !saleTime
+      ? saleTime
+      : `${fmtReceiptDate(lastAction, { shortYear: true, bengali: isBn })} ${saleTime}`;
 
   // The receipt keeps its narrow column but sits at the top-left of the
   // content box, so the margins the user sets are what position it. It fills
   // the page's height (see `fillPage` below) so the totals can sit at the
   // bottom of the sheet however few items the sale has.
   const styleCss = `
-    .receipt { width: 72mm; font-family: ${fontFamily}; font-size: 10px; }
-    .receipt h1 { font-size: 13px; margin: 0 0 2px; text-align: center; }
-    .receipt .addr { font-size: 9px; text-align: center; margin: 1px 0; }
+    .receipt { width: 72mm; font-family: ${fontFamily}; font-size: 11px; }
+    .receipt h1 { font-size: 14px; margin: 0 0 2px; text-align: center; }
+    .receipt .addr { font-size: 10px; text-align: center; margin: 1px 0; }
     .receipt hr { border: none; border-top: 1px solid #000; margin: 3px 0; }
-    .receipt .cust { display: block; font-size: 9px; }
-    .receipt .time { font-size: 9px; }
-    .receipt .meta-row { display: flex; justify-content: space-between; align-items: flex-start; font-size: 10px; margin: 2px 0; }
-    .receipt table { width: 100%; border-collapse: collapse; font-size: 10px; }
+    .receipt .cust { display: block; font-size: 10px; }
+    .receipt .time { font-size: 10px; }
+    .receipt .meta-row { display: flex; justify-content: space-between; align-items: flex-start; font-size: 11px; margin: 2px 0; }
+    .receipt table { width: 100%; border-collapse: collapse; font-size: 11px; }
     .receipt td { padding: 1px 1px; vertical-align: top; }
-    .receipt .sum td { padding: 1px 0; border-bottom: 1px dashed #000; }
+    .receipt .sum td { padding: 1px 0; border-bottom: 1px solid #000; }
     .receipt .sum .val { text-align: right; font-weight: 600; white-space: nowrap; }
-    .receipt .notes { margin-top: 6px; font-size: 9px; }
+    .receipt .notes { margin-top: 6px; font-size: 10px; }
   `;
 
   const bodyHtml = `
@@ -133,7 +145,7 @@ export function buildInvoiceDocument(
           ${opts.customerAddress ? `<span class="cust">${opts.customerAddress}</span>` : ""}
           ${opts.customerPhone ? `<span class="cust">${t("phone_label")} : ${isBn ? toBengaliDigits(opts.customerPhone) : opts.customerPhone}</span>` : ""}
         </span>
-        <span style="text-align:right">${fmtReceiptDate(inv.date, { shortYear: true, bengali: isBn })}${saleTime ? `<br /><span class="time">${saleTime}</span>` : ""}</span>
+        <span style="text-align:right">${fmtReceiptDate(inv.date, { shortYear: true, bengali: isBn })}${timeLabel ? `<br /><span class="time">${timeLabel}</span>` : ""}</span>
       </div>
       <hr />
 

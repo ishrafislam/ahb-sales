@@ -8,7 +8,7 @@
       class="min-h-screen grid place-items-center"
     >
       <div class="text-center space-y-4 px-4">
-        <h2 class="text-4xl font-bold">ABDUL HAMID & BROTHERS</h2>
+        <h2 class="text-4xl font-bold">{{ t("business_name") }}</h2>
         <div class="flex flex-col gap-3 w-full max-w-xs mx-auto">
           <button
             class="h-10 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700"

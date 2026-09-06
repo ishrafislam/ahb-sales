@@ -3,10 +3,10 @@
     <!-- Header band: title + product lookup panel -->
     <div class="flex items-center gap-3">
       <h1 class="text-xl lg:text-2xl font-bold tracking-wide">
-        {{ BUSINESS_NAME }}
+        {{ t("business_name") }}
       </h1>
       <div
-        class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5 min-w-[20rem]"
+        class="panel panel-blue p-2 flex flex-col gap-1.5 min-w-[20rem]"
       >
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap w-24">{{ t("v2_product_id") }}:</label>
@@ -32,11 +32,41 @@
     <!-- Info band: date/customer-id, last bill, search -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-2 lg:gap-3">
       <div
-        class="lg:col-span-3 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
+        class="lg:col-span-3 panel panel-blue p-2 flex flex-col gap-1.5"
       >
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_date") }}:</label>
-          <input type="text" :value="todayText" :class="[inputClass, 'max-w-[9rem] text-right']" />
+          <!-- Typed DD/MM/YY, with the calendar button for browsing back -->
+          <div class="relative flex-1 min-w-0 max-w-[9rem]">
+            <input
+              type="text"
+              :value="ld(dateText)"
+              :class="[inputClass, 'w-full pr-6 text-right']"
+              data-role="working-date"
+              @input="dateText = toLatinDigits(($event.target as HTMLInputElement).value)"
+              @keydown.enter.prevent="commitDateText"
+              @blur="commitDateText"
+            />
+            <button
+              type="button"
+              class="absolute inset-y-0 right-0 px-1.5 text-[0.7rem] leading-none text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              :aria-label="t('v2_date')"
+              data-role="date-picker-toggle"
+              @mousedown.prevent
+              @click="openDatePicker"
+            >
+              📅
+            </button>
+            <!-- The native picker itself: driven by the button, never shown -->
+            <input
+              ref="datePicker"
+              type="date"
+              class="sr-only absolute inset-y-0 right-0 w-0"
+              tabindex="-1"
+              aria-hidden="true"
+              @change="onDatePicked"
+            />
+          </div>
         </div>
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_customer_id") }}:</label>
@@ -50,10 +80,11 @@
               :class="[inputClass, 'w-full pr-6 text-right']"
               @focus="onCustomerIdFocus"
               @input="onCustomerIdInput"
-              @blur="closeCustomerSlots"
+              @blur="onCustomerIdBlur"
               @keydown.down.prevent="moveCustomerHighlight(1)"
               @keydown.up.prevent="moveCustomerHighlight(-1)"
               @keydown.esc.prevent="closeCustomerSlots"
+              @keydown.right.prevent="focusFirstProduct"
               @keydown.enter="onCustomerIdEnter"
             />
             <button
@@ -78,7 +109,7 @@
       </div>
 
       <div
-        class="lg:col-span-4 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
+        class="lg:col-span-4 panel panel-green p-2 flex flex-col gap-1.5"
       >
         <div class="flex items-center gap-2">
           <label class="text-xs whitespace-nowrap w-32">{{ t("v2_last_bill_date") }}:</label>
@@ -101,7 +132,7 @@
       </div>
 
       <div
-        class="lg:col-span-5 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
+        class="lg:col-span-5 panel panel-amber p-2 flex flex-col gap-1.5"
       >
         <!-- Name search: type to get suggestions, pick one, then Search opens
              that record's details in its own window -->
@@ -131,7 +162,7 @@
           />
           <button
             type="button"
-            :class="[buttonClass, 'px-4 h-8 text-xs disabled:opacity-70 disabled:cursor-not-allowed']"
+            :class="[buttonClass, 'btn-amber px-4 h-8']"
             :disabled="pickedCustomerId === null"
             data-role="customer-name-search-button"
             @click="openCustomerDetails"
@@ -165,7 +196,7 @@
           />
           <button
             type="button"
-            :class="[buttonClass, 'px-4 h-8 text-xs disabled:opacity-70 disabled:cursor-not-allowed']"
+            :class="[buttonClass, 'btn-amber px-4 h-8']"
             :disabled="pickedProductId === null"
             data-role="product-name-search-button"
             @click="openProductDetails"
@@ -181,7 +212,7 @@
       <!-- Left column -->
       <div class="lg:col-span-3 flex flex-col gap-2 lg:gap-3 min-h-0">
         <div
-          class="shrink-0 bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 flex flex-col gap-1.5"
+          class="shrink-0 panel panel-green p-2 flex flex-col gap-1.5"
         >
           <!-- Name and address save straight from here: Enter, or leaving the
                field. Receivable stays read-only — it can only be set when the
@@ -228,13 +259,13 @@
         <!-- The customer card above stays put; only the button cards scroll -->
         <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 lg:gap-3">
           <div
-            class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 grid grid-cols-3 gap-1.5"
+            class="panel panel-green p-2 grid grid-cols-3 gap-1.5"
           >
             <button
               v-for="btn in printButtons"
               :key="btn.key"
               type="button"
-              :class="[buttonClass, 'min-h-[3rem] px-1 py-1']"
+              :class="[buttonClass, 'btn-green min-h-[3rem] px-1 py-1']"
               :disabled="btn.enabled ? !btn.enabled.value : false"
               @click="btn.handler?.()"
             >
@@ -243,13 +274,13 @@
           </div>
 
           <div
-            class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 grid grid-cols-2 gap-1.5"
+            class="panel panel-amber p-2 grid grid-cols-2 gap-1.5"
           >
             <button
               v-for="btn in actionButtons"
               :key="btn.key"
               type="button"
-              :class="[buttonClass, 'min-h-[2.25rem] px-1 py-1']"
+              :class="[buttonClass, 'btn-amber min-h-[2.25rem] px-1 py-1']"
               @click="onActionClick(btn)"
             >
               {{ t(btn.key) }}
@@ -257,20 +288,20 @@
           </div>
 
           <div
-            class="bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-700 p-2 grid grid-cols-2 gap-1.5"
+            class="panel panel-amber p-2 grid grid-cols-2 gap-1.5"
           >
             <button
               v-for="btn in reportButtons"
               :key="btn.key"
               type="button"
-              :class="[buttonClass, 'min-h-[2.25rem] px-1 py-1']"
+              :class="[buttonClass, 'btn-amber min-h-[2.25rem] px-1 py-1']"
               @click="onReportClick(btn)"
             >
               {{ t(btn.key) }}
             </button>
             <button
               type="button"
-              :class="[buttonClass, 'min-h-[2.25rem] px-1 py-1 col-span-2']"
+              :class="[buttonClass, 'btn-amber min-h-[2.25rem] px-1 py-1 col-span-2']"
               @click="openPaymentReport"
             >
               {{ t("v2_daily_payment_report") }}
@@ -286,12 +317,13 @@
           <ProductEntryTable
             ref="entryTable"
             v-model:rows="entryRows"
-            :locked="posted"
+            :locked="entryLocked"
             @product-selected="onProductSelected"
+            @leave-left="focusCustomerId"
           />
         </div>
 
-        <div class="flex flex-col gap-1.5">
+        <div class="panel panel-blue p-2 flex flex-col gap-1.5">
           <div class="flex items-center gap-2">
             <label class="text-xs whitespace-nowrap flex-1">{{ t("v2_grand_total") }}:</label>
             <input
@@ -309,7 +341,7 @@
               type="text"
               inputmode="decimal"
               @input="discountText = toLatinDigits(($event.target as HTMLInputElement).value)"
-              :readonly="posted"
+              :readonly="entryLocked"
               :class="[inputClass, 'max-w-[55%] text-right disabled:opacity-70 disabled:cursor-not-allowed read-only:opacity-70 read-only:cursor-default']"
               @keydown.enter.prevent="onDiscountEnter"
               @blur="onDiscountBlur"
@@ -343,9 +375,15 @@
           <CustomerStatusPanel
             v-model:comment="comment"
             :status="postedStatus"
-            :locked="posted"
+            :locked="entryLocked"
           />
         </div>
+        <p
+          v-if="mode === 'archive'"
+          class="text-xs text-gray-500 dark:text-gray-400"
+        >
+          {{ t("v2_no_invoice_for_date") }}
+        </p>
         <p
           v-if="postError"
           class="text-xs text-red-600 dark:text-red-400"
@@ -355,16 +393,17 @@
         <div class="grid grid-cols-2 gap-2">
           <button
             type="button"
-            :class="[buttonClass, 'h-9 disabled:opacity-70 disabled:cursor-not-allowed']"
-            :disabled="posted"
+            :class="[buttonClass, 'btn-blue h-9']"
+            :disabled="!canPost"
             @click="onPostData"
           >
             {{ t("v2_post_data") }}
           </button>
           <button
             type="button"
-            :class="[buttonClass, 'h-9 disabled:opacity-70 disabled:cursor-not-allowed']"
-            :disabled="mode !== 'posted'"
+            :class="[buttonClass, 'btn-blue h-9']"
+            :disabled="!canAmendInvoice"
+            :title="posted && !canEditInvoice ? t('v2_older_invoice_locked') : undefined"
             @click="onEdit"
           >
             {{ t("v2_edit") }}
@@ -372,8 +411,9 @@
         </div>
         <button
           type="button"
-          :class="[buttonClass, 'h-9 w-full disabled:opacity-70 disabled:cursor-not-allowed']"
-          :disabled="mode !== 'posted'"
+          :class="[buttonClass, 'btn-blue h-9 w-full']"
+          :disabled="!canAmendInvoice"
+          :title="posted && !canEditInvoice ? t('v2_older_invoice_locked') : undefined"
           @click="onPayment"
         >
           {{ t("v2_payment") }}
@@ -384,9 +424,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { t } from "../i18n";
-import type { Invoice } from "../main/data";
+import type { Invoice, InvoiceDraft, InvoiceDraftLine } from "../main/data";
 import SlotDropdown from "../components/dashboard/SlotDropdown.vue";
 import { toSlots, filterSlots, type SlotOption } from "../components/dashboard/slotOptions";
 import { matchByName } from "../utils/fuzzy";
@@ -402,7 +442,6 @@ import CustomerStatusPanel, {
   type PostedStatus,
 } from "../components/dashboard/CustomerStatusPanel.vue";
 import {
-  BUSINESS_NAME,
   MIN_CUSTOMER_ID,
   MAX_CUSTOMER_ID,
 } from "../constants/business";
@@ -512,8 +551,15 @@ const customerSlotsOpen = ref(false);
 const customerHighlight = ref(-1);
 let customerSlotsLoaded = false;
 
+// The id as it stood when it was last committed. While the box still reads
+// that, the dropdown is a browse list rather than a search: the customer is
+// settled, so opening it means looking for a different one.
+const committedCustomerId = ref<string | null>(null);
+
 const customerSlotOptions = computed(() =>
-  filterSlots(customerSlots.value, customerId.value)
+  customerId.value === committedCustomerId.value
+    ? customerSlots.value
+    : filterSlots(customerSlots.value, customerId.value)
 );
 
 async function loadCustomerSlots() {
@@ -546,6 +592,20 @@ function onCustomerIdFocus() {
   customerIdInput.value?.select();
 }
 
+// ArrowLeft off the entry grid's ID column: the caret comes back here, ready
+// for the next customer, the same way it arrives on mount
+function focusCustomerId() {
+  customerIdInput.value?.focus();
+  customerIdInput.value?.select();
+}
+
+// The other half of that walk: ArrowRight goes into the grid's first ID cell.
+// The dropdown is dismissed first — the caret is leaving the box it belongs to.
+function focusFirstProduct() {
+  closeCustomerSlots();
+  entryTable.value?.focusFirstRow();
+}
+
 function toggleCustomerSlots() {
   if (customerSlotsOpen.value) {
     closeCustomerSlots();
@@ -566,6 +626,14 @@ function closeCustomerSlots() {
 function onCustomerIdInput(e: Event) {
   customerId.value = toLatinDigits((e.target as HTMLInputElement).value);
   customerHighlight.value = -1;
+  // Typing is searching again
+  committedCustomerId.value = null;
+}
+
+// Leaving the box settles whatever is in it, so the next open browses
+function onCustomerIdBlur() {
+  closeCustomerSlots();
+  committedCustomerId.value = customerId.value;
 }
 
 function moveCustomerHighlight(step: number) {
@@ -581,6 +649,7 @@ function moveCustomerHighlight(step: number) {
 
 function selectCustomerSlot(option: SlotOption) {
   customerId.value = String(option.id);
+  committedCustomerId.value = customerId.value;
   closeCustomerSlots();
   void loadLastBill();
 }
@@ -594,6 +663,7 @@ function onCustomerIdEnter() {
     return;
   }
   closeCustomerSlots();
+  committedCustomerId.value = customerId.value;
   void loadLastBill();
 }
 
@@ -790,8 +860,19 @@ const paidTotalText = computed(() => paidTotal.value.toFixed(2));
 
 // Posting: "entry" → fresh form; "posted" → locked, invoice saved;
 // "editing" → unlocked again, Post Data updates the same invoice.
-const mode = ref<"entry" | "posted" | "editing">("entry");
+// "archive" → an earlier day with nothing billed to this customer: nothing to
+// show and nothing to enter, since a sale is only ever posted onto today.
+const mode = ref<"entry" | "posted" | "editing" | "archive">("entry");
 const posted = computed(() => mode.value === "posted");
+// The grid takes input in the two entry modes only
+const entryLocked = computed(
+  () => mode.value !== "entry" && mode.value !== "editing"
+);
+// The loaded invoice is the customer's latest, so the domain will accept an
+// edit or a payment against it
+const canEditInvoice = ref(true);
+const canPost = computed(() => viewingToday.value && !entryLocked.value);
+const canAmendInvoice = computed(() => posted.value && canEditInvoice.value);
 const postedInvoiceId = ref<string | null>(null);
 const postedStatus = ref<PostedStatus | null>(null);
 const postError = ref("");
@@ -799,7 +880,7 @@ const comment = ref("");
 let posting = false;
 
 function onEdit() {
-  if (mode.value !== "posted") return;
+  if (!canAmendInvoice.value) return;
   mode.value = "editing";
   entryTable.value?.resumeEntry();
 }
@@ -818,7 +899,7 @@ function applyInvoiceToStatus(inv: Invoice) {
 }
 
 function onPayment() {
-  if (mode.value !== "posted" || postedInvoiceId.value === null) return;
+  if (!canAmendInvoice.value || postedInvoiceId.value === null) return;
   void window.ahb.openPaymentWindow(postedInvoiceId.value);
 }
 
@@ -853,8 +934,126 @@ async function onDataChanged(payload: {
   customerReceivableText.value = inv.currentDue.toFixed(2);
 }
 
+// ---------------------------------------------------------------------------
+// Drafts: what has been entered for a customer before Post Data. Products,
+// quantities and rates are stored as typed; no invoice number, no stock
+// movement and no dues — all of that still happens once, at Post Data. This
+// is what lets a clerk leave one customer half-billed, serve another, and
+// come back.
+// ---------------------------------------------------------------------------
+const DRAFT_SAVE_DELAY_MS = 400;
+let draftTimer: ReturnType<typeof setTimeout> | null = null;
+// The customer the rows on screen belong to. Not parseCustomerId(): by the
+// time a switch reaches loadLastBill the id box already holds the new one,
+// and the pending draft belongs to the old customer.
+let draftCustomerId: number | null = null;
+// Loading rows programmatically (and posting) must not write a draft back
+let suppressDraftSave = false;
+
+function draftLines(): InvoiceDraftLine[] {
+  return entryRows.value.flatMap((row) => {
+    // The trailing empty row has no product, so it is never stored
+    if (!row.product) return [];
+    const quantity = parseNumber(row.amountText);
+    return [
+      {
+        productId: row.product.id,
+        quantity: Number.isFinite(quantity) && quantity >= 0 ? quantity : null,
+        rate: row.price,
+      },
+    ];
+  });
+}
+
+/** Write the current rows out as the draft, cancelling any pending save. */
+async function saveDraftNow() {
+  if (draftTimer !== null) {
+    clearTimeout(draftTimer);
+    draftTimer = null;
+  }
+  // A posted invoice is the record itself, and an earlier day is history:
+  // neither is something to draft
+  if (mode.value === "posted" || mode.value === "archive") return;
+  const id = draftCustomerId;
+  if (id === null) return;
+  try {
+    await window.ahb.saveInvoiceDraft({
+      customerId: id,
+      // An unposted edit stays attached to the invoice it is editing
+      invoiceId:
+        mode.value === "editing" && postedInvoiceId.value !== null
+          ? postedInvoiceId.value
+          : undefined,
+      lines: draftLines(),
+      discount: discount.value,
+      notes: comment.value.trim() || undefined,
+    });
+  } catch {
+    /* a draft that cannot be saved must not interrupt entry */
+  }
+}
+
+function scheduleDraftSave() {
+  if (suppressDraftSave) return;
+  if (draftTimer !== null) clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => {
+    draftTimer = null;
+    void saveDraftNow();
+  }, DRAFT_SAVE_DELAY_MS);
+}
+
+watch([entryRows, discount, comment], scheduleDraftSave, { deep: true });
+
+function cancelDraftSave() {
+  if (draftTimer !== null) {
+    clearTimeout(draftTimer);
+    draftTimer = null;
+  }
+}
+
+/** Restore a customer's unposted entry, in editing mode if it edits an invoice. */
+async function loadDraft(draft: InvoiceDraft) {
+  let invoice: Invoice | null = null;
+  if (draft.invoiceId) {
+    try {
+      invoice = await window.ahb.getInvoiceById(draft.invoiceId);
+    } catch {
+      invoice = null;
+    }
+  }
+  const rows = await Promise.all(
+    draft.lines.map((line) =>
+      buildEntryRow({
+        productId: line.productId,
+        quantity: line.quantity,
+        rate: line.rate,
+        // The stored stock already accounts for whatever the invoice posted
+        appliedQty: invoice?.lines.find(
+          (l) => l.productId === line.productId
+        )?.quantity,
+      })
+    )
+  );
+  entryRows.value = rows;
+  discount.value = draft.discount;
+  discountText.value = draft.discount > 0 ? draft.discount.toFixed(2) : "";
+  comment.value = draft.notes ?? "";
+  if (invoice) {
+    postedInvoiceId.value = invoice.id;
+    applyInvoiceToStatus(invoice);
+    mode.value = "editing";
+  } else {
+    mode.value = "entry";
+  }
+  // The table has to see the restored rows before it appends to them
+  await nextTick();
+  // Appends the trailing empty row and puts the caret in it
+  entryTable.value?.resumeEntry();
+}
+
 async function onPostData() {
-  if (posted.value || posting) return;
+  // A sale is only ever posted onto today: an earlier day is read-only
+  if (!canPost.value || posting) return;
   postError.value = "";
   const custId = parseCustomerId();
   if (custId === undefined) return;
@@ -901,6 +1100,15 @@ async function onPostData() {
       return true;
     });
     mode.value = "posted";
+    // What was just posted is the customer's latest by definition
+    canEditInvoice.value = true;
+    // The money lives on the invoice now; the draft has done its job
+    cancelDraftSave();
+    try {
+      await window.ahb.deleteInvoiceDraft(custId);
+    } catch {
+      /* a draft that cannot be deleted is harmless: posting is what counts */
+    }
   } catch (e) {
     postError.value = e instanceof Error ? e.message : String(e);
   } finally {
@@ -909,11 +1117,18 @@ async function onPostData() {
 }
 
 let unsubscribeDataChanged: (() => void) | null = null;
+let unsubscribeSelectPrintClosed: (() => void) | null = null;
 
 onMounted(async () => {
   unsubscribeDataChanged =
     window.ahb.onDataChanged?.((payload) => void onDataChanged(payload)) ??
     null;
+  // The picking sheet has been closed: the rows it was built from are no
+  // longer a pending job, so the grid stops showing them as picked.
+  unsubscribeSelectPrintClosed =
+    window.ahb.onSelectPrintClosed?.(() =>
+      entryTable.value?.clearSelection()
+    ) ?? null;
   await nextTick();
   customerIdInput.value?.focus();
   customerIdInput.value?.select();
@@ -921,18 +1136,30 @@ onMounted(async () => {
 
 onUnmounted(() => {
   unsubscribeDataChanged?.();
+  unsubscribeSelectPrintClosed?.();
+  // Leaving the dashboard must not lose the last keystroke
+  void saveDraftNow();
 });
 
 async function loadLastBill() {
+  // However the id arrived, it counts as settled now
+  committedCustomerId.value = customerId.value;
+  // Flush what is on screen before the id box's new value takes over
+  await saveDraftNow();
   const id = parseCustomerId();
   if (id === undefined) {
     lastBillDateText.value = "—";
     lastBillText.value = "—";
     setCustomerInfo(null);
+    draftCustomerId = null;
     customerIdInput.value?.select();
     return;
   }
-  let todayInvoice: Invoice | null = null;
+  // The invoice billed to this customer on the selected day, if any
+  let dayInvoice: Invoice | null = null;
+  // Dues are chained through each invoice's stored previousDue, so the domain
+  // only lets a customer's latest invoice be edited or paid against.
+  let isLatest = false;
   try {
     const [invoices, customer] = await Promise.all([
       window.ahb.listInvoicesByCustomer(id),
@@ -946,12 +1173,25 @@ async function loadLastBill() {
       const latest = invoices[0]!;
       lastBillDateText.value = new Date(latest.date).toLocaleDateString("en-GB");
       lastBillText.value = latest.totals.net.toFixed(2);
-      if (isToday(latest.date)) todayInvoice = latest;
+      dayInvoice =
+        invoices.find((i) => ymdOfLocal(i.date) === selectedDate.value) ?? null;
+      isLatest = dayInvoice !== null && dayInvoice.no === latest.no;
     }
   } catch {
     lastBillDateText.value = "—";
     lastBillText.value = "—";
     setCustomerInfo(null);
+  }
+  // An entry left unposted for this customer outranks the posted invoice:
+  // it is the newer intent, and it may itself be an edit of that invoice.
+  // Drafts belong to entry in progress, which only happens on today's date.
+  let draft: InvoiceDraft | null = null;
+  if (viewingToday.value) {
+    try {
+      draft = await window.ahb.getInvoiceDraft(id);
+    } catch {
+      draft = null;
+    }
   }
   selectedProductIdText.value = "";
   selectedProductStockText.value = "";
@@ -963,56 +1203,96 @@ async function loadLastBill() {
   postedStatus.value = null;
   postError.value = "";
   comment.value = "";
-  if (todayInvoice) {
-    // An invoice from today loads into the locked posted state, exactly
-    // as right after Post Data: Edit unlocks it, Payment applies to it.
-    await loadPostedInvoice(todayInvoice);
-    // Entry mode lands on the first ID cell; a loaded invoice does the same,
-    // so the header opens on the first line's product and stock
-    entryTable.value?.focusFirstRow();
-  } else {
-    // Start product entry: focus moves into the first row's ID cell
-    entryTable.value?.startEntry();
+  // Only meaningful once an invoice is loaded; entry always posts a new one
+  canEditInvoice.value = dayInvoice ? isLatest : true;
+  // No draft is written while an earlier day is being browsed
+  draftCustomerId = viewingToday.value ? id : null;
+  suppressDraftSave = true;
+  try {
+    if (draft) {
+      await loadDraft(draft);
+    } else if (dayInvoice) {
+      // The day's invoice loads into the locked posted state, exactly as
+      // right after Post Data: on the latest one Edit unlocks it and Payment
+      // applies to it; an older one is there to be read and reprinted.
+      await loadPostedInvoice(dayInvoice);
+      // Entry mode lands on the first ID cell; a loaded invoice does the same,
+      // so the header opens on the first line's product and stock
+      entryTable.value?.focusFirstRow();
+    } else if (viewingToday.value) {
+      // Start product entry: focus moves into the first row's ID cell
+      entryTable.value?.startEntry();
+    } else {
+      // An earlier day with nothing billed: there is nothing to enter, since
+      // a sale is only ever posted onto today
+      entryRows.value = [];
+      mode.value = "archive";
+    }
+  } finally {
+    // Let the row watcher run on the loaded rows before it counts as an edit
+    await nextTick();
+    suppressDraftSave = false;
   }
 }
 
-function isToday(iso: string): boolean {
-  const d = new Date(iso);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
+let loadedRowKey = -1;
+
+/**
+ * One entry row rebuilt from a stored line — a posted invoice's or a draft's.
+ * A draft line may still be half-typed, so quantity and rate come in nullable:
+ * a missing quantity leaves the cell empty and a missing rate falls back to
+ * the product's catalogue price, exactly as typing the id would have.
+ */
+async function buildEntryRow(line: {
+  productId: number;
+  quantity: number | null;
+  rate: number | null;
+  unit?: string;
+  description?: string;
+  appliedQty?: number;
+}): Promise<EntryRow> {
+  let product: {
+    nameBn: string;
+    stock: number;
+    unit: string;
+    price: number;
+  } | null = null;
+  try {
+    product = await window.ahb.getProductById(line.productId);
+  } catch {
+    product = null;
+  }
+  const rate = line.rate ?? product?.price ?? 0;
+  return {
+    key: loadedRowKey--,
+    idText: String(line.productId),
+    product: {
+      id: line.productId,
+      nameBn: product?.nameBn ?? line.description ?? "",
+      unit: line.unit ?? product?.unit ?? "",
+      price: rate,
+      stock: product?.stock ?? 0,
+    },
+    amountText: line.quantity === null ? "" : String(line.quantity),
+    appliedQty: line.appliedQty,
+    priceText: rate.toFixed(2),
+    price: rate,
+  };
 }
 
-let loadedRowKey = -1;
 async function loadPostedInvoice(inv: Invoice) {
   const rows = await Promise.all(
-    inv.lines.map(async (line): Promise<EntryRow> => {
-      let product: { nameBn: string; stock: number } | null = null;
-      try {
-        product = await window.ahb.getProductById(line.productId);
-      } catch {
-        product = null;
-      }
-      return {
-        key: loadedRowKey--,
-        idText: String(line.productId),
-        product: {
-          id: line.productId,
-          nameBn: product?.nameBn ?? line.description ?? "",
-          unit: line.unit,
-          price: line.rate,
-          stock: product?.stock ?? 0,
-        },
-        amountText: String(line.quantity),
+    inv.lines.map((line) =>
+      buildEntryRow({
+        productId: line.productId,
+        quantity: line.quantity,
+        rate: line.rate,
+        unit: line.unit,
+        description: line.description,
         // Already posted, so the stored stock has this quantity in it
         appliedQty: line.quantity,
-        priceText: line.rate.toFixed(2),
-        price: line.rate,
-      };
-    })
+      })
+    )
   );
   entryRows.value = rows;
   discount.value = inv.discount;
@@ -1026,8 +1306,8 @@ async function loadPostedInvoice(inv: Invoice) {
 const inputClass =
   "flex-1 min-w-0 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-2 py-1 text-xs dark:text-gray-100";
 
-const buttonClass =
-  "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-xs leading-tight dark:text-gray-100";
+// The shape; the tint comes from the group the button belongs to
+const buttonClass = "btn-tinted";
 
 // Only Single Print is wired so far; the other two carry no handler yet.
 const printButtons: Array<{
@@ -1076,7 +1356,6 @@ async function onSinglePrint() {
 
   void window.ahb.openPrintPreview(
     buildInvoiceDocument(inv, {
-      businessName: BUSINESS_NAME,
       customerName: customerNameText.value || String(inv.customerId ?? ""),
       customerPhone: customerPhoneText.value || undefined,
       customerAddress: customerAddressText.value || undefined,
@@ -1133,8 +1412,8 @@ const actionButtons: {
   handler?: () => void;
 }[] = [
   { key: "v2_history", page: "customer-history" },
-  // TODO(revamp/v2): action undecided
-  { key: "v2_refresh" },
+  // Drops a stale row selection without opening anything
+  { key: "v2_refresh", handler: () => entryTable.value?.clearSelection() },
   { key: "v2_cust_form", page: "customers" },
   { key: "v2_item_form", page: "products" },
   { key: "v2_cust_list", handler: () => void openCustomerList() },
@@ -1172,11 +1451,91 @@ const reportButtons: {
   },
 ];
 
-const todayText = computed(() => {
+// ---------------------------------------------------------------------------
+// The working date. Today for a new sale; an earlier day loads whatever was
+// billed to the selected customer then — one invoice per customer per day, so
+// a date and an id name exactly one receipt.
+// ---------------------------------------------------------------------------
+function todayYmd(): string {
   const d = new Date();
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yy = String(d.getFullYear() % 100).padStart(2, "0");
-  return `${dd}/${mm}/${yy}`;
-});
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** An invoice's day as the user sees it: local, not the ISO string's UTC. */
+function ymdOfLocal(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function ymdToText(ymd: string): string {
+  const [y = "", m = "", d = ""] = ymd.split("-");
+  return `${d}/${m}/${y.slice(2)}`;
+}
+
+const selectedDate = ref(todayYmd());
+const dateText = ref(ymdToText(selectedDate.value));
+const datePicker = ref<HTMLInputElement | null>(null);
+const viewingToday = computed(() => selectedDate.value === todayYmd());
+
+/** "DD/MM/YY" back to "YYYY-MM-DD"; null when it is not a real date. */
+function parseDateText(text: string): string | null {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(
+    toLatinDigits(text).trim()
+  );
+  if (!m) return null;
+  const [, dd = "", mm = "", yy = ""] = m;
+  const year = yy.length === 2 ? 2000 + Number(yy) : Number(yy);
+  const month = Number(mm);
+  const day = Number(dd);
+  const d = new Date(year, month - 1, day);
+  // Rejects 31/02 and friends: the Date rolls them over
+  if (
+    d.getFullYear() !== year ||
+    d.getMonth() !== month - 1 ||
+    d.getDate() !== day
+  ) {
+    return null;
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${year}-${pad(month)}-${pad(day)}`;
+}
+
+/** Move to a day and reload whatever the current customer has on it. */
+function setSelectedDate(ymd: string) {
+  if (ymd === selectedDate.value) {
+    dateText.value = ymdToText(selectedDate.value);
+    return;
+  }
+  selectedDate.value = ymd;
+  dateText.value = ymdToText(ymd);
+  void loadLastBill();
+}
+
+// A date that cannot be read is not a date: the box goes back to the day it
+// is actually showing rather than silently loading something else.
+function commitDateText() {
+  const ymd = parseDateText(dateText.value);
+  if (!ymd) {
+    dateText.value = ymdToText(selectedDate.value);
+    return;
+  }
+  setSelectedDate(ymd);
+}
+
+function openDatePicker() {
+  const el = datePicker.value;
+  if (!el) return;
+  el.value = selectedDate.value;
+  // Chromium opens the calendar here; the text box stays the keyboard path
+  if (typeof el.showPicker === "function") el.showPicker();
+  else el.click();
+}
+
+function onDatePicked(e: Event) {
+  const value = (e.target as HTMLInputElement).value;
+  if (value) setSelectedDate(value);
+}
 </script>

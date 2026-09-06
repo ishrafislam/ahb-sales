@@ -29,21 +29,21 @@
     </p>
     <div class="grid grid-cols-2 gap-3">
       <button
-        class="px-3 py-2 border rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+        class="btn-tinted btn-blue rounded px-3 py-2 text-sm"
         :disabled="saving"
         @click="onOkay"
       >
         {{ t("okay") }}
       </button>
       <button
-        class="px-3 py-2 border rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+        class="btn-tinted btn-neutral rounded px-3 py-2 text-sm"
         @click="onCancel"
       >
         {{ t("cancel") }}
       </button>
     </div>
     <button
-      class="px-3 py-2 border rounded border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+      class="btn-tinted btn-neutral rounded px-3 py-2 text-sm"
       @click="onEditPreviousPayment"
     >
       {{ t("v2_edit_previous_payment") }}

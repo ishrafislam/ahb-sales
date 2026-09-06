@@ -49,6 +49,24 @@ describe("buildInvoiceDocument", () => {
     expect(buildInvoiceDocument(invoice, opts).title).toContain("42");
   });
 
+  it("takes the shop name from the locale when none is passed", () => {
+    const noName = { ...opts, businessName: undefined };
+    expect(buildInvoiceDocument(invoice, noName).bodyHtml).toContain(
+      "ABDUL HAMID AND BROTHERS"
+    );
+
+    currentLang.value = "bn";
+    expect(buildInvoiceDocument(invoice, noName).bodyHtml).toContain(
+      "আব্দুল হামিদ এন্ড ব্রাদার্স"
+    );
+  });
+
+  it("rules the totals with solid lines, not dashes", () => {
+    const { styleCss } = buildInvoiceDocument(invoice, opts);
+    expect(styleCss).not.toContain("dashed");
+    expect(styleCss).toContain("border-bottom: 1px solid #000");
+  });
+
   it("renders the header, both lines and the totals", () => {
     const { bodyHtml } = buildInvoiceDocument(invoice, opts);
 
@@ -181,6 +199,44 @@ describe("buildInvoiceDocument", () => {
     expect(buildInvoiceDocument(dateOnly, opts).bodyHtml).not.toContain(
       'class="time"'
     );
+  });
+
+  it("prints the last action's time, not the posting time", () => {
+    // Edited later the same day: a payment, or a re-post of the lines
+    const edited = {
+      ...invoice,
+      updatedAt: "2026-07-30T16:45:00.000Z",
+    } as unknown as Invoice;
+    const timeOf = (iso: string) => {
+      const d = new Date(iso);
+      const h24 = d.getHours();
+      return `${h24 % 12 === 0 ? 12 : h24 % 12}:${String(
+        d.getMinutes()
+      ).padStart(2, "0")} ${h24 < 12 ? "AM" : "PM"}`;
+    };
+    const { bodyHtml } = buildInvoiceDocument(edited, opts);
+
+    expect(bodyHtml).toContain(timeOf(edited.updatedAt));
+    expect(bodyHtml).not.toContain(timeOf(invoice.date));
+    // Same day, so the time carries no date of its own: the invoice's date
+    // appears once, above it
+    expect((bodyHtml.match(/30\/07\/26/g) ?? []).length).toBe(1);
+  });
+
+  it("dates the time when the last action fell on another day", () => {
+    const editedNextDay = {
+      ...invoice,
+      updatedAt: "2026-07-31T09:15:00.000Z",
+    } as unknown as Invoice;
+    const { bodyHtml } = buildInvoiceDocument(editedNextDay, opts);
+
+    // The invoice keeps its own date; the time says which day it belongs to
+    expect(bodyHtml).toContain("30/07/26");
+    expect(bodyHtml).toMatch(/class="time">31\/07\/26 /);
+
+    currentLang.value = "bn";
+    const bn = buildInvoiceDocument(editedNextDay, opts).bodyHtml;
+    expect(bn).toMatch(/class="time">৩১\/০৭\/২৬ /);
   });
 
   it("switches digits and font for Bengali", () => {
